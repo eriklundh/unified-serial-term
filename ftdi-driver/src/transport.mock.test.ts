@@ -8,14 +8,15 @@ describe('MockUsbTransport.controlOut', () => {
     await mock.controlOut({ request: 0x04, value: 0x0008, index: 0 }, data);
 
     expect(mock.controlOutCalls).toHaveLength(1);
-    expect(mock.controlOutCalls[0]!.setup).toEqual({ request: 0x04, value: 0x0008, index: 0 });
-    expect(mock.controlOutCalls[0]!.data).toEqual(data);
+    const call = mock.controlOutCalls.at(0);
+    expect(call?.setup).toEqual({ request: 0x04, value: 0x0008, index: 0 });
+    expect(call?.data).toEqual(data);
   });
 
   it('records undefined data when none is provided', async () => {
     const mock = new MockUsbTransport();
     await mock.controlOut({ request: 0x00, value: 0, index: 0 });
-    expect(mock.controlOutCalls[0]!.data).toBeUndefined();
+    expect(mock.controlOutCalls.at(0)?.data).toBeUndefined();
   });
 });
 
@@ -37,7 +38,7 @@ describe('MockUsbTransport.bulkIn', () => {
     expect(await mock.bulkIn(1, 64)).toEqual(new Uint8Array(0));
   });
 
-  it('records each bulkIn call', async () => {
+  it('records each bulkIn call with endpoint and length', async () => {
     const mock = new MockUsbTransport();
     await mock.bulkIn(1, 64);
     expect(mock.bulkInCalls).toEqual([{ endpoint: 1, length: 64 }]);

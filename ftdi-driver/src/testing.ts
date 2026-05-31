@@ -1,6 +1,5 @@
 /**
  * Test utilities. Imported via `ftdi-webusb-driver/testing`.
- *
- * MockUsbTransport will be added in Phase 5.
  */
-export {};
+export type { RecordedControlOut, RecordedBulkOut } from './transport.mock.js';
+export { MockUsbTransport } from './transport.mock.js';

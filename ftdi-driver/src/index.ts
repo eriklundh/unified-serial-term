@@ -20,3 +20,6 @@ export type {
   StrippedPacket,
 } from './read.js';
 export { stripStatus, ModemStatusBits, LineStatusBits } from './read.js';
+
+export type { ControlSetup, UsbTransport } from './transport.js';
+export { WebUsbTransport, TransferError } from './transport.webusb.js';
