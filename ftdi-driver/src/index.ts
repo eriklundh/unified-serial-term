@@ -13,3 +13,10 @@ export { encodeLineProperties } from './line.js';
 export { encodeModemControl } from './modem.js';
 export type { FlowMode } from './flow.js';
 export { encodeFlowControl } from './flow.js';
+
+export type {
+  ModemStatusFlags,
+  LineStatusFlags,
+  StrippedPacket,
+} from './read.js';
+export { stripStatus, ModemStatusBits, LineStatusBits } from './read.js';
