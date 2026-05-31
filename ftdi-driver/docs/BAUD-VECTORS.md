@@ -63,7 +63,7 @@ typical UART receivers.
 |           2400 | `0x04E2` | `0x0000` |         2400.00 |   0.00  |
 |           4800 | `0x0271` | `0x0000` |         4800.00 |   0.00  |
 |           9600 | `0x4138` | `0x0000` |         9600.00 |   0.00  |
-|          14400 | `0x4138` | `0x0000` |         9600.00 |  33.33  |  ⚠
+|          14400 | `0x80D0` | `0x0000` |        14405.76 |   0.04  |
 |          19200 | `0x809C` | `0x0000` |        19200.00 |   0.00  |
 |          38400 | `0xC04E` | `0x0000` |        38400.00 |   0.00  |
 |          57600 | `0x0034` | `0x0000` |        57692.31 |   0.16  |
@@ -75,11 +75,10 @@ typical UART receivers.
 |       2_000_000| `0x0001` | `0x0000` |      2000000.00 |   0.00  |
 |       3_000_000| `0x0000` | `0x0000` |      3000000.00 |   0.00  |
 
-⚠ 14400 isn't reachable with acceptable error on this chip. The kernel
-algorithm just returns its best guess, which is the same as 9600. Tests
-should either skip 14400 or accept that the function returns 9600's
-encoding. Recommended behaviour: emit a console warning when the error
-exceeds 3%.
+Note: 14400 baud encodes correctly to `0x80D0` with a 0.04% error, which is
+well within UART tolerance. The earlier planning doc incorrectly claimed the
+algorithm returned 9600's encoding (`0x4138`); that was wrong. The generator
+script `scripts/gen-baud-vectors.mjs` produced the corrected values above.
 
 ## Edge cases for tests
 
@@ -87,7 +86,7 @@ exceeds 3%.
 |--------------|---------------------------------------------------------|
 | `0`          | throws `RangeError("baud must be positive: 0")`         |
 | `-1`         | throws `RangeError("baud must be positive: -1")`        |
-| `4_000_000`  | throws `RangeError("baud too high: 4000000")` (divisor3=0)|
+| `4_000_000`  | throws `RangeError("baud too high (max 3_000_000): 4000000")` |
 | `NaN`        | throws `RangeError("baud must be a finite number: NaN")`|
 | `Infinity`   | throws `RangeError`                                     |
 | `1.5`        | round-down OK, but warn or throw — pick one and test for it |
@@ -99,6 +98,7 @@ return the same as `baudToDivisor(115200)`.
 
 ## How to regenerate this table
 
-The Python in `scripts/gen-baud-vectors.py` (write this in Phase 1)
-regenerates the vectors. If we ever question a value, run that script;
-do not eyeball it.
+Run `npm run build && node scripts/gen-baud-vectors.mjs` to regenerate.
+The script imports from `dist/index.js` and computes effective baud by
+inverting the DIVFRAC permutation. If we ever question a value, run
+the script and diff against this table; do not eyeball it.
