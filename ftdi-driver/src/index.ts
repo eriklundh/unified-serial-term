@@ -3,3 +3,6 @@
  * @packageDocumentation
  */
 export const VERSION = '0.0.1';
+
+export type { BaudDivisor } from './baud.js';
+export { baudToDivisor } from './baud.js';

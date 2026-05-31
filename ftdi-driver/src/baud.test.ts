@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { baudToDivisor } from './baud.js';
 
-const vectors: ReadonlyArray<readonly [number, number, number]> = [
+const vectors: readonly (readonly [number, number, number])[] = [
   // baud,      wValue, wIndex
   [300, 0x2710, 0x0000],
   [600, 0x1388, 0x0000],
