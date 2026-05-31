@@ -1,0 +1,493 @@
+# PLAN.md — web-serial-console (the terminal app)
+
+A phased, test-first plan for building a browser terminal from scratch
+with two interchangeable serial backends: **Web Serial API** and
+**WebUSB + the `ftdi-webusb-driver` library**.
+
+Each phase is a feature branch. Within a phase, work in red → green →
+refactor cycles, committing at each transition.
+
+## Reference reading before Phase 0
+
+Before writing any code, read [zaxbux/web-serial-console](https://github.com/zaxbux/web-serial-console)
+end-to-end. Pay attention to:
+
+- How the Vue components are organised (App, Terminal, Settings, etc.)
+- How xterm.js is wired into a Vue component lifecycle
+- The state machine for connect / disconnect / error
+- The settings-panel structure
+
+Do **not** copy code from it. The goal of reference reading is to
+internalise the design, then re-derive it under test discipline. This
+keeps the codebase entirely covered by tests written first.
+
+## Acceptance criteria for "phase complete"
+
+1. All tests in the phase pass on `npm test`.
+2. `npm run typecheck` is clean.
+3. `npm run lint` is clean.
+4. `npm run build` produces a working dist.
+5. Manual smoke test passes for the behaviour the phase added.
+6. Phase document (or PLAN.md) updated with any deviations.
+7. Branch merged into `main` with `--no-ff`.
+
+---
+
+## Phase 0 — Project scaffold and empty terminal shell
+
+Branch: `phase/00-scaffold`
+
+**Goal:** A buildable, testable Vue 3 + Vite + TS app that renders an
+empty terminal pane, a disabled Connect button, and a settings panel
+shell. No serial code yet. No backends defined yet. Just confirm the
+toolchain and the UI shell work.
+
+### Sub-steps
+
+1. **Project init**
+   - `npm create vite@latest . -- --template vue-ts` (interactive: skip
+     all the optional add-ons except TypeScript)
+   - `npm install`
+   - Delete the default `HelloWorld.vue` and template content
+   - Verify `npm run dev` opens a blank page in the browser
+
+2. **Toolchain**
+   - Add Vitest: `npm install -D vitest @vue/test-utils jsdom @vitest/coverage-v8`
+   - Add Playwright: `npm install -D @playwright/test`; run `npx playwright install chromium`
+   - Add ESLint + Prettier: `npm install -D eslint @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint-plugin-vue prettier`
+   - Add `.eslintrc.cjs`, `.prettierrc`, `.editorconfig` matching the
+     library repo's config (Vue overlay)
+   - Add npm scripts: `test`, `test:watch`, `test:e2e`, `typecheck`,
+     `lint`, `format`, `build`, `preview`
+   - **Configure Vite for static deployment.** Edit `vite.config.ts`:
+     ```ts
+     export default defineConfig({
+       plugins: [vue()],
+       base: './',  // relative paths so the same dist/ works at any URL subpath
+     });
+     ```
+     This is the key to "no Node.js needed on the web server" — `npm run build`
+     produces a `dist/` folder of pure static assets that drop straight into any
+     Apache or nginx document root (or a subfolder of one). See
+     `docs/DEPLOYMENT.md` for the full deploy procedure.
+
+3. **xterm.js terminal pane**
+   - `npm install @xterm/xterm @xterm/addon-fit @xterm/addon-web-links`
+   - Write the failing test first: `src/components/Terminal.test.ts`
+     mounts the component and asserts the xterm instance is created and
+     attached to the DOM (jsdom + spy on xterm constructor)
+   - Implement `src/components/Terminal.vue`: a wrapping `<div>` with a
+     ref, an `onMounted` that `new Terminal({...}).open(div)`, an
+     `onUnmounted` that calls `terminal.dispose()`
+   - Smoke test: `npm run dev`, see a working empty terminal pane
+
+4. **App shell**
+   - Failing test: `src/App.test.ts` asserts that App renders
+     Terminal, a Connect button (initially disabled — no backend
+     registered yet), and a Settings panel placeholder
+   - Implement `src/App.vue` with those three children
+   - Add minimal CSS for layout (flex column: header with controls,
+     terminal taking remaining space)
+
+5. **CI-readiness**
+   - Add `.github/workflows/ci.yml` (or `.gitlab-ci.yml` since the
+     user runs GitLab CE) that runs `lint`, `typecheck`, `test`, `build`
+     on every push and PR. Use the user's GitLab runner if available.
+
+### Commits (representative)
+
+- `chore(proj): scaffold Vue 3 + Vite + TS via create-vite`
+- `chore(proj): add Vitest, Playwright, ESLint, Prettier`
+- `chore(proj): add npm scripts and editor config`
+- `test(terminal): assert xterm instance is created and attached`
+- `feat(terminal): wrap xterm.js in a Vue component with lifecycle`
+- `test(ui): assert App renders Terminal, Connect, Settings placeholder`
+- `feat(ui): implement App shell with empty Settings and disabled Connect`
+- `style(ui): basic flex layout for header + terminal`
+- `chore(ci): add GitLab CI pipeline`
+
+### Acceptance
+
+- [ ] `npm run dev` shows an empty terminal pane plus controls
+- [ ] All scripts (`test`, `typecheck`, `lint`, `build`) pass clean
+- [ ] CI pipeline green on push to feature branch
+- [ ] Branch merged
+
+---
+
+## Phase 1 — Define the SerialBackend interface
+
+Branch: `phase/01-backend-interface`
+
+**Goal:** Add `src/backends/SerialBackend.ts` defining the abstraction
+that both backend implementations will satisfy.
+
+The interface deliberately matches the **Web Serial API's `SerialPort`
+shape** as closely as possible, so the Web Serial implementation in
+Phase 2 is a thin adapter and so anyone fluent in Web Serial finds it
+familiar.
+
+```ts
+// src/backends/SerialBackend.ts
+
+export type BackendId = 'web-serial' | 'webusb-ftdi';
+
+export interface SerialOptions {
+  baudRate: number;
+  dataBits?: 7 | 8;
+  parity?: 'none' | 'even' | 'odd';
+  stopBits?: 1 | 2;
+  flowControl?: 'none' | 'hardware';
+  // XON/XOFF deliberately omitted — Web Serial doesn't expose it.
+  // ftdi-webusb-driver supports it; can be added later if needed.
+}
+
+export interface SerialBackend {
+  readonly id: BackendId;
+  readonly label: string;
+  readonly isOpen: boolean;
+  readonly readable: ReadableStream<Uint8Array>;
+  readonly writable: WritableStream<Uint8Array>;
+  open(options: SerialOptions): Promise<void>;
+  close(): Promise<void>;
+}
+
+export interface SerialBackendFactory {
+  readonly id: BackendId;
+  readonly displayName: string;
+  isAvailable(): boolean;
+  pickDevice(): Promise<SerialBackend>;
+  listPaired(): Promise<SerialBackend[]>;
+}
+```
+
+### Sub-steps
+
+1. Failing test (`src/backends/SerialBackend.test.ts`) that imports the
+   types and exercises a `MockSerialBackend` implementation: starts
+   `isOpen: false`, flips on `open()`, flips back on `close()`,
+   readable yields what's pushed through a test `TransformStream`,
+   writable records writes.
+2. Implement `src/backends/SerialBackend.ts` (types only)
+3. Implement `src/backends/MockSerialBackend.ts` for use across
+   all subsequent phases' tests
+4. Verify the mock passes the contract test
+
+### Commits
+
+- `test(backend): assert SerialBackend interface contract via mock`
+- `feat(backend): define SerialBackend and SerialBackendFactory types`
+- `feat(backend): implement MockSerialBackend for tests`
+
+### Acceptance
+
+- [ ] Interface types compile under strict mode
+- [ ] MockSerialBackend passes contract test
+- [ ] No behavioural change in the running app (no factory registered yet)
+
+---
+
+## Phase 2 — Web Serial backend and basic connection flow
+
+Branch: `phase/02-web-serial-backend`
+
+**Goal:** Implement `WebSerialBackend` and `WebSerialFactory`,
+register the factory with the app, wire the Connect button to call
+`pickDevice()` and `open()`, then pipe `readable` into the terminal
+and pipe terminal keystrokes into `writable`. By the end of this
+phase, the app is a working Web Serial terminal.
+
+### Sub-steps
+
+1. **Factory tests (mock `navigator.serial`)**
+   - `WebSerialFactory.isAvailable()` returns `'serial' in navigator`
+   - `WebSerialFactory.pickDevice()` calls `navigator.serial.requestPort()`
+     with no filters and wraps the returned port in a `WebSerialBackend`
+   - `WebSerialFactory.listPaired()` calls `navigator.serial.getPorts()`
+     and wraps each in a `WebSerialBackend`
+
+2. **Factory implementation**
+
+3. **Backend tests (fake SerialPort)**
+   - `open(options)` calls `port.open(options)`
+   - `close()` calls `port.close()` and flips `isOpen`
+   - `readable` is `port.readable`
+   - `writable` is `port.writable`
+   - Calling `close()` while a reader is locked releases the lock first
+     (a common Web Serial footgun)
+
+4. **Backend implementation**
+
+5. **Wire into App**
+   - Register `WebSerialFactory` via `provide`/`inject`
+   - Connect button: on click, call factory's `pickDevice()`, then
+     `backend.open(settings)`, then pipe `backend.readable` to a
+     `term.write(...)` consumer
+   - Send terminal `onData` (keystroke) bytes through `backend.writable`
+   - Disconnect button: `backend.close()` and unpipe streams cleanly
+
+6. **Manual smoke test**
+   - Plug in any USB-serial device (or use a Linux pty pair if no
+     hardware available); click Connect, type, see characters echo (if
+     loopback) or pass to the attached MCU
+
+### Commits (representative)
+
+- `test(web-serial): cover WebSerialFactory availability and pickDevice`
+- `feat(web-serial): implement WebSerialFactory`
+- `test(web-serial): cover WebSerialBackend open/close/stream proxy`
+- `feat(web-serial): implement WebSerialBackend`
+- `test(ui): connect button calls factory.pickDevice and backend.open`
+- `feat(ui): wire Connect button to factory and backend`
+- `test(terminal): bytes from backend.readable are written to xterm`
+- `feat(terminal): pipe backend readable into xterm and onData into writable`
+- `test(ui): disconnect closes backend and tears down pipes`
+- `feat(ui): implement disconnect path`
+
+### Acceptance
+
+- [ ] App opens a Web Serial device end-to-end on real hardware
+- [ ] Disconnect releases the port cleanly (no console errors)
+- [ ] All tests pass; lint and typecheck clean
+- [ ] Branch merged
+
+---
+
+## Phase 3 — WebUSB + FTDI backend
+
+Branch: `phase/03-webusb-ftdi-backend`
+
+**Goal:** Add `WebUsbFtdiBackend` and `WebUsbFtdiFactory` using the
+`ftdi-webusb-driver` library, satisfying the same `SerialBackend` interface.
+No UI changes yet — that's Phase 4. By the end of this phase, the
+backend exists, is fully tested, and can be exercised manually by
+swapping which factory is registered in the app composition root.
+
+### Sub-steps
+
+1. **Add dependency**
+   - `npm install file:../ftdi-webusb-driver` (or whatever path matches your
+     workspace layout — adjust if Claude Code's VM has them elsewhere)
+   - Verify the library's types are visible in your TS setup
+
+2. **Factory tests (mock `navigator.usb`)**
+   - `isAvailable()` returns `'usb' in navigator`
+   - `pickDevice()` calls
+     `navigator.usb.requestDevice({ filters: [{ vendorId: 0x0403, productId: 0x6015 }] })`
+     and wraps the returned device in a `WebUsbFtdiBackend`
+   - `listPaired()` calls `navigator.usb.getDevices()`, filters to
+     FTDI VID, and wraps each one
+
+3. **Factory implementation**
+
+4. **Backend tests (use library's MockUsbTransport)**
+   - Construct an `FtdiUart` against `MockUsbTransport`, wrap it in
+     `WebUsbFtdiBackend`, assert that `open(options)` translates and
+     forwards to `FtdiUart.configure()`
+   - Assert that `readable`/`writable` are `FtdiUart`'s streams
+   - Assert `close()` calls `FtdiUart.close()` and flips `isOpen`
+
+5. **Option translation**
+   - `parity: 'none' | 'even' | 'odd'` → `'none' | 'even' | 'odd'`
+   - `flowControl: 'none' | 'hardware'` → `'none' | 'rtscts'`
+   - DTR and RTS default to asserted (matches Web Serial behaviour)
+
+6. **Backend implementation**
+
+7. **Manual smoke test**
+   - Bind WinUSB to an FT231XS via Zadig (Windows) or set udev rules
+     (Linux). Temporarily swap the factory in the app root from
+     WebSerial to WebUsbFtdi. Click Connect, see the FT231XS appear in
+     the WebUSB chooser, connect, exchange bytes with the attached MCU
+   - Swap the factory back to WebSerial when done
+
+### Commits (representative)
+
+- `chore(proj): add ftdi-webusb-driver dependency`
+- `test(webusb): cover WebUsbFtdiFactory availability and pickDevice`
+- `feat(webusb): implement WebUsbFtdiFactory with FTDI VID filter`
+- `test(webusb): cover WebUsbFtdiBackend with MockUsbTransport`
+- `feat(webusb): implement WebUsbFtdiBackend wrapping FtdiUart`
+- `test(webusb): cover option translation (parity, flow control)`
+- `feat(webusb): translate SerialOptions for ftdi-webusb-driver`
+
+### Acceptance
+
+- [ ] Backend passes contract test using library's MockUsbTransport
+- [ ] Manual smoke test exchanges bytes with real FT231XS hardware
+- [ ] Branch merged
+
+---
+
+## Phase 4 — Backend selector UI
+
+Branch: `phase/04-backend-selector`
+
+**Goal:** Add a dropdown (or segmented control) above the Connect
+button that lets the user choose **Web Serial** or **WebUSB (FTDI)**
+before clicking Connect. The Connect button then calls the selected
+factory's `pickDevice()`.
+
+### Behaviour rules
+
+- The dropdown only shows backends whose `isAvailable()` returns true
+  on the current browser. If neither is available, show a clear
+  message ("This browser doesn't support serial-over-USB; use Chromium").
+- The selection persists in `localStorage` (key `backend.preferredId`).
+- If the persisted backend is no longer available (e.g. saved as
+  WebUSB on a browser that doesn't support it), fall back to the first
+  available one.
+- The selection is locked while a connection is open. Disconnect first
+  to switch backends.
+
+### Sub-steps
+
+1. Test-first: `src/settings/backendPreference.test.ts` covering read,
+   write, fallback when invalid, and clear paths
+2. Implement `src/settings/backendPreference.ts` using `localStorage`
+3. Test-first: backend selector component renders only available
+   backends, emits change events, disables while connected
+4. Implement `src/components/BackendSelector.vue`
+5. Wire selector into App
+6. E2E Playwright smoke test: mock both globals, assert dropdown
+   options and that selection survives reload
+
+### Commits
+
+- `test(settings): cover backendPreference read/write/fallback`
+- `feat(settings): implement backendPreference store`
+- `test(ui): backend selector shows only available backends`
+- `feat(ui): implement BackendSelector component`
+- `feat(ui): lock selector while connection is open`
+- `style(ui): polish selector layout`
+- `test(e2e): backend selection survives reload`
+
+### Acceptance
+
+- [ ] Dropdown reflects browser capability
+- [ ] Selection persists across reloads
+- [ ] Selector disabled during active connection
+- [ ] Branch merged
+
+---
+
+## Phase 5 — Settings persistence and auto-reconnect
+
+Branch: `phase/05-persistence-reconnect`
+
+**Goal:** The user's last baud rate, data bits, parity, stop bits,
+flow control, local echo, and **selected backend** survive a reload.
+On reload, if the selected backend has a previously-authorised device
+(via `listPaired()`), automatically reconnect to it with the saved
+settings.
+
+### Sub-steps
+
+1. Test-first: pure read/write functions for each setting, round-trip
+   through `localStorage`
+2. Implement `src/settings/useSettings.ts` composable
+3. Wire `useSettings()` into the existing settings UI (created in
+   Phase 0's placeholder, populated incrementally — actually, since
+   we put just a placeholder in Phase 0, this phase is also where the
+   settings UI gets its real implementation)
+4. Test-first: auto-reconnect logic with mocked factories — given a
+   non-empty `listPaired()` result, the app opens the first one with
+   the saved settings on mount
+5. Implement auto-reconnect in App's `onMounted`
+6. Surface state to UI: "auto-reconnected to {label}", "no previous
+   device found, click Connect to pick one"
+
+### Commits
+
+- `test(settings): round-trip all settings through localStorage`
+- `feat(settings): implement useSettings composable`
+- `test(ui): settings panel reads and writes through useSettings`
+- `feat(ui): populate settings panel with bound controls`
+- `test(reconnect): auto-reconnect uses first paired device`
+- `feat(reconnect): wire auto-reconnect into App onMounted`
+- `feat(ui): surface auto-reconnect state in header`
+
+### Acceptance
+
+- [ ] All settings round-trip cleanly
+- [ ] Auto-reconnect works for both backends
+- [ ] Reset-to-defaults clears localStorage
+- [ ] Branch merged
+
+---
+
+## Phase 6 — Polish, deployment, release
+
+Branch: `phase/06-release`
+
+**Goal:** Ship v0.1.0. Verify the static build deploys to a plain
+Apache or nginx server with no Node.js required.
+
+### Tasks
+
+1. **Verify the static build is portable.**
+   - Run `npm run build`. Confirm `dist/` contains only `.html`, `.js`,
+     `.css`, and asset files — nothing requiring a runtime.
+   - Verify `<script>` and `<link>` tags in `dist/index.html` use
+     relative paths (`./assets/...`), not absolute (`/assets/...`).
+     This is what the `base: './'` Vite config from Phase 0 gives us.
+   - Smoke test the built bundle: `npx serve dist/` (or any static
+     server), open in Chromium over HTTPS or `localhost`, exercise
+     both backends.
+
+2. **Write `docs/DEPLOYMENT.md`** with:
+   - How to build (`npm run build` → upload `dist/` contents)
+   - Apache and nginx config snippets
+   - HTTPS requirement (loud — both Web Serial and WebUSB require
+     secure context; this *must* be HTTPS in production)
+   - Subpath deployment notes (works at `/`, `/lab/`,
+     `/courses/embedded-101/serial-terminal/`, etc., unchanged)
+   - A copy-pasteable `rsync` command for the user's typical workflow
+
+3. **Update README.md** with:
+   - What the app does
+   - Screenshot of both backends in use
+   - Lab-setup quickstart (Zadig instructions for binding WinUSB to
+     FTDI on Windows; udev rules on Linux)
+   - Link to `docs/DEPLOYMENT.md` for the static-deploy procedure
+   - Link to the `ftdi-webusb-driver` library repo
+   - **Attribution** to zaxbux/web-serial-console as reference reading
+
+4. **Add `docs/LAB-SETUP.md`** for instructors deploying this in a
+   classroom (WinUSB binding, Chromium version requirements, the
+   one-time WebUSB permission prompt, how to revoke permissions if a
+   board changes hands).
+
+5. **Add `CHANGELOG.md`** with the v0.1.0 changes.
+
+6. **Add `LICENSE`** (MIT).
+
+7. **Tag `v0.1.0`** and push.
+
+8. **Deploy to the university server.**
+   - Build locally on the dev VM
+   - `rsync -avz --delete dist/ user@uni-server:/var/www/html/serial-terminal/`
+     (or whatever the actual path is)
+   - Verify the deployed URL serves over HTTPS and both backends work
+     against a real FT231XS
+
+### Commits
+
+- `chore(build): verify dist/ uses only relative paths`
+- `docs(deploy): add DEPLOYMENT.md for static web server install`
+- `docs: write README with quick-start and lab setup link`
+- `docs: add LAB-SETUP guide for classroom deployment`
+- `docs: add CHANGELOG for v0.1.0`
+- `chore: add LICENSE (MIT)`
+- `chore: bump version to 0.1.0`
+- `chore: tag v0.1.0`
+
+### Acceptance
+
+- [ ] `dist/` is a self-contained static bundle (no Node, no runtime deps)
+- [ ] HTML uses relative asset paths so deployment subpath doesn't matter
+- [ ] Smoke-tested on a real Apache or nginx behind HTTPS
+- [ ] README is clear enough that a new student can set up the
+      classroom workflow from scratch
+- [ ] `v0.1.0` tag is pushed
+- [ ] App is deployed and reachable to students
