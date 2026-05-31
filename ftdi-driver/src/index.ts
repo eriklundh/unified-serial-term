@@ -23,3 +23,7 @@ export { stripStatus, ModemStatusBits, LineStatusBits } from './read.js';
 
 export type { ControlSetup, UsbTransport } from './transport.js';
 export { WebUsbTransport, TransferError } from './transport.webusb.js';
+
+export type { SerialOptions, FtdiUartOptions } from './ftdi-uart.js';
+export { FtdiUart } from './ftdi-uart.js';
+export { VendorRequest, ResetSubcommand } from './ftdi-protocol.js';

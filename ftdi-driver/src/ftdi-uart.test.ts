@@ -79,15 +79,9 @@ describe('FtdiUart.open (static factory)', () => {
   it('builds WebUsbTransport from USBDevice and opens', async () => {
     const calls: string[] = [];
     const fakeDevice = {
-      open: async () => {
-        calls.push('open');
-      },
-      selectConfiguration: async () => {
-        calls.push('select');
-      },
-      claimInterface: async () => {
-        calls.push('claim');
-      },
+      open: () => { calls.push('open'); return Promise.resolve(); },
+      selectConfiguration: () => { calls.push('select'); return Promise.resolve(); },
+      claimInterface: () => { calls.push('claim'); return Promise.resolve(); },
     } as unknown as USBDevice;
 
     const ftdi = await FtdiUart.open(fakeDevice);

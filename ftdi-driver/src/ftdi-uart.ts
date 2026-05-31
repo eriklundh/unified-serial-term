@@ -1,5 +1,6 @@
 import type { UsbTransport } from './transport.js';
-import type { DataBits, Parity, StopBits, FlowMode } from './types.js';
+import type { DataBits, Parity, StopBits } from './types.js';
+import type { FlowMode } from './flow.js';
 import { baudToDivisor } from './baud.js';
 import { encodeLineProperties } from './line.js';
 import { encodeModemControl } from './modem.js';
