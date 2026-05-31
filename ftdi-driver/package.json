@@ -15,7 +15,11 @@
       "import": "./dist/testing.js"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
@@ -26,7 +30,26 @@
     "build": "vite build && tsc -p tsconfig.build.json",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["ftdi", "webusb", "uart", "ft232", "ft231"],
+  "keywords": [
+    "ftdi",
+    "webusb",
+    "uart",
+    "ft232",
+    "ft231"
+  ],
   "license": "MIT",
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "@types/w3c-web-usb": "^1.0.14",
+    "@typescript-eslint/eslint-plugin": "^8.60.0",
+    "@typescript-eslint/parser": "^8.60.0",
+    "eslint": "^10.4.1",
+    "prettier": "^3.8.3",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.14",
+    "vitest": "^4.1.7"
+  }
 }
