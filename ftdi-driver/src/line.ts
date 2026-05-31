@@ -1,13 +1,6 @@
-export type Parity = 'none' | 'odd' | 'even' | 'mark' | 'space';
-export type StopBits = 1 | 1.5 | 2;
-export type DataBits = 5 | 6 | 7 | 8;
+import type { LineProperties } from './types.js';
 
-export interface LineProperties {
-  dataBits: DataBits;
-  parity: Parity;
-  stopBits: StopBits;
-  breakOn?: boolean;
-}
+export type { Parity, StopBits, DataBits, LineProperties } from './types.js';
 
 const PARITY_CODES = { none: 0, odd: 1, even: 2, mark: 3, space: 4 } as const;
 const STOP_CODES = { 1: 0, 1.5: 1, 2: 2 } as const;

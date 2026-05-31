@@ -6,3 +6,6 @@ export const VERSION = '0.0.1';
 
 export type { BaudDivisor } from './baud.js';
 export { baudToDivisor } from './baud.js';
+
+export type { Parity, StopBits, DataBits, LineProperties } from './types.js';
+export { encodeLineProperties } from './line.js';

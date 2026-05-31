@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { encodeLineProperties } from './line.js';
-import type { LineProperties, Parity, StopBits, DataBits } from './line.js';
+import type { Parity, StopBits, DataBits } from './line.js';
 
 const VECTORS = [
   // dataBits, parity,   stopBits, breakOn, expected
@@ -18,9 +18,7 @@ describe('encodeLineProperties', () => {
   it.each(VECTORS)(
     '%i-data %s-parity %s-stop break=%s → 0x%s',
     (dataBits, parity, stopBits, breakOn, expected) => {
-      expect(
-        encodeLineProperties({ dataBits, parity, stopBits, breakOn } as LineProperties),
-      ).toBe(expected);
+      expect(encodeLineProperties({ dataBits, parity, stopBits, breakOn })).toBe(expected);
     },
   );
 });
