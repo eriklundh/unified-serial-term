@@ -14,6 +14,15 @@ const DIVFRAC = [0, 3, 2, 4, 1, 5, 6, 7] as const;
 
 const FT232BM_BASE_CLOCK = 48_000_000;
 
+function rawDivisor(baud: number): number {
+  const divisor3 = Math.floor(FT232BM_BASE_CLOCK / 2 / baud);
+  const fracCode = DIVFRAC[divisor3 & 7] ?? 0;
+  let d = (divisor3 >>> 3) | (fracCode << 14);
+  if (d === 1) d = 0; // 3 Mbaud
+  else if (d === 0x4001) d = 1; // 2 Mbaud
+  return d;
+}
+
 export function baudToDivisor(baud: number): BaudDivisor {
   if (!Number.isFinite(baud)) {
     throw new RangeError(`baud must be a finite number: ${baud}`);
@@ -25,17 +34,7 @@ export function baudToDivisor(baud: number): BaudDivisor {
     throw new RangeError(`baud too high (max 3_000_000): ${baud}`);
   }
 
-  // divisor3 is the BRG divisor scaled by 8, capturing the fractional part
-  // in its low 3 bits.
-  const divisor3 = Math.floor(FT232BM_BASE_CLOCK / 2 / baud);
-
-  const fracCode = DIVFRAC[divisor3 & 7] ?? 0;
-  let divisor = (divisor3 >>> 3) | (fracCode << 14);
-
-  // Special remappings for the highest two reachable baud rates.
-  if (divisor === 1) divisor = 0; // 3 Mbaud
-  else if (divisor === 0x4001) divisor = 1; // 2 Mbaud
-
+  const divisor = rawDivisor(baud);
   return {
     wValue: divisor & 0xffff,
     wIndex: (divisor >>> 16) & 0xffff,
