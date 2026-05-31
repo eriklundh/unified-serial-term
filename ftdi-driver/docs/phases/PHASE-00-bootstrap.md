@@ -200,26 +200,35 @@ export default defineConfig({
 
 ### Step 0.6 — ESLint and Prettier
 
-`.eslintrc.cjs`:
+> **Deviation:** ESLint 10 no longer supports `.eslintrc.*` files. The
+> plan showed a `.eslintrc.cjs`; in practice we use a flat `eslint.config.js`
+> and add the `typescript-eslint` meta package (which provides `tseslint.config()`).
+
+`eslint.config.js`:
 
 ```js
-module.exports = {
-  root: true,
-  parser: '@typescript-eslint/parser',
-  parserOptions: { project: './tsconfig.json' },
-  plugins: ['@typescript-eslint'],
-  extends: [
-    'eslint:recommended',
-    'plugin:@typescript-eslint/recommended-type-checked',
-    'plugin:@typescript-eslint/stylistic-type-checked',
-  ],
-  rules: {
-    '@typescript-eslint/no-explicit-any': 'error',
-    '@typescript-eslint/no-non-null-assertion': 'warn',
-    '@typescript-eslint/consistent-type-imports': 'error',
+import tseslint from 'typescript-eslint';
+
+export default tseslint.config(
+  {
+    ignores: ['dist/', 'node_modules/', 'coverage/', '*.config.ts', '*.config.js'],
   },
-  ignorePatterns: ['dist/', 'node_modules/', 'coverage/'],
-};
+  ...tseslint.configs.recommendedTypeChecked,
+  ...tseslint.configs.stylisticTypeChecked,
+  {
+    languageOptions: {
+      parserOptions: {
+        project: './tsconfig.json',
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/consistent-type-imports': 'error',
+    },
+  },
+);
 ```
 
 `.prettierrc`:
