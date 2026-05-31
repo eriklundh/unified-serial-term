@@ -9,3 +9,7 @@ export { baudToDivisor } from './baud.js';
 
 export type { Parity, StopBits, DataBits, LineProperties } from './types.js';
 export { encodeLineProperties } from './line.js';
+
+export { encodeModemControl } from './modem.js';
+export type { FlowMode } from './flow.js';
+export { encodeFlowControl } from './flow.js';
