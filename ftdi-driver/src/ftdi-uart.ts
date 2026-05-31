@@ -39,6 +39,46 @@ export class FtdiUart {
   readonly bulkOutEndpoint: number;
   readonly maxPacketSize = 64;
 
+  private readonly readAbort = new AbortController();
+  // Lazy: streams are created on first access to avoid open handles in tests
+  // that only use read()/write() directly.
+  private _readable: ReadableStream<Uint8Array> | undefined;
+  private _writable: WritableStream<Uint8Array> | undefined;
+
+  get readable(): ReadableStream<Uint8Array> {
+    this._readable ??= new ReadableStream<Uint8Array>({
+      pull: async (controller) => {
+        // Loop until a non-idle packet arrives or close() is called.
+        // Safe because bulkIn genuinely blocks when the queue is empty
+        // (real WebUSB) or when the mock has no pending data, so this
+        // loop never spins — it blocks at the bulkIn level.
+        while (!this.readAbort.signal.aborted) {
+          const payload = await this.read();
+          if (payload.length > 0) {
+            controller.enqueue(payload);
+            return;
+          }
+        }
+        controller.error(new Error('FtdiUart closed'));
+      },
+      cancel: () => {
+        this.readAbort.abort();
+      },
+    });
+    return this._readable;
+  }
+
+  get writable(): WritableStream<Uint8Array> {
+    this._writable ??= new WritableStream<Uint8Array>({
+      write: async (chunk: Uint8Array) => {
+        // Uint8Array<ArrayBufferLike> from the stream; copy to ArrayBuffer-backed
+        // Uint8Array so it satisfies the BufferSource constraint (TS 6 strictness).
+        await this.write(new Uint8Array(chunk));
+      },
+    });
+    return this._writable;
+  }
+
   constructor(
     private readonly transport: UsbTransport,
     opts?: FtdiUartOptions,
@@ -62,8 +102,9 @@ export class FtdiUart {
   }
 
   async close(): Promise<void> {
+    this.readAbort.abort();
     await this.transport.releaseInterface(this.interfaceNumber);
-    await this.transport.close();
+    await this.transport.close(); // unblocks any in-flight bulkIn
   }
 
   async write(data: BufferSource): Promise<void> {

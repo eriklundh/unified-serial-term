@@ -29,13 +29,20 @@ export class MockUsbTransport implements UsbTransport {
 
   private readonly controlInQueue: Uint8Array[] = [];
   private readonly bulkInQueue: Uint8Array[] = [];
+  // Resolvers for bulkIn calls that arrived while the queue was empty.
+  private readonly pendingBulkInResolvers: ((data: Uint8Array) => void)[] = [];
 
   enqueueControlInResponse(data: Uint8Array): void {
     this.controlInQueue.push(data);
   }
 
   enqueueBulkInResponse(data: Uint8Array): void {
-    this.bulkInQueue.push(data);
+    const pending = this.pendingBulkInResolvers.shift();
+    if (pending !== undefined) {
+      pending(data); // wake a blocked bulkIn call directly
+    } else {
+      this.bulkInQueue.push(data);
+    }
   }
 
   open(): Promise<void> {
@@ -45,6 +52,11 @@ export class MockUsbTransport implements UsbTransport {
 
   close(): Promise<void> {
     this.isOpen = false;
+    // Resolve all blocked bulkIn calls with empty data (simulates USB cancel/close).
+    for (const resolve of this.pendingBulkInResolvers) {
+      resolve(new Uint8Array(0));
+    }
+    this.pendingBulkInResolvers.length = 0;
     return Promise.resolve();
   }
 
@@ -83,6 +95,11 @@ export class MockUsbTransport implements UsbTransport {
 
   bulkIn(endpoint: number, length: number): Promise<Uint8Array> {
     this.bulkInCalls.push({ endpoint, length });
-    return Promise.resolve(this.bulkInQueue.shift() ?? new Uint8Array(0));
+    const queued = this.bulkInQueue.shift();
+    if (queued !== undefined) return Promise.resolve(queued);
+    // Block until data is enqueued or the mock is closed.
+    return new Promise<Uint8Array>((resolve) => {
+      this.pendingBulkInResolvers.push(resolve);
+    });
   }
 }

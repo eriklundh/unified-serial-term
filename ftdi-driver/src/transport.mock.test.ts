@@ -33,14 +33,25 @@ describe('MockUsbTransport.bulkIn', () => {
     expect(Array.from(second)).toEqual([0x01, 0x60, 0x42]);
   });
 
-  it('returns empty array when queue is empty', async () => {
+  it('resolves with empty array when mock is closed with a pending request', async () => {
     const mock = new MockUsbTransport();
-    expect(await mock.bulkIn(1, 64)).toEqual(new Uint8Array(0));
+    const pending = mock.bulkIn(1, 64); // blocks — queue is empty
+    await mock.close(); // flushes pending resolvers with []
+    expect(await pending).toEqual(new Uint8Array(0));
+  });
+
+  it('wakes a blocked bulkIn when data is enqueued after the call', async () => {
+    const mock = new MockUsbTransport();
+    const pending = mock.bulkIn(1, 64); // blocks
+    mock.enqueueBulkInResponse(new Uint8Array([0xff])); // wakes it
+    expect(Array.from(await pending)).toEqual([0xff]);
   });
 
   it('records each bulkIn call with endpoint and length', async () => {
     const mock = new MockUsbTransport();
-    await mock.bulkIn(1, 64);
+    const pending = mock.bulkIn(1, 64); // blocks (empty queue)
+    await mock.close(); // resolves it
+    await pending;
     expect(mock.bulkInCalls).toEqual([{ endpoint: 1, length: 64 }]);
   });
 });
