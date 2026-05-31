@@ -7,6 +7,14 @@ import { encodeModemControl } from './modem.js';
 import { encodeFlowControl } from './flow.js';
 import { VendorRequest, ResetSubcommand } from './ftdi-protocol.js';
 import { WebUsbTransport } from './transport.webusb.js';
+import { stripStatus } from './read.js';
+
+function toUint8Array(src: BufferSource): Uint8Array<ArrayBuffer> {
+  if (src instanceof ArrayBuffer) return new Uint8Array(src);
+  // BufferSource constrains ArrayBufferView.buffer to ArrayBuffer (not SharedArrayBuffer).
+  const view = src as ArrayBufferView & { buffer: ArrayBuffer };
+  return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
+}
 
 export interface SerialOptions {
   baud: number;
@@ -56,6 +64,25 @@ export class FtdiUart {
   async close(): Promise<void> {
     await this.transport.releaseInterface(this.interfaceNumber);
     await this.transport.close();
+  }
+
+  async write(data: BufferSource): Promise<void> {
+    const bytes = toUint8Array(data);
+    if (bytes.length === 0) return;
+    let offset = 0;
+    while (offset < bytes.length) {
+      const chunk = bytes.subarray(offset, offset + this.maxPacketSize);
+      await this.transport.bulkOut(this.bulkOutEndpoint, chunk);
+      offset += chunk.length;
+    }
+  }
+
+  async read(maxBytes: number = this.maxPacketSize): Promise<Uint8Array> {
+    const raw = await this.transport.bulkIn(this.bulkInEndpoint, maxBytes);
+    // Fewer than 2 bytes can't carry status headers; treat as empty (e.g. cancelled transfer).
+    if (raw.length < 2) return new Uint8Array(0);
+    const { payload } = stripStatus(raw);
+    return payload;
   }
 
   async configure(opts: SerialOptions): Promise<void> {
