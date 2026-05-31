@@ -25,6 +25,8 @@ describe('FtdiUart.readable', () => {
     expect(Array.from(second.value ?? [])).toEqual([0x42]);
 
     await reader.cancel();
+    // close() flushes any proactive blocked bulkIn that the stream queued
+    await ftdi.close();
   });
 
   it('skips idle packets and delivers the first non-empty payload', async () => {
@@ -40,6 +42,7 @@ describe('FtdiUart.readable', () => {
     expect(Array.from(result.value ?? [])).toEqual([0xab]);
 
     await reader.cancel();
+    await ftdi.close();
   });
 });
 
@@ -55,6 +58,8 @@ describe('FtdiUart.writable', () => {
     expect(mock.bulkOutCalls).toHaveLength(2);
     expect(Array.from(mock.bulkOutCalls.at(0)?.data ?? [])).toEqual([1, 2, 3]);
     expect(Array.from(mock.bulkOutCalls.at(1)?.data ?? [])).toEqual([4, 5]);
+
+    await ftdi.close();
   });
 });
 
@@ -63,8 +68,12 @@ describe('FtdiUart.close with pending reader', () => {
     const { ftdi } = await openedPair();
 
     const reader = ftdi.readable.getReader();
+    // reader.read() blocks: bulkIn has an empty queue and genuinely blocks.
     const readPromise = reader.read();
 
+    // close() aborts the signal, then calls transport.close() which resolves
+    // the blocked bulkIn with []. The pull then sees signal.aborted and calls
+    // controller.error(), rejecting readPromise.
     await ftdi.close();
 
     await expect(readPromise).rejects.toBeDefined();
