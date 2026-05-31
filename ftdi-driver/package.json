@@ -1,0 +1,32 @@
+{
+  "name": "ftdi-webusb-driver",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Pure-TypeScript WebUSB driver for FTDI FT-X family chips",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:hw": "FTDI_HW_TEST=1 vitest run --config vitest.hw.config.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write .",
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["ftdi", "webusb", "uart", "ft232", "ft231"],
+  "license": "MIT",
+  "engines": { "node": ">=20" }
+}
