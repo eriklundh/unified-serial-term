@@ -29,21 +29,24 @@ scp agentlab1:~/FPGA_work/pico-cdc-test-rig/build/*.uf2 .
 Pros: zero tooling, works everywhere. Cons: physical button press every
 flash — tedious during tight iteration.
 
-## Method 2: picotool (command-line, no button after first time)
+## Method 2: picotool (command-line, no button after first flash)
 
-Once firmware is running, picotool can reboot it into the bootloader and
-flash, all from the CLI:
+This firmware exposes the picotool USB reset interface. After the initial
+BOOTSEL flash, all subsequent flashes need no button press:
 
 ```bash
-picotool load -x build/pico-cdc-test-rig.uf2
-#         load = write firmware,  -x = reboot into it after
+picotool load -f -x build/pico-cdc-test-rig.uf2
+#              -f = force reset of running device to BOOTSEL first
+#                 -x = reboot into the new firmware after flashing
 ```
 
-For this to reboot the *running* device into the bootloader without the
-BOOTSEL button, the firmware must expose the picotool reset interface.
-The SDK enables this automatically for many configurations; if not,
-`picotool` will ask you to hold BOOTSEL for the first flash, after which
-subsequent `picotool load -x` can reset it over USB.
+picotool sends a USB control request to the reset interface, the device
+reboots to BOOTSEL, flashing happens, then it relaunches. The full
+build-and-flash cycle from a running device:
+
+```bash
+cmake --build build && picotool load -f -x build/pico-cdc-test-rig.uf2
+```
 
 picotool also inspects binaries — useful for sanity checks:
 
@@ -52,7 +55,7 @@ picotool info build/pico-cdc-test-rig.uf2     # what's in this image
 picotool info -a                              # what's on the attached device
 ```
 
-Pros: scriptable, fast iteration, no button after first flash. Cons:
+Pros: fully scriptable, no button after the very first flash. Cons:
 needs picotool installed (see `DEV-ENVIRONMENT.md` §4) and the udev rule
 on Linux.
 
