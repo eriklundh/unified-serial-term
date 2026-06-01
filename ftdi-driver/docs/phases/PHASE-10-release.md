@@ -109,7 +109,7 @@ MIT
 
 **Commit:** `docs: expand README with quick-start and API overview`
 
-### Step 10.2 — Generate API.md
+### Step 10.2 — Generate API docs
 
 Install `typedoc` and `typedoc-plugin-markdown`:
 
@@ -117,12 +117,25 @@ Install `typedoc` and `typedoc-plugin-markdown`:
 npm install --save-dev typedoc typedoc-plugin-markdown
 ```
 
+#### CRITICAL: always point typedoc output at a dedicated subdirectory
+
+`typedoc-plugin-markdown` v4+ cleans its output directory before writing.
+If `"out"` is set to `"."` (project root), it will **delete the entire
+project tree** — source files, `.git/`, `node_modules/`, everything — and
+replace it with the generated docs. The repo was destroyed this way during
+the first attempt at this phase (2025-06-01). Recovery required a fresh
+clone from the remote.
+
+**Rule:** always set `"out"` to a dedicated subdirectory such as
+`"docs-out"`. Never point it at `.`, `..`, or any directory that contains
+source files or a `.git/` directory.
+
 Add `typedoc.json`:
 
 ```json
 {
   "entryPoints": ["src/index.ts"],
-  "out": "API.md",
+  "out": "docs-out",
   "plugin": ["typedoc-plugin-markdown"],
   "readme": "none",
   "hideBreadcrumbs": true,
@@ -131,20 +144,26 @@ Add `typedoc.json`:
 }
 ```
 
+Add `docs-out` to `.gitignore` (the generated files are build artefacts;
+commit `typedoc.json` and the TSDoc source comments, not the output):
+
+```
+docs-out/
+```
+
 Add npm script:
 
 ```json
 "docs": "typedoc"
 ```
 
-Run `npm run docs`. Inspect `API.md`. Tweak TSDoc comments on public
+Run `npm run docs`. Inspect `docs-out/`. Tweak TSDoc comments on public
 exports until the generated docs read well.
 
 **Commits (potentially several):**
-- `chore: add typedoc for API documentation generation`
+- `chore: add typedoc with safe docs-out output directory`
 - `docs: improve TSDoc comments on FtdiUart public methods`
 - `docs: improve TSDoc comments on SerialOptions and related types`
-- `docs: generate API.md`
 
 ### Step 10.3 — Minimal example
 

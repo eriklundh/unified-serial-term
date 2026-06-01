@@ -702,7 +702,32 @@ As you accumulate experience operating Claude Code on this project:
 
 Commit message: `docs(ops): update OPERATING-CLAUDE-CODE based on real usage`.
 
-## 12. Quick reference
+## 12. Known tool hazards — lessons from real incidents
+
+### typedoc `"out"` set to `"."` destroys the project (2025-06-01)
+
+**What happened:** During Phase 10, `typedoc-plugin-markdown` v4+ was run
+with `"out": "."` in `typedoc.json`. The plugin cleans its output directory
+before generating docs. With the output directory set to the project root, it
+deleted the entire working tree — `src/`, `.git/`, `node_modules/`,
+`docs/`, config files, everything — then wrote markdown there. Recovery
+required a fresh `git clone` from the remote.
+
+**Rule:** Never set `"out"` (or any equivalent "clean before writing" output
+path) to `.`, `..`, or any ancestor of the project source. Always use a
+dedicated leaf directory (`"out": "docs-out"`, `"out": "generated"`, etc.).
+Add that directory to `.gitignore` so the generated files are not committed.
+
+**Applies to:** typedoc, typedoc-plugin-markdown, any static-site generator
+or doc tool that advertises a "clean output directory" step (VuePress, VitePress
+in SSG mode, Storybook build, etc.).
+
+**Before running any `npm run docs` or `build` script for the first time:**
+inspect what the script actually calls, check the configured output path in
+the tool's config file, and confirm it points at a subdirectory that does not
+contain source files or a `.git/` directory.
+
+## 13. Quick reference
 
 ```bash
 # Update Claude Code
