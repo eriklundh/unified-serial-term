@@ -41,6 +41,25 @@ class MockFactory implements SerialBackendFactory {
   }
 }
 
+// AutoReconnectMockFactory — listPaired returns a pre-made backend
+class AutoReconnectMockFactory implements SerialBackendFactory {
+  readonly id: BackendId = 'web-serial'
+  readonly displayName = 'Mock Auto'
+  readonly autoBackend = new MockSerialBackend()
+
+  isAvailable() {
+    return true
+  }
+
+  async pickDevice(): Promise<SerialBackend> {
+    return this.autoBackend
+  }
+
+  async listPaired(): Promise<SerialBackend[]> {
+    return [this.autoBackend]
+  }
+}
+
 function mountWithFactories(factories: SerialBackendFactory[]) {
   return mount(App, {
     attachTo: document.body,
@@ -172,5 +191,94 @@ describe('App.vue — connection flow', () => {
     await flushPromises()
     expect(usb.pickDeviceCalled).toBe(true)
     expect(ws.pickDeviceCalled).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — settings panel', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('renders baud rate select', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="baud-select"]').exists()).toBe(true)
+  })
+
+  it('renders data bits select', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="databits-select"]').exists()).toBe(true)
+  })
+
+  it('renders parity select', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="parity-select"]').exists()).toBe(true)
+  })
+
+  it('renders stop bits select', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="stopbits-select"]').exists()).toBe(true)
+  })
+
+  it('renders flow control select', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="flowcontrol-select"]').exists()).toBe(true)
+  })
+
+  it('renders local echo checkbox', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="echo-checkbox"]').exists()).toBe(true)
+  })
+
+  it('renders a reset button', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="reset-btn"]').exists()).toBe(true)
+  })
+
+  it('settings controls are disabled while connected', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="baud-select"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="reset-btn"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('connect uses the current baud rate setting', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await wrapper.find('[data-testid="baud-select"]').setValue('9600')
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(factory.lastBackend?.lastOptions?.baudRate).toBe(9600)
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — auto-reconnect', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('auto-connects on mount when listPaired returns a device', async () => {
+    const factory = new AutoReconnectMockFactory()
+    mountWithFactories([factory])
+    await flushPromises()
+    expect(factory.autoBackend?.isOpen).toBe(true)
+  })
+
+  it('shows auto-reconnect status message after auto-connect', async () => {
+    const factory = new AutoReconnectMockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    expect(wrapper.find('[data-testid="status-msg"]').exists()).toBe(true)
+  })
+
+  it('does not auto-connect when listPaired returns empty', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    expect(wrapper.find('[data-testid="connect-btn"]').attributes('disabled')).toBeUndefined()
+    expect(factory.pickDeviceCalled).toBe(false)
   })
 })
