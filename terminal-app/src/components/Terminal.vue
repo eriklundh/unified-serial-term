@@ -1,5 +1,8 @@
 <template>
-  <div ref="container" class="terminal-container" />
+  <div
+    ref="container"
+    class="terminal-container"
+  />
 </template>
 
 <script setup lang="ts">

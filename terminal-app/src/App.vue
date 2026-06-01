@@ -2,9 +2,17 @@
   <div class="app">
     <header class="app-header">
       <div class="controls">
-        <button data-testid="connect-btn" disabled>Connect</button>
+        <button
+          data-testid="connect-btn"
+          disabled
+        >
+          Connect
+        </button>
       </div>
-      <div data-testid="settings-panel" class="settings-panel">
+      <div
+        data-testid="settings-panel"
+        class="settings-panel"
+      >
         <!-- Settings panel — populated in Phase 5 -->
       </div>
     </header>
