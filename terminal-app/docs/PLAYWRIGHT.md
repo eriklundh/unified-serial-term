@@ -236,22 +236,164 @@ export default defineConfig({
 `webServer` makes Playwright auto-start Vite's dev server before running
 tests, so `npx playwright test` is one command.
 
-## Headless on the Debian 13 VM
+## Playwright on the Raspberry Pi 5 (arm64, Debian 13)
 
-The Debian 13 VM dedicated to Claude Code is headless. Playwright runs
-Chromium headless by default, so this works without an X server. The
-`webServer` block above ensures Vite is up before tests run.
+The lab machine running Claude Code is a headless Raspberry Pi 5.
+These are the quirks discovered by running Playwright 1.60 on it —
+each one verified empirically.
 
-If a test fails and you want to debug, run with `--headed --ui` from a
-machine with a display — Playwright's UI mode lets you step through
-tests visually.
+### 1. arm64 binary — download works, plan for ~1 GB
+
+Playwright 1.30+ ships official arm64 Chromium builds.
+`npx playwright install chromium` downloads ~300 MB and unpacks to
+`~/.cache/ms-playwright/` (two binaries: headless shell + full chrome,
+plus FFmpeg ≈ 956 MB total). The Pi5's NVMe / SD card must have that
+free. After install, the binary runs without extra config.
+
+### 2. `webServer` command must go through npm
+
+`vite` is not on the system PATH — only in `node_modules/.bin/`.
+If you write `command: 'vite'` in `playwright.config.ts`, Playwright
+will download a fresh copy of the latest Vite, not use the project's
+pinned version. Use `npm run dev` instead:
+
+```ts
+webServer: {
+  command: 'npm run dev',   // correct — npm extends PATH to node_modules/.bin
+  url: 'http://localhost:5173',
+  reuseExistingServer: !process.env.CI,
+  timeout: 30_000,
+},
+```
+
+`node_modules/.bin/vite` also works as a literal path if you prefer
+to be explicit, but `npm run dev` is idiomatic and picks up any dev
+script changes automatically.
+
+### 3. WebUSB / Web Serial need `localhost`, not `about:blank`
+
+`navigator.usb` and `navigator.serial` are both `undefined` on
+`about:blank` because it is not a secure context. On
+`http://localhost:5173/` Chromium treats localhost as a secure origin
+and both APIs are present. Always navigate to the dev server — never
+to `about:blank` — before interacting with serial/USB mocks:
+
+```ts
+// Wrong — navigator.usb will be undefined
+await page.goto('about:blank');
+
+// Right
+await page.goto('/');  // resolves to baseURL http://localhost:5173
+```
+
+This is why the `baseURL` + `webServer` pairing is non-negotiable
+on Pi5: without a real localhost origin, the entire mock layer silently
+breaks.
+
+### 4. Playwright uses `headless_shell`, not the full Chrome
+
+The launched binary is
+`~/.cache/ms-playwright/chromium_headless_shell-*/chrome-linux/headless_shell`,
+a stripped build without a UI layer. WebUSB and Web Serial ARE present
+in headless_shell on localhost, but `requestDevice()` / `requestPort()`
+cannot pop a device picker in headless mode — they return a
+`NotFoundError` instead of waiting for user selection.
+
+**Consequence:** real hardware selection cannot be automated from
+Playwright tests. Use `addInitScript` mocks (see above) for everything
+that touches serial/USB. Reserve real-hardware interaction for manual
+smoke tests.
+
+### 5. `--no-sandbox` is already set — no action needed
+
+Playwright passes `--no-sandbox` automatically on Linux. The
+`chrome_sandbox` binary in the downloaded bundle is not setuid root
+(it's owned by the local user), but that doesn't matter because
+Playwright bypasses the setuid sandbox. No `--no-sandbox` flag in
+`launchOptions` is required.
+
+### 6. VA-API warning — harmless noise
+
+Every Chromium launch emits:
+
+```
+ERROR:media/gpu/vaapi/vaapi_wrapper.cc: vaInitialize failed: unknown libva error
+WARNING:sandbox/policy/linux/sandbox_linux.cc: InitializeSandbox() called with multiple threads in process gpu-process.
+```
+
+These are GPU-layer warnings. Chromium falls back to SwiftShader
+(software rendering), which works fine for Playwright tests. Ignore
+them; tests pass normally.
+
+### 7. CDP `DeviceAccess` — works but prompt never fires in headless_shell
+
+You can `DeviceAccess.enable` via a CDP session and register for
+`DeviceAccess.deviceRequestPrompted`, but the event never arrives in
+headless_shell because USB enumeration requires the UI subprocess.
+This means the CDP-based "auto-select real device" pattern does not
+work here. Stick to mocks.
+
+### 8. System Chromium as a fallback
+
+`/usr/bin/chromium` (Raspberry Pi's arm64 build, same major version as
+Playwright's bundle) can be used as `executablePath`:
+
+```ts
+use: {
+  launchOptions: {
+    executablePath: '/usr/bin/chromium',
+    args: ['--no-sandbox'],
+  },
+},
+```
+
+This avoids the 1 GB cache download if disk space is tight. The
+trade-off is that Playwright's CDP assumptions are calibrated to its
+bundled binary; subtle version drift can cause unexpected test
+failures. Prefer the bundled binary for CI.
+
+### 9. udev rules for raw USB access (real-hardware smoke tests)
+
+When running manual browser smoke tests against real hardware, Chromium
+needs read/write access to the USB device node (`/dev/bus/usb/…`).
+The user running Chromium must be in the `plugdev` group, and a udev
+rule must grant `plugdev` ownership:
+
+```udev
+# /etc/udev/rules.d/99-ftdi-webusb.rules
+SUBSYSTEM=="usb", ATTR{idVendor}=="0403", ATTR{idProduct}=="6015", \
+  MODE="0660", GROUP="plugdev", TAG+="uaccess"
+```
+
+On this Pi5 the kernel's default USB udev rules already add `TAG+=uaccess`
+for the FTDI device, which grants access to the logged-in session user.
+The Pico (2e8a:000a) and Kiwi (cafe:400f) DUT devices have explicit
+rules in `/etc/udev/rules.d/99-pico-usb.rules`. New Pi5 setups need
+these rules before manual WebUSB smoke tests will work.
+
+### Summary of Pi5 one-time setup
 
 ```bash
-# From a workstation with a display:
-npx playwright test --ui
+# 1. Install Playwright browser (≈300 MB download, ≈956 MB on disk)
+npx playwright install chromium
 
-# On the headless VM, just:
-npx playwright test
+# 2. Install OS-level deps (idempotent — already satisfied on this Pi5)
+npx playwright install-deps chromium
+
+# 3. Verify
+npx playwright test          # all tests green, VA-API warning is fine
+```
+
+No display server, no `--no-sandbox` flag, no special kernel tuning
+required. The setup above is all that's needed.
+
+If a test fails and you want to step through it visually, run with
+`--headed --ui` from a workstation with a display (VS Code
+Remote-SSH + X forwarding or a VNC session):
+
+```bash
+# From a workstation with display forwarding:
+npx playwright test --ui
 ```
 
 ## What we don't test with Playwright
