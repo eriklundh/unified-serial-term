@@ -1,2 +1,6 @@
 build/
 *.uf2
+__pycache__/
+*.pyc
+test/test_ring_buffer
+test/test_report
