@@ -1,6 +1,22 @@
 import type { BackendId, SerialBackend, SerialBackendFactory, SerialOptions } from './SerialBackend'
 
 // ---------------------------------------------------------------------------
+// Minimal local types for the Web Serial API.
+// The browser provides these at runtime; we declare just what we use.
+// ---------------------------------------------------------------------------
+interface WsSerialPort {
+  readonly readable: ReadableStream<Uint8Array> | null
+  readonly writable: WritableStream<Uint8Array> | null
+  open(options: Record<string, unknown>): Promise<void>
+  close(): Promise<void>
+}
+
+interface WsSerial {
+  requestPort(): Promise<WsSerialPort>
+  getPorts(): Promise<WsSerialPort[]>
+}
+
+// ---------------------------------------------------------------------------
 // WebSerialBackend
 // ---------------------------------------------------------------------------
 // Wraps a native Web Serial API SerialPort. The backend owns a pump task that
@@ -14,7 +30,7 @@ export class WebSerialBackend implements SerialBackend {
   readonly id: BackendId = 'web-serial'
   readonly label = 'Web Serial'
 
-  private _port: SerialPort
+  private _port: WsSerialPort
   private _isOpen = false
   private _portReader: ReadableStreamDefaultReader<Uint8Array> | null = null
   private _pumpDone: Promise<void> | null = null
@@ -24,10 +40,11 @@ export class WebSerialBackend implements SerialBackend {
   readonly readable: ReadableStream<Uint8Array>
 
   get writable(): WritableStream<Uint8Array> {
-    return this._port.writable!
+    // writable is non-null while the port is open
+    return this._port.writable as WritableStream<Uint8Array>
   }
 
-  constructor(port: SerialPort) {
+  constructor(port: WsSerialPort) {
     this._port = port
     this.readable = new ReadableStream<Uint8Array>({
       start: (controller) => {
@@ -41,13 +58,15 @@ export class WebSerialBackend implements SerialBackend {
   }
 
   async open(options: SerialOptions): Promise<void> {
-    await this._port.open(options as SerialOptions & Record<string, unknown>)
+    await this._port.open(options as unknown as Record<string, unknown>)
     this._isOpen = true
     this._pumpDone = this._pump()
   }
 
   private async _pump(): Promise<void> {
-    this._portReader = this._port.readable!.getReader()
+    const portReadable = this._port.readable
+    if (!portReadable) return
+    this._portReader = portReadable.getReader()
     try {
       while (true) {
         const { value, done } = await this._portReader.read()
@@ -90,12 +109,14 @@ export class WebSerialFactory implements SerialBackendFactory {
   }
 
   async pickDevice(): Promise<SerialBackend> {
-    const port = await (navigator as Navigator & { serial: Serial }).serial.requestPort()
+    const serial = (navigator as Navigator & { serial: WsSerial }).serial
+    const port = await serial.requestPort()
     return new WebSerialBackend(port)
   }
 
   async listPaired(): Promise<SerialBackend[]> {
-    const ports = await (navigator as Navigator & { serial: Serial }).serial.getPorts()
+    const serial = (navigator as Navigator & { serial: WsSerial }).serial
+    const ports = await serial.getPorts()
     return ports.map((port) => new WebSerialBackend(port))
   }
 }
