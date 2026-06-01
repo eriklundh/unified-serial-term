@@ -1,116 +1,164 @@
-# pico-cdc-test-rig planning package
+# pico-cdc-test-rig
 
-A TDD-style development plan for **pico-cdc-test-rig** — firmware for a
-Raspberry Pi Pico that enumerates as a USB CDC-ACM device with
-loopback behavior, used as the known-good Web Serial test target for
-the `terminal-app` repo.
+Firmware for a Raspberry Pi Pico that enumerates as a **USB CDC-ACM serial port** and echoes every byte back to the sender. It is the known-good Web Serial test device for the `terminal-app` project — the CDC counterpart to the FT231X dongle that tests the WebUSB backend.
 
-This is the **third** repo in the FTDI WebUSB project family:
+## Behavior contract
 
-| Repo | What it is | Tests which backend |
-|------|-----------|---------------------|
-| `ftdi-webusb-driver` | TypeScript WebUSB driver for FT-X chips | — (it *is* the driver) |
-| `terminal-app` | Vue browser terminal, dual backend | both |
-| **`pico-cdc-test-rig`** | **Pico CDC loopback firmware** | **Web Serial (the hardware target)** |
+| Input from host | Device response |
+|-----------------|-----------------|
+| Any bytes | Echoed back unchanged (loopback) |
+| `0x01 0x3F` (sentinel) | `RIG baud=N data=N parity=X stop=X dtr=N rts=N\n` |
 
-The FT231X dongle (TX↔RX loopback) is the hardware target for the
-terminal-app's **WebUSB** backend; this Pico firmware is the hardware
-target for its **Web Serial** backend. Together they let you smoke-test
-both backends with real devices.
+The device captures whatever line coding (`baudRate`, `dataBits`, `parity`, `stopBits`) and line state (DTR, RTS) the host sets. Sending the sentinel retrieves the current values as a one-line text report — this lets the terminal-app's Web Serial backend tests assert that `open()` parameters reached the device correctly.
 
-## Built with
+The onboard LED mirrors DTR: on when DTR is asserted, off when released.
 
-- Raspberry Pi Pico C/C++ SDK **2.2.0** (pinned by git tag)
-- TinyUSB (bundled with the SDK as a submodule) — CDC device class
-- CMake + Ninja, ARM GCC cross-compiler
-- Targets RP2040 (Pico) by default; RP2350 / W variants supported
+No external wiring needed. The loopback is in firmware; plug USB and it works.
 
-## How to use this package with Claude Code
+## Quick start — flash the prebuilt UF2
 
-Clone an empty `pico-cdc-test-rig` repo (e.g. into `~/FPGA_work/`
-alongside the other two), then copy these planning docs in:
+1. Download `pico-cdc-test-rig.uf2` from the [latest release](../../releases/latest).
+2. Hold **BOOTSEL** on the Pico and plug it in. The drive `RPI-RP2` appears.
+3. Copy the UF2 onto it:
+   ```bash
+   cp pico-cdc-test-rig.uf2 /media/$USER/RPI-RP2/
+   ```
+4. The Pico reboots and enumerates as `Pico CDC Test Rig` (VID `2e8a`, PID `000a`).
+5. Verify with the harness (requires Python 3 + pyserial):
+   ```bash
+   pip install pyserial
+   ./harness/run.sh
+   ```
 
-```
-CLAUDE.md                              →  CLAUDE.md
-PLAN.md                                →  PLAN.md
-docs/DEV-ENVIRONMENT.md                →  docs/DEV-ENVIRONMENT.md
-docs/USB-CDC.md                        →  docs/USB-CDC.md
-docs/FLASHING.md                       →  docs/FLASHING.md
-docs/phases/PHASE-00-devenv.md         →  docs/phases/PHASE-00-devenv.md
-docs/phases/PHASE-01-cdc-enumerate.md  →  docs/phases/PHASE-01-cdc-enumerate.md
-docs/phases/PHASE-02-loopback.md       →  docs/phases/PHASE-02-loopback.md
-docs/phases/PHASE-03-line-reporting.md →  docs/phases/PHASE-03-line-reporting.md
-docs/phases/PHASE-04-host-harness.md   →  docs/phases/PHASE-04-host-harness.md
-docs/phases/PHASE-05-release.md        →  docs/phases/PHASE-05-release.md
-```
+After the first flash, all subsequent flashes need no button press — see [Flashing](#flashing).
 
-Also copy `OPERATING-CLAUDE-CODE.md` from the main planning package into
-`docs/` — the Pro-plan limits, Remote Control, scheduling, and budget
-guidance all apply here too.
-
-Then in the repo:
-> Read CLAUDE.md and docs/DEV-ENVIRONMENT.md, then start Phase 0 from
-> docs/phases/PHASE-00-devenv.md.
-
-## The build-vs-flash split
-
-The key operational difference from the TypeScript repos: **building
-firmware and flashing it are different jobs**.
-
-- **Build** (`cmake` → `.uf2`): pure compilation. Claude Code on
-  agentlab1 does this autonomously.
-- **Flash** (UF2 / picotool / SWD) and **test** (open port, assert
-  echo): need the Pico physically attached — a bench step on the Pi 5
-  or your laptop.
-
-So Claude Code can drive Phases 0–4's build and host-logic work; the
-flash-and-verify checkpoints happen where the hardware is. CLAUDE.md and
-DEV-ENVIRONMENT.md spell this out.
-
-## TDD on firmware — what's honest
-
-Firmware can't be purely unit-tested (you can't run `tud_cdc_write()` in
-a host test). The plan applies test-first where the target allows:
-
-- **Pure logic** — the RX→TX ring buffer (Phase 2) and the settings
-  report formatter (Phase 3) — is host-compiled and unit-tested
-  test-first, red-green-refactor, exactly like the TypeScript repos.
-- **USB enumeration and echo** are validated by a **host-side harness**
-  (Phase 4) written before the firmware behavior it checks. The harness
-  failing is the "red"; the firmware passing it is the "green."
-
-This keeps the project's TDD discipline honest rather than pretending
-hardware behavior can be mocked away.
-
-## Package layout
+## Harness
 
 ```
-pico-cdc-test-rig-plan/
-├── README.md                          ← this file
-├── CLAUDE.md                          ← project memory
-├── PLAN.md                            ← phased plan (0–5)
-└── docs/
-    ├── DEV-ENVIRONMENT.md             ← toolchain setup on Debian 13 / RPi OS Trixie
-    ├── USB-CDC.md                     ← TinyUSB CDC device reference
-    ├── FLASHING.md                    ← UF2 / picotool / SWD
-    └── phases/
-        ├── PHASE-00-devenv.md         ← toolchain + blink (validate the chain)
-        ├── PHASE-01-cdc-enumerate.md  ← enumerate as CDC-ACM
-        ├── PHASE-02-loopback.md       ← byte echo + ring buffer (TDD)
-        ├── PHASE-03-line-reporting.md ← capture & report settings (TDD formatter)
-        ├── PHASE-04-host-harness.md   ← pyserial verification harness
-        └── PHASE-05-release.md        ← README, flashing, prebuilt UF2, tag
+harness/
+  loopback_test.py    — sends 5 payloads, asserts byte-for-byte echo
+  settings_test.py    — opens with 6 line-coding combos, reads sentinel report
+  run.sh              — runs both; exits non-zero on first failure
 ```
 
-## Where it fits in the test topology
+Auto-detects `/dev/ttyACM*`. Pass `--port /dev/ttyACM0` to override.
 
-From the library's `PHASE-09-hw-tests.md` "Hardware test topology": the
-two test devices map onto the two backends —
+```bash
+./harness/run.sh                        # auto-detect
+./harness/run.sh /dev/ttyACM0          # explicit port
+```
 
-- **FT231X dongle → WebUSB** (validated via `ftdi-webusb-driver` Phase 9
-  and terminal-app Phase 3 smoke)
-- **This Pico → Web Serial** (validated via terminal-app Phase 2 smoke)
+See `harness/README.md` for details and terminal-app integration notes.
 
-Flash a Pico from this rig's release UF2, plug it into the bench
-machine, and the terminal-app's Web Serial backend has a real device to
-talk to.
+## Building from source
+
+**Prerequisites** (Debian 13 / RPi OS Trixie — see `docs/DEV-ENVIRONMENT.md`):
+```bash
+sudo apt install -y cmake ninja-build build-essential \
+    gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib \
+    git picotool
+git clone --branch 2.2.0 https://github.com/raspberrypi/pico-sdk.git ~/pico-sdk
+cd ~/pico-sdk && git submodule update --init
+export PICO_SDK_PATH=$HOME/pico-sdk
+```
+
+**Build:**
+```bash
+git clone https://github.com/eriklundh/pico-cdc-test-rig.git
+cd pico-cdc-test-rig
+cmake -B build -G Ninja -DPICO_BOARD=pico
+cmake --build build
+```
+
+Produces `build/pico-cdc-test-rig.uf2`.
+
+**Host unit tests** (ring buffer + report formatter, no Pico needed):
+```bash
+make -C test
+```
+
+## Flashing
+
+### First flash — BOOTSEL required once
+
+Hold BOOTSEL, plug in, copy the UF2, or:
+```bash
+picotool load -x build/pico-cdc-test-rig.uf2
+```
+
+### All subsequent flashes — no button needed
+
+The firmware exposes the picotool reset interface. Once it is running, flash directly:
+```bash
+cmake --build build
+picotool load -f -x build/pico-cdc-test-rig.uf2
+```
+
+picotool reboots the running device to BOOTSEL, flashes, and relaunches — no human at the board.
+
+See `docs/FLASHING.md` for drag-drop, picotool, and SWD options.
+
+## Board support
+
+Default target is the original Pico (RP2040). Override `PICO_BOARD` at configure time:
+
+```bash
+cmake -B build -G Ninja -DPICO_BOARD=pico      # RP2040 (default)
+cmake -B build -G Ninja -DPICO_BOARD=pico2     # RP2350
+cmake -B build -G Ninja -DPICO_BOARD=pico_w    # RP2040 + wireless
+cmake -B build -G Ninja -DPICO_BOARD=pico2_w   # RP2350 + wireless
+```
+
+The loopback firmware is board-agnostic; only the LED behavior varies.
+
+## USB identity
+
+| Field | Value |
+|-------|-------|
+| Vendor ID | `0x2E8A` (Raspberry Pi) |
+| Product ID | `0x000A` (Pico SDK CDC RP2040) |
+| Product string | `Pico CDC Test Rig` |
+| Linux device | `/dev/ttyACM*` |
+| macOS device | `/dev/cu.usbmodem*` |
+| Windows | COM port (no driver install needed — CDC is built into Windows) |
+
+## Project layout
+
+```
+src/
+  main.c              — main loop: tud_task() + CDC service
+  tusb_config.h       — TinyUSB configuration (CDC enabled)
+  usb_descriptors.c   — device / config / string descriptors
+  usb_reset.c         — picotool reset interface driver
+  ring_buffer.{h,c}   — RX→TX ring buffer (host unit-tested)
+  report.{h,c}        — line-coding report formatter (host unit-tested)
+test/
+  test_ring_buffer.c  — 8 ring-buffer unit tests
+  test_report.c       — 7 report-formatter unit tests
+  Makefile
+harness/
+  loopback_test.py
+  settings_test.py
+  run.sh
+  README.md
+docs/
+  DEV-ENVIRONMENT.md  — toolchain setup
+  USB-CDC.md          — TinyUSB CDC reference
+  FLASHING.md         — UF2 / picotool / SWD
+release/
+  pico-cdc-test-rig.uf2  — prebuilt firmware (RP2040 / Pico)
+```
+
+## Relationship to the other repos
+
+| Repo | Role | Tests |
+|------|------|-------|
+| `ftdi-webusb-driver` | TypeScript WebUSB driver | — |
+| `terminal-app` | Browser terminal, dual backend | both backends |
+| **`pico-cdc-test-rig`** | **CDC loopback firmware** | **Web Serial backend** |
+
+Flash this firmware onto a Pico and plug it into the test machine. The terminal-app's Web Serial smoke tests talk to it through `navigator.serial`, exactly as a real user would.
+
+## License
+
+MIT — see `LICENSE`.
