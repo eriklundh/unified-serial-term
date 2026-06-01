@@ -157,6 +157,24 @@ Add npm script:
 "docs": "typedoc"
 ```
 
+#### CRITICAL: commit and push all changes before running typedoc
+
+Before invoking `npm run docs` (or any doc/build tool with a "clean before
+write" step), commit every in-progress change and push to the remote:
+
+```bash
+git add <changed files>
+git commit -m "..."
+git push
+# ONLY THEN run typedoc
+npm run docs
+```
+
+This applies to TSDoc comment edits, config changes, and any other
+modifications made in the same session. A pushed commit is recoverable; an
+uncommitted change on a destroyed working tree is not. See also §12 of
+`OPERATING-CLAUDE-CODE.md` for the full hazard history.
+
 Run `npm run docs`. Inspect `docs-out/`. Tweak TSDoc comments on public
 exports until the generated docs read well.
 

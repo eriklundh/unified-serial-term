@@ -727,6 +727,30 @@ inspect what the script actually calls, check the configured output path in
 the tool's config file, and confirm it points at a subdirectory that does not
 contain source files or a `.git/` directory.
 
+### Commit and push all changes before invoking typedoc (or any destructive build tool)
+
+Even with a correct `"out"` path, doc-generation tools can fail in unexpected
+ways (wrong plugin version, misconfigured option, OS-level race). If that
+happens with uncommitted changes in the working tree, those changes are gone
+— not just untracked, but also not recoverable from the remote.
+
+**Rule:** Before running `npm run docs`, `typedoc`, or any tool with a "clean
+before write" step, first commit *every* in-progress change and push to the
+remote:
+
+```bash
+git add <changed files>
+git commit -m "..."
+git push
+# ONLY THEN run the doc/build tool
+npm run docs
+```
+
+This applies even to TSDoc comment additions, config file tweaks, or
+`package.json` edits made in the same session — anything uncommitted is at
+risk. A pushed commit is always recoverable; an uncommitted change on a
+destroyed working tree is not.
+
 ## 13. Quick reference
 
 ```bash
