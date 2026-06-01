@@ -17,23 +17,48 @@ function toUint8Array(src: BufferSource): Uint8Array<ArrayBuffer> {
   return new Uint8Array(view.buffer, view.byteOffset, view.byteLength);
 }
 
+/** Options passed to {@link FtdiUart.configure}. */
 export interface SerialOptions {
+  /** Baud rate in bits per second (e.g. `115200`). */
   baud: number;
+  /** Data bits per character. Defaults to `8`. */
   dataBits?: DataBits;
+  /** Parity. Defaults to `'none'`. */
   parity?: Parity;
+  /** Stop bits. Defaults to `1`. */
   stopBits?: StopBits;
+  /** Flow-control mode. Defaults to `'none'`. */
   flowControl?: FlowMode;
+  /** Initial DTR state. Defaults to `true`. */
   dtr?: boolean;
+  /** Initial RTS state. Defaults to `true`. */
   rts?: boolean;
+  /** Latency timer in milliseconds (1–255). Defaults to `16`. */
   latencyMs?: number;
 }
 
+/** Construction options for {@link FtdiUart}. Defaults suit the FT231XS. */
 export interface FtdiUartOptions {
+  /** USB interface number to claim. Defaults to `0`. */
   interfaceNumber?: number;
+  /** Bulk-IN endpoint number. Defaults to `1`. */
   bulkInEndpoint?: number;
+  /** Bulk-OUT endpoint number. Defaults to `2`. */
   bulkOutEndpoint?: number;
 }
 
+/**
+ * WebUSB driver for FTDI FT-X family UART chips.
+ *
+ * Typical usage:
+ * ```ts
+ * const device = await navigator.usb.requestDevice({ filters: [{ vendorId: 0x0403 }] });
+ * const ftdi = await FtdiUart.open(device);
+ * await ftdi.configure({ baud: 115200 });
+ * // use ftdi.readable / ftdi.writable streams, or ftdi.read() / ftdi.write()
+ * await ftdi.close();
+ * ```
+ */
 export class FtdiUart {
   readonly interfaceNumber: number;
   readonly bulkInEndpoint: number;
@@ -89,6 +114,11 @@ export class FtdiUart {
     this.bulkOutEndpoint = opts?.bulkOutEndpoint ?? 2;
   }
 
+  /**
+   * Convenience factory: wraps `device` in a {@link WebUsbTransport}, opens
+   * the USB device, selects configuration 1, claims the interface, and returns
+   * the ready driver instance.
+   */
   static async open(device: USBDevice, opts?: FtdiUartOptions): Promise<FtdiUart> {
     const transport = new WebUsbTransport(device);
     const ftdi = new FtdiUart(transport, opts);
@@ -102,12 +132,19 @@ export class FtdiUart {
     await this.transport.claimInterface(this.interfaceNumber);
   }
 
+  /** Release the USB interface and close the underlying transport. */
   async close(): Promise<void> {
     this.readAbort.abort();
     await this.transport.releaseInterface(this.interfaceNumber);
     await this.transport.close(); // unblocks any in-flight bulkIn
   }
 
+  /**
+   * Send data to the UART TX FIFO.
+   *
+   * Splits `data` into ≤ 64-byte chunks and issues one bulk-OUT transfer per
+   * chunk. A zero-length buffer is a no-op.
+   */
   async write(data: BufferSource): Promise<void> {
     const bytes = toUint8Array(data);
     if (bytes.length === 0) return;
@@ -119,6 +156,13 @@ export class FtdiUart {
     }
   }
 
+  /**
+   * Read up to `maxBytes` bytes from the UART RX FIFO.
+   *
+   * Performs one bulk-IN transfer and strips the 2-byte FTDI status header.
+   * Returns an empty `Uint8Array` when the chip sends an idle packet (status
+   * bytes only, no payload).
+   */
   async read(maxBytes: number = this.maxPacketSize): Promise<Uint8Array> {
     const raw = await this.transport.bulkIn(this.bulkInEndpoint, maxBytes);
     // Fewer than 2 bytes can't carry status headers; treat as empty (e.g. cancelled transfer).
@@ -160,6 +204,13 @@ export class FtdiUart {
     };
   }
 
+  /**
+   * Apply serial-port settings to the chip.
+   *
+   * Issues the full FTDI setup sequence: reset → data format → modem control
+   * → flow control → baud rate → latency timer → modem-status read.
+   * Safe to call multiple times to reconfigure on the fly.
+   */
   async configure(opts: SerialOptions): Promise<void> {
     const dataBits = opts.dataBits ?? 8;
     const parity = opts.parity ?? 'none';

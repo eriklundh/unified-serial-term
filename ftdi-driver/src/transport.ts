@@ -1,9 +1,19 @@
+/** Parameters for a vendor-specific FTDI control transfer. */
 export interface ControlSetup {
+  /** bRequest field (vendor command code, e.g. `VendorRequest.RESET`). */
   readonly request: number;
+  /** wValue field. */
   readonly value: number;
+  /** wIndex field (typically encodes interface number and/or port). */
   readonly index: number;
 }
 
+/**
+ * Minimal USB transport interface used by {@link FtdiUart}.
+ *
+ * Production code uses {@link WebUsbTransport}; tests inject
+ * `MockUsbTransport` (exported from `ftdi-webusb-driver/testing`).
+ */
 export interface UsbTransport {
   open(): Promise<void>;
   close(): Promise<void>;
