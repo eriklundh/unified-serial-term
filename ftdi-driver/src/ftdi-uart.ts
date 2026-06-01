@@ -1,13 +1,14 @@
 import type { UsbTransport } from './transport.js';
 import type { DataBits, Parity, StopBits } from './types.js';
 import type { FlowMode } from './flow.js';
+import type { ModemStatusFlags } from './read.js';
 import { baudToDivisor } from './baud.js';
 import { encodeLineProperties } from './line.js';
 import { encodeModemControl } from './modem.js';
 import { encodeFlowControl } from './flow.js';
 import { VendorRequest, ResetSubcommand } from './ftdi-protocol.js';
 import { WebUsbTransport } from './transport.webusb.js';
-import { stripStatus } from './read.js';
+import { stripStatus, ModemStatusBits } from './read.js';
 
 function toUint8Array(src: BufferSource): Uint8Array<ArrayBuffer> {
   if (src instanceof ArrayBuffer) return new Uint8Array(src);
@@ -124,6 +125,39 @@ export class FtdiUart {
     if (raw.length < 2) return new Uint8Array(0);
     const { payload } = stripStatus(raw);
     return payload;
+  }
+
+  async setModemControl(opts: { dtr?: boolean; rts?: boolean }): Promise<void> {
+    const iface = this.interfaceNumber;
+    if ('dtr' in opts) {
+      await this.transport.controlOut({
+        request: VendorRequest.MODEM_CTRL,
+        value: encodeModemControl({ dtr: opts.dtr }).wValue,
+        index: iface,
+      });
+    }
+    if ('rts' in opts) {
+      await this.transport.controlOut({
+        request: VendorRequest.MODEM_CTRL,
+        value: encodeModemControl({ rts: opts.rts }).wValue,
+        index: iface,
+      });
+    }
+  }
+
+  async getModemStatus(): Promise<ModemStatusFlags> {
+    const raw = await this.transport.controlIn(
+      { request: VendorRequest.GET_MODEM_STATUS, value: 0x0000, index: this.interfaceNumber },
+      2,
+    );
+    const byte = raw[0] ?? 0;
+    return {
+      raw: byte,
+      cts: (byte & ModemStatusBits.CTS) !== 0,
+      dsr: (byte & ModemStatusBits.DSR) !== 0,
+      ri: (byte & ModemStatusBits.RI) !== 0,
+      rlsd: (byte & ModemStatusBits.RLSD) !== 0,
+    };
   }
 
   async configure(opts: SerialOptions): Promise<void> {
