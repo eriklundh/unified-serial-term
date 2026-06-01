@@ -376,12 +376,32 @@ factory's `pickDevice()`.
 - `style(ui): polish selector layout`
 - `test(e2e): backend selection survives reload`
 
+### Notes on implementation
+
+- Single `FACTORY_KEY` replaced by `FACTORIES_KEY: InjectionKey<SerialBackendFactory[]>`;
+  `FACTORY_KEY` retained with `@deprecated` jsdoc.
+- `BackendSelector.vue` filters `factories` to available ones; shows a
+  browser-compatibility message when none are available.
+- `backendPreference.ts` is a pure module (no Vue reactivity) used by both
+  App.vue (to initialise `selectedId`) and `BackendSelector` indirectly via App.
+- App.vue `watch(selectedId)` persists selection; `resolveFactory()` at init
+  picks the preferred or first available factory.
+
+### Commits (actual)
+
+- `test(settings): cover backendPreference read/write/fallback`
+  (includes backendPreference.ts implementation)
+- `test(ui): backend selector shows only available backends`
+  (includes BackendSelector.vue implementation)
+- `feat(ui): wire BackendSelector into App with FACTORIES_KEY`
+  (App.vue, App.test.ts, injectionKeys.ts, main.ts all updated)
+
 ### Acceptance
 
-- [ ] Dropdown reflects browser capability
-- [ ] Selection persists across reloads
-- [ ] Selector disabled during active connection
-- [ ] Branch merged
+- [x] Dropdown reflects browser capability
+- [x] Selection persists across reloads
+- [x] Selector disabled during active connection
+- [x] Branch merged
 
 ---
 
@@ -411,22 +431,30 @@ settings.
 6. Surface state to UI: "auto-reconnected to {label}", "no previous
    device found, click Connect to pick one"
 
-### Commits
+### Notes on implementation
+
+- `useSettings.ts` uses a deep watcher to persist changes; a `skipNextSave`
+  flag prevents `reset()` from immediately writing defaults back to storage.
+- Settings panel and auto-reconnect tests were added to App.test.ts alongside
+  existing connection-flow tests rather than a separate file — the mock
+  `AutoReconnectMockFactory` has `listPaired()` return a pre-made backend.
+- `MockSerialBackend` was extended with `lastOptions` to verify that connect
+  passes the current settings rather than hardcoded defaults.
+- "No previous device" path surfaces no message (empty; users click Connect).
+
+### Commits (actual)
 
 - `test(settings): round-trip all settings through localStorage`
-- `feat(settings): implement useSettings composable`
-- `test(ui): settings panel reads and writes through useSettings`
-- `feat(ui): populate settings panel with bound controls`
-- `test(reconnect): auto-reconnect uses first paired device`
-- `feat(reconnect): wire auto-reconnect into App onMounted`
-- `feat(ui): surface auto-reconnect state in header`
+  (includes useSettings.ts implementation)
+- `feat(settings): populate settings panel and wire auto-reconnect`
+  (settings controls in App.vue, auto-reconnect onMounted, status message)
 
 ### Acceptance
 
-- [ ] All settings round-trip cleanly
-- [ ] Auto-reconnect works for both backends
-- [ ] Reset-to-defaults clears localStorage
-- [ ] Branch merged
+- [x] All settings round-trip cleanly
+- [ ] Auto-reconnect works for both backends on real hardware
+- [x] Reset-to-defaults clears localStorage
+- [x] Branch merged
 
 ---
 
