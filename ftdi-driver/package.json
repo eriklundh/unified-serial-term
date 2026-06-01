@@ -1,6 +1,6 @@
 {
   "name": "ftdi-webusb-driver",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "description": "Pure-TypeScript WebUSB driver for FTDI FT-X family chips",
   "main": "./dist/index.js",
