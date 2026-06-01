@@ -524,12 +524,26 @@ Apache or nginx server with no Node.js required.
 - `chore: bump version to 0.1.0`
 - `chore: tag v0.1.0`
 
+### Notes on implementation
+
+- Pre-existing `e2e/smoke.spec.ts` was being picked up by Vitest because
+  the config lacked an `exclude` for `e2e/**`. Fixed in the phase branch with
+  `exclude: ['e2e/**']` in `vitest.config.ts`.
+- `docs/DEPLOYMENT.md` and `docs/LAB-SERVER-SETUP.md` were already written in
+  earlier phases and required no changes.
+- `docs/LAB-SETUP.md` is the new classroom client-side guide (Zadig, udev,
+  permission flow, revocation); distinct from `LAB-SERVER-SETUP.md`.
+- The `ftdi-webusb-driver` library's `dist/` must be built (`npm run build` in
+  the sibling repo) before `npm run build` or `npm test` work in this app,
+  because the file: dependency points at source, not a pre-built artefact.
+  This was documented in `docs/OPERATING-CLAUDE-CODE.md` §12 previously.
+
 ### Acceptance
 
-- [ ] `dist/` is a self-contained static bundle (no Node, no runtime deps)
-- [ ] HTML uses relative asset paths so deployment subpath doesn't matter
+- [x] `dist/` is a self-contained static bundle (no Node, no runtime deps)
+- [x] HTML uses relative asset paths so deployment subpath doesn't matter
 - [ ] Smoke-tested on a real Apache or nginx behind HTTPS
-- [ ] README is clear enough that a new student can set up the
+- [x] README is clear enough that a new student can set up the
       classroom workflow from scratch
 - [ ] `v0.1.0` tag is pushed
 - [ ] App is deployed and reachable to students
