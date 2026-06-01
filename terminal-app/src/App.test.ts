@@ -1,9 +1,9 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import App from './App.vue'
 import type { BackendId, SerialBackend, SerialBackendFactory } from './backends/SerialBackend'
 import { MockSerialBackend } from './backends/MockSerialBackend'
-import { FACTORY_KEY } from './backends/injectionKeys'
+import { FACTORIES_KEY } from './backends/injectionKeys'
 
 vi.mock('./components/Terminal.vue', () => ({
   default: {
@@ -17,13 +17,17 @@ vi.mock('./components/Terminal.vue', () => ({
 // MockFactory — injects a controllable factory for App tests
 // ---------------------------------------------------------------------------
 class MockFactory implements SerialBackendFactory {
-  readonly id: BackendId = 'web-serial'
-  readonly displayName = 'Mock'
+  constructor(
+    readonly id: BackendId = 'web-serial',
+    readonly displayName = 'Mock',
+    private available = true,
+  ) {}
+
   pickDeviceCalled = false
   lastBackend: MockSerialBackend | null = null
 
   isAvailable() {
-    return true
+    return this.available
   }
 
   async pickDevice(): Promise<SerialBackend> {
@@ -37,17 +41,21 @@ class MockFactory implements SerialBackendFactory {
   }
 }
 
-function mountWithFactory(factory: MockFactory) {
+function mountWithFactories(factories: SerialBackendFactory[]) {
   return mount(App, {
     attachTo: document.body,
     global: {
-      provide: { [FACTORY_KEY as symbol]: factory },
+      provide: { [FACTORIES_KEY as symbol]: factories },
     },
   })
 }
 
 // ---------------------------------------------------------------------------
 describe('App.vue', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
   it('renders the Terminal component', () => {
     const wrapper = mount(App, { attachTo: document.body })
     expect(wrapper.find('.mock-terminal').exists()).toBe(true)
@@ -64,12 +72,21 @@ describe('App.vue', () => {
     const wrapper = mount(App, { attachTo: document.body })
     expect(wrapper.find('[data-testid="settings-panel"]').exists()).toBe(true)
   })
+
+  it('renders the BackendSelector', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('.backend-selector').exists()).toBe(true)
+  })
 })
 
 // ---------------------------------------------------------------------------
 describe('App.vue — connection flow', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
   it('connect button is enabled when a factory is injected', () => {
-    const wrapper = mountWithFactory(new MockFactory())
+    const wrapper = mountWithFactories([new MockFactory()])
     const btn = wrapper.find('[data-testid="connect-btn"]')
     expect(btn.exists()).toBe(true)
     expect(btn.attributes('disabled')).toBeUndefined()
@@ -77,7 +94,7 @@ describe('App.vue — connection flow', () => {
 
   it('clicking connect calls factory.pickDevice then backend.open', async () => {
     const factory = new MockFactory()
-    const wrapper = mountWithFactory(factory)
+    const wrapper = mountWithFactories([factory])
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     expect(factory.pickDeviceCalled).toBe(true)
@@ -86,7 +103,7 @@ describe('App.vue — connection flow', () => {
 
   it('shows Disconnect button and hides Connect after connecting', async () => {
     const factory = new MockFactory()
-    const wrapper = mountWithFactory(factory)
+    const wrapper = mountWithFactories([factory])
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-testid="connect-btn"]').exists()).toBe(false)
@@ -95,7 +112,7 @@ describe('App.vue — connection flow', () => {
 
   it('Terminal receives readable and writable props after connecting', async () => {
     const factory = new MockFactory()
-    const wrapper = mountWithFactory(factory)
+    const wrapper = mountWithFactories([factory])
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
 
@@ -106,7 +123,7 @@ describe('App.vue — connection flow', () => {
 
   it('clicking Disconnect calls backend.close', async () => {
     const factory = new MockFactory()
-    const wrapper = mountWithFactory(factory)
+    const wrapper = mountWithFactories([factory])
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     await wrapper.find('[data-testid="disconnect-btn"]').trigger('click')
@@ -116,12 +133,44 @@ describe('App.vue — connection flow', () => {
 
   it('shows Connect button again after disconnecting', async () => {
     const factory = new MockFactory()
-    const wrapper = mountWithFactory(factory)
+    const wrapper = mountWithFactories([factory])
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     await wrapper.find('[data-testid="disconnect-btn"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-testid="connect-btn"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="disconnect-btn"]').exists()).toBe(false)
+  })
+
+  it('backend selector is disabled while connected', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    const select = wrapper.find('select')
+    expect(select.attributes('disabled')).toBeDefined()
+  })
+
+  it('backend selector is re-enabled after disconnecting', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-testid="disconnect-btn"]').trigger('click')
+    await flushPromises()
+    const select = wrapper.find('select')
+    expect(select.attributes('disabled')).toBeUndefined()
+  })
+
+  it('selects the correct factory when two are available', async () => {
+    const ws = new MockFactory('web-serial', 'Web Serial')
+    const usb = new MockFactory('webusb-ftdi', 'WebUSB (FTDI)')
+    const wrapper = mountWithFactories([ws, usb])
+    // Change selection to webusb-ftdi
+    await wrapper.find('select').setValue('webusb-ftdi')
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(usb.pickDeviceCalled).toBe(true)
+    expect(ws.pickDeviceCalled).toBe(false)
   })
 })

@@ -1,7 +1,10 @@
 <template>
   <div class="backend-selector">
     <template v-if="availableFactories.length > 0">
-      <label for="backend-select" class="backend-label">Backend</label>
+      <label
+        for="backend-select"
+        class="backend-label"
+      >Backend</label>
       <select
         id="backend-select"
         :value="modelValue ?? undefined"

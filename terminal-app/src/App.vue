@@ -2,6 +2,11 @@
   <div class="app">
     <header class="app-header">
       <div class="controls">
+        <BackendSelector
+          v-model="selectedId"
+          :factories="factories"
+          :disabled="isConnected"
+        />
         <button
           v-if="!isConnected"
           data-testid="connect-btn"
@@ -35,15 +40,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, computed } from 'vue'
+import { ref, inject, computed, watch } from 'vue'
 import Terminal from './components/Terminal.vue'
-import { FACTORY_KEY } from './backends/injectionKeys'
-import type { SerialBackend } from './backends/SerialBackend'
+import BackendSelector from './components/BackendSelector.vue'
+import { FACTORIES_KEY } from './backends/injectionKeys'
+import { resolveFactory, writePreference } from './settings/backendPreference'
+import type { BackendId, SerialBackend } from './backends/SerialBackend'
 
-const factory = inject(FACTORY_KEY)
+const factories = inject(FACTORIES_KEY, [])
+const selectedId = ref<BackendId | null>(resolveFactory(factories)?.id ?? null)
+
+watch(selectedId, (id) => {
+  if (id) writePreference(id)
+})
+
+const selectedFactory = computed(() => factories.find((f) => f.id === selectedId.value) ?? null)
+
 const backend = ref<SerialBackend | null>(null)
 const isConnected = ref(false)
-const canConnect = computed(() => !!factory && !isConnected.value)
+const canConnect = computed(() => !!selectedFactory.value && !isConnected.value)
 const activeReadable = computed(() => backend.value?.readable ?? null)
 const activeWritable = computed(() => backend.value?.writable ?? null)
 
@@ -56,9 +71,9 @@ const defaultSettings = {
 }
 
 async function connect() {
-  if (!factory) return
+  if (!selectedFactory.value) return
   try {
-    const b = await factory.pickDevice()
+    const b = await selectedFactory.value.pickDevice()
     await b.open(defaultSettings)
     backend.value = b
     isConnected.value = true
@@ -111,6 +126,7 @@ body,
 
 .controls {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
 }
 
