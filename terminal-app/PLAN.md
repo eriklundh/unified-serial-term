@@ -211,45 +211,52 @@ phase, the app is a working Web Serial terminal.
 3. **Backend tests (fake SerialPort)**
    - `open(options)` calls `port.open(options)`
    - `close()` calls `port.close()` and flips `isOpen`
-   - `readable` is `port.readable`
+   - Data forwarded from `port.readable` to `backend.readable` (pump approach)
    - `writable` is `port.writable`
    - Calling `close()` while a reader is locked releases the lock first
      (a common Web Serial footgun)
 
 4. **Backend implementation**
+   - **Deviation from plan:** `WebSerialBackend` wraps `port.readable` via
+     an internal pump task (instead of exposing `port.readable` directly).
+     This lets `close()` cancel the pump and release `port.readable`'s lock
+     before calling `port.close()`, cleanly avoiding the "port is busy" error.
+     `backend.readable` is a new stream fed by the pump; `backend.writable`
+     is `port.writable` directly. Local `WsSerialPort`/`WsSerial` interfaces
+     were added because TypeScript's DOM lib does not include Web Serial types.
 
 5. **Wire into App**
-   - Register `WebSerialFactory` via `provide`/`inject`
-   - Connect button: on click, call factory's `pickDevice()`, then
-     `backend.open(settings)`, then pipe `backend.readable` to a
-     `term.write(...)` consumer
-   - Send terminal `onData` (keystroke) bytes through `backend.writable`
-   - Disconnect button: `backend.close()` and unpipe streams cleanly
+   - Register `WebSerialFactory` via `provide`/`inject` (injection key in
+     `src/backends/injectionKeys.ts`; provided in `main.ts`)
+   - Connect button: calls `pickDevice()` then `backend.open(settings)`;
+     passes `backend.readable` and `backend.writable` as props to Terminal
+   - **Deviation from plan:** Piping is handled by Terminal.vue (via
+     `readable`/`writable` props with internal watchers), not by App.vue's
+     connect handler. App.vue only passes the streams as props; Terminal
+     starts/stops the read loop when the prop changes.
+   - Disconnect button: `backend.close()` then clear backend ref
 
 6. **Manual smoke test**
    - Plug in any USB-serial device (or use a Linux pty pair if no
      hardware available); click Connect, type, see characters echo (if
      loopback) or pass to the attached MCU
 
-### Commits (representative)
+### Commits (actual)
 
 - `test(web-serial): cover WebSerialFactory availability and pickDevice`
-- `feat(web-serial): implement WebSerialFactory`
-- `test(web-serial): cover WebSerialBackend open/close/stream proxy`
-- `feat(web-serial): implement WebSerialBackend`
-- `test(ui): connect button calls factory.pickDevice and backend.open`
-- `feat(ui): wire Connect button to factory and backend`
-- `test(terminal): bytes from backend.readable are written to xterm`
-- `feat(terminal): pipe backend readable into xterm and onData into writable`
-- `test(ui): disconnect closes backend and tears down pipes`
-- `feat(ui): implement disconnect path`
+- `feat(web-serial): implement WebSerialBackend and WebSerialFactory`
+- `test(terminal): cover readable/writable pipe and onData emit`
+  (includes Terminal.vue update with readable/writable props)
+- `feat(ui): wire Connect/Disconnect to factory and pipe streams to Terminal`
+  (includes main.ts WebSerialFactory provide)
+- `fix(web-serial): define local WsSerialPort/WsSerial types for build`
 
 ### Acceptance
 
-- [ ] App opens a Web Serial device end-to-end on real hardware
-- [ ] Disconnect releases the port cleanly (no console errors)
-- [ ] All tests pass; lint and typecheck clean
-- [ ] Branch merged
+- [x] App opens a Web Serial device end-to-end on real hardware
+- [x] Disconnect releases the port cleanly (no console errors)
+- [x] All tests pass; lint and typecheck clean
+- [x] Branch merged
 
 ---
 
@@ -301,21 +308,28 @@ swapping which factory is registered in the app composition root.
      the WebUSB chooser, connect, exchange bytes with the attached MCU
    - Swap the factory back to WebSerial when done
 
-### Commits (representative)
+### Notes on implementation
 
-- `chore(proj): add ftdi-webusb-driver dependency`
-- `test(webusb): cover WebUsbFtdiFactory availability and pickDevice`
-- `feat(webusb): implement WebUsbFtdiFactory with FTDI VID filter`
-- `test(webusb): cover WebUsbFtdiBackend with MockUsbTransport`
-- `feat(webusb): implement WebUsbFtdiBackend wrapping FtdiUart`
-- `test(webusb): cover option translation (parity, flow control)`
-- `feat(webusb): translate SerialOptions for ftdi-webusb-driver`
+- Added `@types/w3c-web-usb` as a dev dependency alongside the library,
+  and added `"w3c-web-usb"` to `tsconfig.app.json`'s `types` array so the
+  `USBDevice` type is available in production code.
+- `WebUsbFtdiBackend` accepts a pre-constructed `FtdiUart` (rather than a
+  `USBDevice`). The factory creates `FtdiUart(new WebUsbTransport(device))`;
+  tests use `FtdiUart(new MockUsbTransport())`. No `USBDevice` is needed at
+  the backend level, only in the factory.
+- `listPaired()` filters `getDevices()` results to FTDI VID (0x0403).
+
+### Commits (actual)
+
+- `chore(proj): add ftdi-webusb-driver and @types/w3c-web-usb dependencies`
+- `test(webusb): cover WebUsbFtdiFactory and WebUsbFtdiBackend`
+  (includes WebUsbFtdiBackend.ts implementation; option translation included)
 
 ### Acceptance
 
-- [ ] Backend passes contract test using library's MockUsbTransport
+- [x] Backend passes contract test using library's MockUsbTransport
 - [ ] Manual smoke test exchanges bytes with real FT231XS hardware
-- [ ] Branch merged
+- [x] Branch merged
 
 ---
 
