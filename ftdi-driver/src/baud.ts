@@ -1,5 +1,8 @@
+/** Encoded baud-rate divisor for the `SIO_SET_BAUD_RATE` control request. */
 export interface BaudDivisor {
+  /** Low 16 bits of the encoded divisor (wValue field of the control transfer). */
   readonly wValue: number;
+  /** High 16 bits of the encoded divisor (wIndex field of the control transfer). */
   readonly wIndex: number;
 }
 
@@ -23,6 +26,14 @@ function rawDivisor(baud: number): number {
   return d;
 }
 
+/**
+ * Convert a baud rate to the FTDI 232BM-family divisor encoding.
+ *
+ * Implements the algorithm from Linux kernel `ftdi_232bm_baud_base_to_divisor()`
+ * in `drivers/usb/serial/ftdi_sio.c`. Supports 300 – 3 000 000 baud.
+ *
+ * @throws {RangeError} if `baud` is non-finite, ≤ 0, or > 3 000 000.
+ */
 export function baudToDivisor(baud: number): BaudDivisor {
   if (!Number.isFinite(baud)) {
     throw new RangeError(`baud must be a finite number: ${baud}`);
