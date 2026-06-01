@@ -123,7 +123,7 @@ npm install --save-dev typedoc typedoc-plugin-markdown
 If `"out"` is set to `"."` (project root), it will **delete the entire
 project tree** — source files, `.git/`, `node_modules/`, everything — and
 replace it with the generated docs. The repo was destroyed this way during
-the first attempt at this phase (2025-06-01). Recovery required a fresh
+the first attempt at this phase (2026-06-01). Recovery required a fresh
 clone from the remote.
 
 **Rule:** always set `"out"` to a dedicated subdirectory such as

@@ -704,7 +704,7 @@ Commit message: `docs(ops): update OPERATING-CLAUDE-CODE based on real usage`.
 
 ## 12. Known tool hazards — lessons from real incidents
 
-### typedoc `"out"` set to `"."` destroys the project (2025-06-01)
+### typedoc `"out"` set to `"."` destroys the project (2026-06-01)
 
 **What happened:** During Phase 10, `typedoc-plugin-markdown` v4+ was run
 with `"out": "."` in `typedoc.json`. The plugin cleans its output directory
