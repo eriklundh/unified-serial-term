@@ -12,6 +12,7 @@ add_executable(pico-cdc-test-rig
     src/usb_descriptors.c
     src/ring_buffer.c
     src/report.c
+    src/usb_reset.c
 )
 
 target_include_directories(pico-cdc-test-rig PRIVATE src)

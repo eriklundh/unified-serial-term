@@ -2,15 +2,16 @@
 #include "tusb.h"
 #include <string.h>
 
-#define USB_VID   0xCafe
-#define USB_PID   0x0001
+// VID=0x2E8A (Raspberry Pi) lets picotool find this device with -f automatically.
+// PID=0x000A matches the standard "Pico SDK CDC RP2040" PID used by pico_stdio_usb.
+#define USB_VID   0x2E8A
+#define USB_PID   0x000A
 #define USB_BCD   0x0200
 
 tusb_desc_device_t const desc_device = {
     .bLength            = sizeof(tusb_desc_device_t),
     .bDescriptorType    = TUSB_DESC_DEVICE,
     .bcdUSB             = USB_BCD,
-    // IAD required when CDC and another class share a configuration
     .bDeviceClass       = TUSB_CLASS_MISC,
     .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
     .bDeviceProtocol    = MISC_PROTOCOL_IAD,
@@ -31,6 +32,7 @@ uint8_t const *tud_descriptor_device_cb(void) {
 enum {
     ITF_NUM_CDC = 0,
     ITF_NUM_CDC_DATA,
+    ITF_NUM_RESET,
     ITF_NUM_TOTAL,
 };
 
@@ -38,11 +40,19 @@ enum {
 #define EPNUM_CDC_OUT     0x02
 #define EPNUM_CDC_IN      0x82
 
-#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN)
+// 9-byte reset interface: vendor class, subclass=0x00, protocol=0x01, no endpoints.
+// picotool uses this to reboot the device to BOOTSEL without pressing the button.
+#define TUD_RESET_DESC_LEN  9
+#define TUD_RESET_DESCRIPTOR(_itfnum, _stridx) \
+    9, TUSB_DESC_INTERFACE, _itfnum, 0, 0, \
+    TUSB_CLASS_VENDOR_SPECIFIC, 0x00, 0x01, _stridx
+
+#define CONFIG_TOTAL_LEN  (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN + TUD_RESET_DESC_LEN)
 
 uint8_t const desc_fs_configuration[] = {
     TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
     TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 8, EPNUM_CDC_OUT, EPNUM_CDC_IN, 64),
+    TUD_RESET_DESCRIPTOR(ITF_NUM_RESET, 5),
 };
 
 uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
@@ -56,6 +66,7 @@ enum {
     STRID_PRODUCT,
     STRID_SERIAL,
     STRID_CDC_ITF,
+    STRID_RESET_ITF,
 };
 
 char const *string_desc_arr[] = {
@@ -64,6 +75,7 @@ char const *string_desc_arr[] = {
     "Pico CDC Test Rig",
     NULL,                           // Serial: unique chip ID
     "CDC Serial",
+    "Reset",
 };
 
 static uint16_t _desc_str[32 + 1];
