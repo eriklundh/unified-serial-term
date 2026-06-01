@@ -42,10 +42,10 @@ by default, with push notifications when Claude finishes or needs you.
 
 ## 2. Project topology
 
-Two repos as siblings under `~/FPGA_work/`:
+Two repos as siblings under `~/unified-serial-terminal/`:
 
 ```
-~/FPGA_work/
+~/unified-serial-terminal/
 ├── ftdi-webusb-driver/   ← library (TDD, pure-function-heavy)
 └── terminal-app/         ← Vue 3 + Vite browser terminal
 ```
@@ -56,7 +56,7 @@ disconnection), one in each repo.
 
 ## 3. One session per repo, not one for both
 
-This project has two repos as siblings under `~/FPGA_work/`. Technically
+This project has two repos as siblings under `~/unified-serial-terminal/`. Technically
 you can start Claude Code from the parent directory and have it see both
 as subdirectories. **Don't.** The pattern that works is one
 `claude --remote-control` session per repo, opened only when that repo
@@ -122,13 +122,13 @@ the repo makes the mobile app session list readable at a glance.
 ```bash
 # Session 1 — library work (start this first)
 tmux new -s lib
-cd ~/FPGA_work/ftdi-webusb-driver
+cd ~/unified-serial-terminal/ftdi-webusb-driver
 claude --remote-control "ftdi-webusb-driver"
 # detach with Ctrl-B d; reattach later with: tmux a -t lib
 
 # Session 2 — terminal-app work (start only after library Phase 6 lands)
 tmux new -s app
-cd ~/FPGA_work/terminal-app
+cd ~/unified-serial-terminal/terminal-app
 claude --remote-control "terminal-app"
 # detach with Ctrl-B d; reattach with: tmux a -t app
 ```
@@ -154,7 +154,7 @@ separate windows.
 The standard pattern:
 
 ```bash
-cd ~/FPGA_work/ftdi-webusb-driver
+cd ~/unified-serial-terminal/ftdi-webusb-driver
 claude --remote-control "ftdi-webusb-driver Phase N"
 ```
 
@@ -199,7 +199,7 @@ session.
 
 ```bash
 # NOW, interactively — clear the trust prompt under your supervision:
-tmux new -s app -c ~/FPGA_work/terminal-app   # or: tmux attach -t app
+tmux new -s app -c ~/unified-serial-terminal/terminal-app   # or: tmux attach -t app
 claude --remote-control --permission-mode auto
 # → approve the "trust this folder?" prompt
 # → wait until the normal input prompt appears
@@ -208,7 +208,7 @@ claude --remote-control --permission-mode auto
 
 # Schedule ONLY the prompt injection for after the window resets:
 at 02:15 <<'EOF'
-tmux send-keys -t app 'Read CLAUDE.md, docs/OPERATING-CLAUDE-CODE.md (especially §3 and §8), and PLAN.md. Sibling repo ~/FPGA_work/ftdi-webusb-driver has Phases 1-8 complete; treat its FtdiUart API as available. Execute Phase 0 from PLAN.md end-to-end, committing per the conventions in CLAUDE.md. Read zaxbux/web-serial-console as reference before writing code. Stop and ask only if a step needs my decision. When the Phase 0 acceptance checklist passes, run /usage and exit.' Enter
+tmux send-keys -t app 'Read CLAUDE.md, docs/OPERATING-CLAUDE-CODE.md (especially §3 and §8), and PLAN.md. Sibling repo ~/unified-serial-terminal/ftdi-webusb-driver has Phases 1-8 complete; treat its FtdiUart API as available. Execute Phase 0 from PLAN.md end-to-end, committing per the conventions in CLAUDE.md. Read zaxbux/web-serial-console as reference before writing code. Stop and ask only if a step needs my decision. When the Phase 0 acceptance checklist passes, run /usage and exit.' Enter
 EOF
 atq
 ```
@@ -323,7 +323,7 @@ doing. Topology:
                │ + Anthropic API (outbound HTTPS, mobile push)
                ↓
 ┌──────────────────────────────────┐
-│  Lab VM (~/FPGA_work)            │
+│  Lab VM (~/unified-serial-terminal)            │
 │  ├── VS Code Server              │
 │  ├── Claude Code extension       │   ← installed on REMOTE, not local
 │  ├── claude process              │   ← spawned by extension or terminal
@@ -335,7 +335,7 @@ doing. Topology:
 ### Setup
 
 1. Open VS Code on the laptop. Use the **Remote - SSH** extension to
-   connect to the lab VM and open `~/FPGA_work/ftdi-webusb-driver/`
+   connect to the lab VM and open `~/unified-serial-terminal/ftdi-webusb-driver/`
    (or `terminal-app/`) as a workspace.
 2. Install the **Claude Code** VS Code extension. When VS Code asks
    where to install it, choose **Install on SSH: \<your-vm-host\>**.
@@ -717,7 +717,7 @@ claude --version
 # → Push when Claude decides: true
 
 # Launch a phase (terminal)
-cd ~/FPGA_work/ftdi-webusb-driver
+cd ~/unified-serial-terminal/ftdi-webusb-driver
 claude --remote-control "Phase N name"
 
 # Launch a phase (VS Code panel via Remote-SSH)
@@ -737,7 +737,7 @@ claude --remote-control --permission-mode auto "Phase N name"
 
 # Schedule a phase for later (split pattern: pre-start, then inject prompt)
 #   1. Now, interactively — clear the trust prompt, then detach:
-tmux new -s app -c ~/FPGA_work/terminal-app
+tmux new -s app -c ~/unified-serial-terminal/terminal-app
 claude --remote-control --permission-mode auto   # approve trust, Ctrl-B d
 #   2. Schedule only the prompt injection:
 at 02:15 <<'SCHED'
