@@ -7,16 +7,14 @@ procedure covers both.
 
 ## Where to run this
 
-- **Building firmware** works anywhere the toolchain installs: the
-  agentlab1 VM, a Pi 5, or your laptop. Claude Code on agentlab1 can do
-  all the building.
-- **Flashing and hardware testing** need the Pico physically attached.
-  A Pi 5 with the Pico plugged into a USB port is the convenient bench;
-  your Windows laptop works too. See `docs/FLASHING.md`.
+The primary build/flash/test machine is the **Raspberry Pi 5**
+(`picotester.local`) with a Pico directly attached via USB. Claude Code
+runs here and can do the full cycle — build, flash, and run the host
+harness — without any manual steps.
 
-If you set the toolchain up on both agentlab1 (for autonomous builds)
-and the Pi 5 (for flash + test), keep the SDK at the same 2.2.0 tag on
-both so builds are reproducible.
+Building alone also works anywhere the toolchain installs (a laptop, a
+CI VM). Flashing and hardware testing require the Pico physically
+attached. See `docs/FLASHING.md`.
 
 ## 1. Install the toolchain
 
@@ -101,8 +99,15 @@ faster (no button juggling — `picotool load -x` reboots the Pico into
 the bootloader, flashes, and runs, all from the command line if the
 firmware enables `reset_usb_boot` or you use a debug interface).
 
-Trixie may package it (`apt search picotool`). If not, build from
-source:
+On Trixie, picotool is available from apt (v2.1.1 as of June 2026 —
+newer than the SDK tag but compatible):
+
+```bash
+sudo apt install -y picotool
+picotool version
+```
+
+If apt doesn't have it or you need a specific version, build from source:
 
 ```bash
 sudo apt install -y libusb-1.0-0-dev pkg-config
@@ -111,7 +116,7 @@ cd ~/picotool
 cmake -B build -G Ninja        # finds the SDK via PICO_SDK_PATH
 cmake --build build
 sudo cmake --install build      # installs to /usr/local/bin
-picotool version                # expect 2.2.0
+picotool version
 ```
 
 ## 5. udev rule (Linux, so picotool works without sudo)
