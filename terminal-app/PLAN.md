@@ -631,10 +631,21 @@ Apache or nginx server with no Node.js required.
    - Verify the deployed URL serves over HTTPS and both backends work
      against a real FT231XS
 
-### Commits
+### Notes on implementation
+
+- `docs/DEPLOYMENT.md` was already present from earlier phases; no changes needed.
+- `docs/LAB-SERVER-SETUP.md` (server provisioning) already existed; `docs/LAB-SETUP.md`
+  (classroom/student setup) was added as a separate, complementary document.
+- Server deployment (task 8.8) is pending: nginx is not yet configured and
+  `/var/www/` does not exist on the lab VM. Manual step required before the
+  app is reachable to students.
+- Git push is pending SSH key configuration for the remote at
+  `git@gitlab.compelcon.se`.
+
+### Commits (actual)
 
 - `chore(build): verify dist/ uses only relative paths`
-- `docs(deploy): add DEPLOYMENT.md for static web server install`
+- `docs(deploy): DEPLOYMENT.md already present from prior phases`
 - `docs: write README with quick-start and lab setup link`
 - `docs: add LAB-SETUP guide for classroom deployment`
 - `docs: add CHANGELOG for v0.1.0`
@@ -644,10 +655,10 @@ Apache or nginx server with no Node.js required.
 
 ### Acceptance
 
-- [ ] `dist/` is a self-contained static bundle (no Node, no runtime deps)
-- [ ] HTML uses relative asset paths so deployment subpath doesn't matter
-- [ ] Smoke-tested on a real Apache or nginx behind HTTPS
-- [ ] README is clear enough that a new student can set up the
+- [x] `dist/` is a self-contained static bundle (no Node, no runtime deps)
+- [x] HTML uses relative asset paths so deployment subpath doesn't matter
+- [ ] Smoke-tested on a real Apache or nginx behind HTTPS (pending deploy)
+- [x] README is clear enough that a new student can set up the
       classroom workflow from scratch
-- [ ] `v0.1.0` tag is pushed
-- [ ] App is deployed and reachable to students
+- [ ] `v0.1.0` tag is pushed (pending git remote SSH key)
+- [ ] App is deployed and reachable to students (pending nginx setup)
