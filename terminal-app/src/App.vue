@@ -114,6 +114,7 @@
       <Terminal
         :readable="activeReadable ?? undefined"
         :writable="activeWritable ?? undefined"
+        :local-echo="settings.localEcho"
       />
     </main>
   </div>
