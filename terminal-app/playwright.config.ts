@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const HW_TEST = !!process.env.TERMINAL_HW_TEST;
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -10,6 +12,9 @@ export default defineConfig({
     baseURL: 'http://localhost:5173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // Exclude @hardware-tagged tests unless TERMINAL_HW_TEST=1 is set.
+    // Tag hardware tests: test('@hardware does something', ...)
+    ...(!HW_TEST && { grep: /^(?!.*@hardware)/ }),
   },
   projects: [
     {
