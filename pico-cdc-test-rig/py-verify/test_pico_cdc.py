@@ -17,9 +17,12 @@ import time
 
 import pytest
 import serial
+import serial.tools.list_ports
 
 pytestmark = pytest.mark.hardware
 
+PICO_VID = 0x2E8A
+PICO_PID = 0x000A
 BAUD_DEFAULT = 115200
 TIMEOUT = 3.0
 SENTINEL = bytes([0x01, 0x3F])
@@ -53,6 +56,29 @@ def _sentinel_report(port: serial.Serial) -> dict[str, str]:
     line = buf.decode("ascii", errors="replace").strip()
     assert line.startswith("RIG "), f"Unexpected sentinel response: {line!r}"
     return {k: v for k, _, v in (tok.partition("=") for tok in line[4:].split())}
+
+
+# ── 0. Device presence ───────────────────────────────────────────────────────
+
+
+class TestDevicePresent:
+    """Runs first. Fails hard (not skips) when the Pico is not connected."""
+
+    def test_pico_connected(self, request: pytest.FixtureRequest) -> None:
+        """Pico CDC Test Rig is detected on USB."""
+        override: str | None = request.config.getoption("--port", default=None)
+        if override:
+            return  # explicit port supplied — trust the caller
+        found = any(
+            p.vid == PICO_VID and p.pid == PICO_PID
+            for p in serial.tools.list_ports.comports()
+        )
+        if not found:
+            pytest.fail(
+                "Pico CDC Test Rig not detected on USB. "
+                f"Expected VID=0x{PICO_VID:04X} PID=0x{PICO_PID:04X}. "
+                "Plug in the device or run with --port /dev/ttyACMn."
+            )
 
 
 # ── 1. Enumeration ────────────────────────────────────────────────────────────
