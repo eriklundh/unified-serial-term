@@ -3,5 +3,6 @@ build/
 !release/*.uf2
 __pycache__/
 *.pyc
+.venv/
 test/test_ring_buffer
 test/test_report
