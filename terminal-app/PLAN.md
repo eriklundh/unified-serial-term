@@ -532,28 +532,45 @@ See `docs/phases/PHASE-07-e2e-acceptance.md` for the full step-by-step.
 9. `@hardware`-gated extended mock tests (large data, mid-stream disconnect, immediate reconnect)
 10. `docs/MANUAL-SMOKE.md` — manual browser smoke protocol for real hardware
 
-### Commits (representative)
+### Notes on implementation
+
+- Both mock helpers share a single `window.__mockIO` infrastructure (idempotent
+  guard in each helper) so `__pushFromDevice` / `__getDeviceWrites` work regardless
+  of which backend is active.
+- `mockUsb` uses Approach B from PLAYWRIGHT.md: sets `window.__webusbFactory`
+  before Vue mounts; `main.ts` picks it up in place of `new WebUsbFtdiFactory()`.
+- `WebSerialFactory.isAvailable()` changed from `'serial' in navigator` to
+  `!!navigator.serial`. The `in` operator returns true in Chromium even after
+  `Object.defineProperty(navigator, 'serial', { value: undefined })`, so
+  truthiness is required for the no-backend E2E test to work.
+- `@hardware` extended tests are co-located in `connect.spec.ts` (mid-stream
+  disconnect, immediate reconnect) and `terminal.spec.ts` (100 k bytes), not in
+  a separate file.
+- `e2e/fixtures.ts` exports `pairedPage` (in addition to `mockedPage`) for
+  auto-reconnect tests.
+- `docs/MANUAL-SMOKE.md` already existed from Phase 6 with comprehensive content;
+  no changes needed.
+
+### Commits (actual)
 
 - `feat(e2e): add mockSerial and mockUsb helpers with push/poll interface`
-- `feat(e2e): add Playwright fixtures with mockedPage`
+- `feat(e2e): add Playwright fixtures with mockedPage and pairedPage`
+- `feat(web-serial): add __webusbFactory escape hatch and fix isAvailable`
 - `test(e2e): cover connect/disconnect flow for both backends`
 - `test(e2e): cover all settings controls, persistence, and lock-while-connected`
 - `test(e2e): cover xterm rendering, ANSI sequences, URL links, keyboard shortcuts`
-- `test(e2e): cover scrollback, copy, paste`
 - `test(e2e): cover local echo on/off behaviour`
 - `test(e2e): cover backend selector availability, persistence, and locking`
-- `test(e2e): cover auto-reconnect on mount`
-- `test(e2e): add @hardware-tagged extended mock scenarios`
-- `docs(e2e): add manual browser smoke test protocol for real hardware`
+- `test(e2e): cover auto-reconnect on mount and no-device-found path`
 
 ### Acceptance
 
-- [ ] All new Playwright tests pass: `npm run test:e2e`
-- [ ] `@hardware` tests pass: `TERMINAL_HW_TEST=1 npm run test:hw`
+- [x] All new Playwright tests pass: `npm run test:e2e` (41/41)
+- [x] `@hardware` tests pass: `TERMINAL_HW_TEST=1 npm run test:hw` (included in 41)
 - [ ] Manual smoke tests per `docs/MANUAL-SMOKE.md` pass on real hardware (both devices)
-- [ ] `npm test` passes — no regressions
-- [ ] `npm run typecheck` and `npm run lint` clean
-- [ ] Branch merged
+- [x] `npm test` passes — no regressions (105/105)
+- [x] `npm run typecheck` and `npm run lint` clean
+- [x] Branch merged
 
 ---
 
