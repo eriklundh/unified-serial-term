@@ -12,10 +12,20 @@ These tests run against a real FT231XS chip. They are excluded from `npm test`.
    See `docs/phases/PHASE-09-hw-tests.md` for the udev rule alternative.
 3. Short the TX and RX pins on the FT231XS for loopback tests.
 
+## Preflight
+
+`npm run test:hw` automatically runs `hil-preflight/preflight.sh` first.
+The preflight verifies both the Pico CDC rig and the FTDI loopback plug before
+Vitest starts. If either device is missing the run exits immediately with a clear
+hardware error.
+
+Requires `../hil-preflight/` to be cloned alongside this repo (standard layout
+under `unified-serial-terminal/`).
+
 ## Running
 
 ```bash
-FTDI_HW_TEST=1 npm run test:hw
+npm run test:hw
 ```
 
 If the device isn't found the suite exits with a clear error. If tests fail, check:

@@ -23,6 +23,7 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
+    "pretest:hw": "bash ../hil-preflight/preflight.sh",
     "test:hw": "FTDI_HW_TEST=1 vitest run --config vitest.hw.config.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint . --ext .ts",
