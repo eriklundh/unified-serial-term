@@ -2,5 +2,6 @@ node_modules/
 dist/
 .vite/
 coverage/
+test-results/
 *.local
 .DS_Store
