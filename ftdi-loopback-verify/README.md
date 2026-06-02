@@ -99,6 +99,8 @@ python verify_wiring.py 'ftdi://0x403:0x6015/1'
 As a pytest suite (best for CI / repeatable checks):
 
 ```bash
+./run_tests.sh          # activates .venv automatically, then runs pytest -v
+# or directly:
 pytest -v
 ```
 
@@ -107,13 +109,39 @@ pytest -v
 the device fixture in `conftest.py`, which skips cleanly if no rig is
 attached.
 
-Point at a specific device with the `FTDI_URL` environment variable
-(honored by both the standalone and pytest paths):
+### Pointing at a specific device
+
+Use `--ftdi-url` (preferred — works in any pytest invocation) or the
+`FTDI_URL` environment variable (honored by both the standalone and pytest
+paths):
 
 ```bash
+pytest --ftdi-url 'ftdi://0x403:0x6015:FT9ABCDE/1'           # by serial
 FTDI_URL='ftdi://0x403:0x6015/1' pytest -v
-FTDI_URL='ftdi://0x403:0x6015:FT9ABCDE/1' python verify_wiring.py   # by serial
+FTDI_URL='ftdi://0x403:0x6015:FT9ABCDE/1' python verify_wiring.py
 ```
+
+### Testing multiple rigs in one run
+
+Pass `--ftdi-url` once per device. Every test runs once per rig; test IDs
+include the device URL so failures are unambiguous:
+
+```bash
+./run_tests.sh \
+  --ftdi-url 'ftdi://0x403:0x6015:SERIAL_A/1' \
+  --ftdi-url 'ftdi://0x403:0x6015:SERIAL_B/1'
+```
+
+Alternatively, set `FTDI_URL` to a comma-separated list:
+
+```bash
+FTDI_URL='ftdi://0x403:0x6015:SERIAL_A/1,ftdi://0x403:0x6015:SERIAL_B/1' pytest -v
+```
+
+Each device gets its own session-scoped connection — opened once, reused
+across all tests for that rig, and cleanly closed at the end. A rig that
+cannot be opened is reported as a skip, not a failure, so one missing
+device does not abort tests for the rest.
 
 If no device is found, `verify_wiring.py` prints binding guidance and
 exits non-zero; the pytest suite skips with the same hint.
