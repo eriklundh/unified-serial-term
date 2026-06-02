@@ -14,6 +14,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links'
 const props = defineProps<{
   readable?: ReadableStream<Uint8Array>
   writable?: WritableStream<Uint8Array>
+  localEcho?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -24,6 +25,7 @@ const container = ref<HTMLElement | null>(null)
 let terminal: Terminal | null = null
 let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
 let writer: WritableStreamDefaultWriter<Uint8Array> | null = null
+let resizeObserver: ResizeObserver | null = null
 
 onMounted(() => {
   terminal = new Terminal({
@@ -36,9 +38,14 @@ onMounted(() => {
   terminal.loadAddon(new WebLinksAddon())
   terminal.open(container.value!)
   fitAddon.fit()
+  resizeObserver = new ResizeObserver(() => fitAddon.fit())
+  resizeObserver.observe(container.value!)
 
   terminal.onData((data) => {
     emit('data', data)
+    if (props.localEcho) {
+      terminal!.write(new TextEncoder().encode(data))
+    }
     if (writer) {
       writer.write(new TextEncoder().encode(data)).catch(() => {})
     }
@@ -88,6 +95,8 @@ async function readLoop(r: ReadableStreamDefaultReader<Uint8Array>): Promise<voi
 }
 
 onUnmounted(() => {
+  resizeObserver?.disconnect()
+  resizeObserver = null
   terminal?.dispose()
   terminal = null
   void reader?.cancel() // fire-and-forget; component is destroyed

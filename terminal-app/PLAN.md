@@ -458,9 +458,110 @@ settings.
 
 ---
 
-## Phase 6 — Polish, deployment, release
+## Phase 6 — Terminal completeness
 
-Branch: `phase/06-release`
+Branch: `phase/06-terminal-completeness`
+
+**Goal:** Fix two functional gaps discovered by the TEST-PLAN.md review and
+replace the E2E smoke test placeholder with real assertions.
+
+See `docs/phases/PHASE-06-terminal-completeness.md` for the full step-by-step.
+
+### Gaps to fix
+
+1. **Local echo not wired** — `settings.localEcho` is persisted but never read
+   by `Terminal.vue`. App.vue must pass `:local-echo` prop; Terminal must echo
+   keystrokes to `terminal.write()` when the prop is true.
+
+2. **FitAddon has no ResizeObserver** — `fitAddon.fit()` is called once on mount.
+   Terminal.vue must attach a `ResizeObserver` on the container div so the xterm
+   canvas reflows when the browser window is resized.
+
+3. **E2E smoke test is a placeholder** — `e2e/smoke.spec.ts` navigates to
+   `about:blank`. Replace with assertions against the running dev server:
+   page title, backend selector visible, Connect button disabled, terminal pane
+   sized.
+
+### Commits (representative)
+
+- `test(terminal): assert local echo writes keystroke to terminal when enabled`
+- `feat(terminal): wire localEcho prop to echo keystrokes before sending`
+- `test(terminal): assert ResizeObserver wires fitAddon.fit on container resize`
+- `feat(terminal): add ResizeObserver to refit xterm on container size change`
+- `test(e2e): replace about:blank placeholder with real app smoke test`
+
+### Acceptance
+
+- [ ] Local echo on → keystroke appears immediately in terminal
+- [ ] Local echo off → keystroke absent until device echoes back
+- [ ] Resizing browser window causes terminal to reflow to fill pane
+- [ ] `npm run test:e2e` passes with real smoke test
+- [ ] `npm test` passes
+- [ ] `npm run typecheck` and `npm run lint` clean
+- [ ] Branch merged
+
+---
+
+## Phase 7 — E2E Playwright acceptance tests
+
+Branch: `phase/07-e2e-acceptance`
+
+**Goal:** Write the full Playwright E2E acceptance suite using `addInitScript`
+mocked backends. Covers all UI controls, all xterm.js features, settings
+persistence, and auto-reconnect. Also documents the manual browser smoke
+protocol for real hardware.
+
+**Key constraint:** Real USB device selection cannot be automated from
+Playwright's headless Chromium on the Pi5 (CDP `DeviceAccess` events don't
+fire in `headless_shell` — see `docs/PLAYWRIGHT.md §7`). All tests use mocked
+backends. Real hardware validation is covered by `ftdi-webusb-driver test:hw`
+and `docs/MANUAL-SMOKE.md`.
+
+See `docs/phases/PHASE-07-e2e-acceptance.md` for the full step-by-step.
+
+### Sub-steps
+
+1. Mock helpers: `e2e/helpers/mockSerial.ts`, `e2e/helpers/mockUsb.ts` (Approach B per PLAYWRIGHT.md)
+2. `e2e/fixtures.ts` — `mockedPage` fixture installing both mocks
+3. `e2e/connect.spec.ts` — connect/disconnect, error handling, status messages
+4. `e2e/settings.spec.ts` — all 6 controls, persistence, lock-while-connected, reset
+5. `e2e/terminal.spec.ts` — xterm rendering, ANSI sequences, URL links, scrollback, keyboard shortcuts, copy/paste
+6. `e2e/echo.spec.ts` — local echo on/off
+7. `e2e/backend.spec.ts` — backend selector, availability, persistence, switching
+8. `e2e/reconnect.spec.ts` — auto-reconnect on mount
+9. `@hardware`-gated extended mock tests (large data, mid-stream disconnect, immediate reconnect)
+10. `docs/MANUAL-SMOKE.md` — manual browser smoke protocol for real hardware
+
+### Commits (representative)
+
+- `feat(e2e): add mockSerial and mockUsb helpers with push/poll interface`
+- `feat(e2e): add Playwright fixtures with mockedPage`
+- `test(e2e): cover connect/disconnect flow for both backends`
+- `test(e2e): cover all settings controls, persistence, and lock-while-connected`
+- `test(e2e): cover xterm rendering, ANSI sequences, URL links, keyboard shortcuts`
+- `test(e2e): cover scrollback, copy, paste`
+- `test(e2e): cover local echo on/off behaviour`
+- `test(e2e): cover backend selector availability, persistence, and locking`
+- `test(e2e): cover auto-reconnect on mount`
+- `test(e2e): add @hardware-tagged extended mock scenarios`
+- `docs(e2e): add manual browser smoke test protocol for real hardware`
+
+### Acceptance
+
+- [ ] All new Playwright tests pass: `npm run test:e2e`
+- [ ] `@hardware` tests pass: `TERMINAL_HW_TEST=1 npm run test:hw`
+- [ ] Manual smoke tests per `docs/MANUAL-SMOKE.md` pass on real hardware (both devices)
+- [ ] `npm test` passes — no regressions
+- [ ] `npm run typecheck` and `npm run lint` clean
+- [ ] Branch merged
+
+---
+
+## Phase 8 — Polish, deployment, release
+
+Branch: `phase/08-release`
+
+(Previously numbered Phase 6; renumbered when Phases 6 and 7 were inserted.)
 
 **Goal:** Ship v0.1.0. Verify the static build deploys to a plain
 Apache or nginx server with no Node.js required.
