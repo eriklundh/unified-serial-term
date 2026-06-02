@@ -105,7 +105,7 @@ export class WebSerialFactory implements SerialBackendFactory {
   readonly displayName = 'Web Serial'
 
   isAvailable(): boolean {
-    return 'serial' in navigator
+    return !!(navigator as Navigator & { serial?: unknown }).serial
   }
 
   async pickDevice(): Promise<SerialBackend> {
