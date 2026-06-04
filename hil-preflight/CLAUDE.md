@@ -57,8 +57,14 @@ These apply across all repos in the group — they are non-negotiable:
    as an assertion in `preflight.sh` or a new test file in the sub-repo before
    the firmware/wiring change that makes it pass.
 
-2. **Small commits.** One logical step per commit, following the convention
-   below. Push after each phase.
+2. **Small commits, pushed immediately.** One logical step per commit,
+   following the convention below. Push to `origin` after **every
+   commit** — do not batch. This project is worked on across multiple
+   hardware environments (agentlab1, picotester Pi5, etc.); any
+   unpushed commit is stranded on one machine and causes branch
+   divergence when you switch. If the remote is temporarily unreachable,
+   note it explicitly and push at the first opportunity. Never stop a
+   session with unpushed commits.
 
 3. **No speculative features.** Stick to `PLAN.md`. The preflight's job is to
    verify hardware presence and correctness, nothing more.
