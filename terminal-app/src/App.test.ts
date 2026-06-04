@@ -182,6 +182,22 @@ describe('App.vue — connection flow', () => {
     expect(select.attributes('disabled')).toBeUndefined()
   })
 
+  it('shows no error when user dismisses the Web Serial picker', async () => {
+    // Chromium's exact phrasing when the user closes the port picker
+    const factory = new MockFactory()
+    factory.pickDevice = async () => {
+      throw new DOMException(
+        "Failed to execute 'requestPort' on 'Serial': No port selected by the user.",
+        'NotFoundError',
+      )
+    }
+    const wrapper = mountWithFactories([factory])
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="status-msg"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="connect-btn"]').exists()).toBe(true)
+  })
+
   it('selects the correct factory when two are available', async () => {
     const ws = new MockFactory('web-serial', 'Web Serial')
     const usb = new MockFactory('webusb-ftdi', 'WebUSB (FTDI)')
