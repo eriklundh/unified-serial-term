@@ -9,7 +9,8 @@ vi.mock('./components/Terminal.vue', () => ({
   default: {
     name: 'Terminal',
     template: '<div class="mock-terminal" />',
-    props: ['readable', 'writable'],
+    props: ['readable', 'writable', 'localEcho'],
+    emits: ['disconnect'],
   },
 }))
 
@@ -250,6 +251,39 @@ describe('App.vue — settings panel', () => {
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-testid="echo-checkbox"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('disconnect() resets state even when backend.close() throws', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="disconnect-btn"]').exists()).toBe(true)
+
+    // Make close() throw to simulate a dead port
+    factory.lastBackend!.close = async () => { throw new Error('port already closed') }
+
+    await wrapper.find('[data-testid="disconnect-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="connect-btn"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="disconnect-btn"]').exists()).toBe(false)
+  })
+
+  it('resets to disconnected when Terminal emits disconnect', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="disconnect-btn"]').exists()).toBe(true)
+
+    // Simulate unexpected device removal from the Terminal component
+    const terminal = wrapper.findComponent({ name: 'Terminal' })
+    await terminal.vm.$emit('disconnect')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="connect-btn"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="disconnect-btn"]').exists()).toBe(false)
   })
 
   it('connect uses the current baud rate setting', async () => {

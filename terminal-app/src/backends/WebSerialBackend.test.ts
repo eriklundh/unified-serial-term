@@ -41,6 +41,10 @@ class FakeSerialPort {
   simulateReceive(data: Uint8Array): void {
     this._readController.enqueue(data)
   }
+
+  simulateDeviceUnplug(): void {
+    this._readController.error(new DOMException('Device disconnected', 'NetworkError'))
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -189,5 +193,26 @@ describe('WebSerialBackend', () => {
     await backend.close()
     expect(portReadableLockedAtClose).toBe(false)
     expect(fakePort.closeCalled).toBe(true)
+  })
+
+  it('errors backend.readable when the device is unexpectedly unplugged', async () => {
+    await backend.open({ baudRate: 9600 })
+
+    const reader = backend.readable.getReader()
+    fakePort.simulateDeviceUnplug()
+
+    await expect(reader.read()).rejects.toThrow()
+  })
+
+  it('clean close() does not error backend.readable', async () => {
+    await backend.open({ baudRate: 9600 })
+
+    const reader = backend.readable.getReader()
+    const readPromise = reader.read()
+
+    await backend.close()
+
+    const { done } = await readPromise
+    expect(done).toBe(true)
   })
 })

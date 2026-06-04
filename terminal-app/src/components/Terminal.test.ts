@@ -187,6 +187,38 @@ describe('Terminal.vue', () => {
     expect(instance.write).not.toHaveBeenCalled()
   })
 
+  // ── disconnect event ─────────────────────────────────────────────────────────
+
+  it('emits disconnect when readable stream errors unexpectedly', async () => {
+    let controller!: ReadableStreamDefaultController<Uint8Array>
+    const readable = new ReadableStream<Uint8Array>({
+      start: (c) => { controller = c },
+    })
+
+    const wrapper = mount(Terminal, { props: { readable }, attachTo: document.body })
+    await new Promise((r) => setTimeout(r, 0))
+
+    controller.error(new DOMException('Device disconnected', 'NetworkError'))
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(wrapper.emitted('disconnect')).toBeTruthy()
+  })
+
+  it('does not emit disconnect on a clean stream close', async () => {
+    let controller!: ReadableStreamDefaultController<Uint8Array>
+    const readable = new ReadableStream<Uint8Array>({
+      start: (c) => { controller = c },
+    })
+
+    const wrapper = mount(Terminal, { props: { readable }, attachTo: document.body })
+    await new Promise((r) => setTimeout(r, 0))
+
+    controller.close()
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(wrapper.emitted('disconnect')).toBeFalsy()
+  })
+
   // ── ResizeObserver ───────────────────────────────────────────────────────────
 
   it('creates a ResizeObserver and observes the container on mount', () => {

@@ -114,6 +114,7 @@
         :readable="activeReadable ?? undefined"
         :writable="activeWritable ?? undefined"
         :local-echo="settings.localEcho"
+        @disconnect="disconnect"
       />
     </main>
   </div>
@@ -175,10 +176,15 @@ async function connect() {
 
 async function disconnect() {
   if (!backend.value) return
-  await backend.value.close()
-  backend.value = null
-  isConnected.value = false
-  statusMsg.value = null
+  try {
+    await backend.value.close()
+  } catch {
+    // port already dead — proceed with cleanup
+  } finally {
+    backend.value = null
+    isConnected.value = false
+    statusMsg.value = null
+  }
 }
 
 onMounted(async () => {

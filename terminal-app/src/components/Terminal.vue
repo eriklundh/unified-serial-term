@@ -20,6 +20,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   data: [value: string]
+  disconnect: []
 }>()
 
 const container = ref<HTMLElement | null>(null)
@@ -79,6 +80,7 @@ watch(
 )
 
 async function readLoop(r: ReadableStreamDefaultReader<Uint8Array>): Promise<void> {
+  let errored = false
   try {
     while (true) {
       const { value, done } = await r.read()
@@ -86,13 +88,14 @@ async function readLoop(r: ReadableStreamDefaultReader<Uint8Array>): Promise<voi
       terminal?.write(value)
     }
   } catch {
-    // stream cancelled or closed
+    errored = true
   } finally {
     if (reader === r) {
       r.releaseLock()
       reader = null
     }
   }
+  if (errored) emit('disconnect')
 }
 
 onUnmounted(() => {

@@ -35,7 +35,8 @@ export class WebSerialBackend implements SerialBackend {
   private _portReader: ReadableStreamDefaultReader<Uint8Array> | null = null
   private _pumpDone: Promise<void> | null = null
   private _readController!: ReadableStreamDefaultController<Uint8Array>
-  private _readableClosed = false
+  private _readableDone = false
+  private _cancelledByClose = false
 
   readonly readable: ReadableStream<Uint8Array>
 
@@ -73,8 +74,11 @@ export class WebSerialBackend implements SerialBackend {
         if (done) break
         this._readController.enqueue(value)
       }
-    } catch {
-      // pump cancelled by close()
+    } catch (err) {
+      if (!this._cancelledByClose && !this._readableDone) {
+        this._readableDone = true
+        this._readController.error(err)
+      }
     } finally {
       this._portReader.releaseLock()
       this._portReader = null
@@ -82,15 +86,16 @@ export class WebSerialBackend implements SerialBackend {
   }
 
   async close(): Promise<void> {
+    this._cancelledByClose = true
     if (this._portReader) {
       await this._portReader.cancel()
       await this._pumpDone
       this._pumpDone = null
     }
     await this._port.close()
-    if (!this._readableClosed) {
+    if (!this._readableDone) {
+      this._readableDone = true
       this._readController.close()
-      this._readableClosed = true
     }
     this._isOpen = false
   }
