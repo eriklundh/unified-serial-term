@@ -96,7 +96,6 @@
             v-model="settings.localEcho"
             data-testid="echo-checkbox"
             type="checkbox"
-            :disabled="isConnected"
           >
           <span>Echo</span>
         </label>

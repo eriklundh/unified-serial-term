@@ -244,6 +244,14 @@ describe('App.vue — settings panel', () => {
     expect(wrapper.find('[data-testid="reset-btn"]').attributes('disabled')).toBeDefined()
   })
 
+  it('echo checkbox remains enabled while connected', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="echo-checkbox"]').attributes('disabled')).toBeUndefined()
+  })
+
   it('connect uses the current baud rate setting', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
