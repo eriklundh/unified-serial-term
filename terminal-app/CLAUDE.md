@@ -66,7 +66,13 @@ Same as the library repo:
    test. Pure modules (backend abstraction, settings persistence,
    reconnect logic, encoding detection) get Vitest unit tests written
    before the implementation.
-2. **Small commits.** One logical step per commit.
+2. **Small commits, pushed immediately.** One logical step per commit.
+   Push to `origin` after **every commit** — do not batch. This project
+   is worked on across multiple hardware environments (agentlab1,
+   picotester Pi5, etc.); any unpushed commit is stranded on one machine
+   and causes branch divergence when you switch. If the remote is
+   temporarily unreachable, note it explicitly and push at the first
+   opportunity. Never stop a session with unpushed commits.
 3. **No speculative features.** Stick to what's in `PLAN.md`.
 4. **Reference reading is fine; copy-pasting is not.** Reading
    zaxbux/web-serial-console to understand how to wire xterm.js into a
