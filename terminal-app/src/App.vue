@@ -189,6 +189,7 @@ async function disconnect() {
 
 onMounted(async () => {
   if (!selectedFactory.value) return
+  isConnecting.value = true
   try {
     const paired = await selectedFactory.value.listPaired()
     const device = paired[0]
@@ -199,6 +200,8 @@ onMounted(async () => {
     statusMsg.value = `Auto-reconnected to ${device.label}`
   } catch {
     // auto-reconnect failed silently
+  } finally {
+    isConnecting.value = false
   }
 })
 </script>

@@ -115,6 +115,7 @@ describe('App.vue — connection flow', () => {
   it('clicking connect calls factory.pickDevice then backend.open', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
+    await flushPromises() // let onMounted auto-reconnect attempt finish
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     expect(factory.pickDeviceCalled).toBe(true)
@@ -124,6 +125,7 @@ describe('App.vue — connection flow', () => {
   it('shows Disconnect button and hides Connect after connecting', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
+    await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-testid="connect-btn"]').exists()).toBe(false)
@@ -133,6 +135,7 @@ describe('App.vue — connection flow', () => {
   it('Terminal receives readable and writable props after connecting', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
+    await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
 
@@ -144,6 +147,7 @@ describe('App.vue — connection flow', () => {
   it('clicking Disconnect calls backend.close', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
+    await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     await wrapper.find('[data-testid="disconnect-btn"]').trigger('click')
@@ -154,6 +158,7 @@ describe('App.vue — connection flow', () => {
   it('shows Connect button again after disconnecting', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
+    await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     await wrapper.find('[data-testid="disconnect-btn"]').trigger('click')
@@ -165,6 +170,7 @@ describe('App.vue — connection flow', () => {
   it('backend selector is disabled while connected', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
+    await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     const select = wrapper.find('select')
@@ -174,6 +180,7 @@ describe('App.vue — connection flow', () => {
   it('backend selector is re-enabled after disconnecting', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
+    await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     await wrapper.find('[data-testid="disconnect-btn"]').trigger('click')
@@ -192,6 +199,7 @@ describe('App.vue — connection flow', () => {
       )
     }
     const wrapper = mountWithFactories([factory])
+    await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-testid="status-msg"]').exists()).toBe(false)
@@ -255,6 +263,7 @@ describe('App.vue — settings panel', () => {
   it('settings controls are disabled while connected', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
+    await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-testid="baud-select"]').attributes('disabled')).toBeDefined()
@@ -264,6 +273,7 @@ describe('App.vue — settings panel', () => {
   it('echo checkbox remains enabled while connected', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
+    await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-testid="echo-checkbox"]').attributes('disabled')).toBeUndefined()
@@ -272,6 +282,7 @@ describe('App.vue — settings panel', () => {
   it('disconnect() resets state even when backend.close() throws', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
+    await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-testid="disconnect-btn"]').exists()).toBe(true)
@@ -289,6 +300,7 @@ describe('App.vue — settings panel', () => {
   it('resets to disconnected when Terminal emits disconnect', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
+    await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     expect(wrapper.find('[data-testid="disconnect-btn"]').exists()).toBe(true)
@@ -338,5 +350,31 @@ describe('App.vue — auto-reconnect', () => {
     await flushPromises()
     expect(wrapper.find('[data-testid="connect-btn"]').attributes('disabled')).toBeUndefined()
     expect(factory.pickDeviceCalled).toBe(false)
+  })
+
+  it('manual connect is blocked while auto-reconnect is in progress', async () => {
+    // Hold listPaired in-flight to keep the auto-reconnect window open
+    let resolveList!: (backends: SerialBackend[]) => void
+    const pickDeviceSpy = vi.fn().mockResolvedValue(new MockSerialBackend())
+    const factory: SerialBackendFactory = {
+      id: 'web-serial',
+      displayName: 'Mock',
+      isAvailable: () => true,
+      pickDevice: pickDeviceSpy,
+      listPaired: () => new Promise((r) => { resolveList = r }),
+    }
+
+    const wrapper = mountWithFactories([factory])
+    // Click connect while listPaired is still pending (isConnecting=true from onMounted)
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    // pickDevice must not have been called — connect() returned early
+    expect(pickDeviceSpy).not.toHaveBeenCalled()
+
+    // Let auto-reconnect complete, then connect should work normally
+    resolveList([])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(pickDeviceSpy).toHaveBeenCalledOnce()
   })
 })
