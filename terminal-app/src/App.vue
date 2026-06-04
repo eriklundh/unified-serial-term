@@ -161,7 +161,12 @@ async function connect() {
     isConnected.value = true
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
-    if (!msg.toLowerCase().includes('cancel') && !msg.toLowerCase().includes('no device selected')) {
+    const lower = msg.toLowerCase()
+    if (lower.includes('cancel') || lower.includes('no device selected')) {
+      // user dismissed the picker — silent
+    } else if (lower.includes('access denied') || lower.includes('access to the device')) {
+      statusMsg.value = 'Access denied — device is claimed by the OS FTDI driver. Use Zadig (Windows) or unbind ftdi_sio (Linux). See Lab Setup guide.'
+    } else {
       statusMsg.value = `Connection failed: ${msg}`
     }
   } finally {
