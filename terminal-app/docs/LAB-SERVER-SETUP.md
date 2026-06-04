@@ -50,7 +50,8 @@ yourself out over SSH:
 
 ```bash
 sudo ufw allow OpenSSH
-sudo ufw allow 'Nginx Full'
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
 sudo ufw enable
 sudo ufw status
 ```
@@ -58,13 +59,18 @@ sudo ufw status
 If UFW **is already active**, just add the nginx rules:
 
 ```bash
-sudo ufw allow 'Nginx Full'
+sudo ufw allow 80/tcp
+sudo ufw allow 443/tcp
 sudo ufw status
 ```
 
-`Nginx Full` opens both 80 and 443. You need both — 443 for the HTTPS
-traffic and 80 for the ACME HTTP-01 challenge (initial issuance and
-every renewal).
+> **Note:** The runbook originally used `sudo ufw allow 'Nginx Full'`, but
+> that ufw application profile is only registered on disk *after* nginx is
+> installed. Since nginx isn't installed yet at this step, use the explicit
+> port rules above instead. They open exactly the same ports.
+
+Both ports are required — 443 for HTTPS traffic and 80 for the ACME
+HTTP-01 challenge (initial issuance and every renewal).
 
 ## 2. Install nginx and certbot
 
