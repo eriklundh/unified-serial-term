@@ -10,10 +10,10 @@
         <button
           v-if="!isConnected"
           data-testid="connect-btn"
-          :disabled="!canConnect"
+          :disabled="!canConnect || isConnecting"
           @click="connect"
         >
-          Connect
+          {{ isConnecting ? 'Connecting…' : 'Connect' }}
         </button>
         <button
           v-if="isConnected"
@@ -144,21 +144,28 @@ const { settings, reset } = useSettings()
 
 const backend = ref<SerialBackend | null>(null)
 const isConnected = ref(false)
+const isConnecting = ref(false)
 const statusMsg = ref<string | null>(null)
-const canConnect = computed(() => !!selectedFactory.value && !isConnected.value)
+const canConnect = computed(() => !!selectedFactory.value && !isConnected.value && !isConnecting.value)
 const activeReadable = computed(() => backend.value?.readable ?? null)
 const activeWritable = computed(() => backend.value?.writable ?? null)
 
 async function connect() {
-  if (!selectedFactory.value) return
+  if (!selectedFactory.value || isConnecting.value) return
+  isConnecting.value = true
+  statusMsg.value = null
   try {
     const b = await selectedFactory.value.pickDevice()
     await b.open(settings.value)
     backend.value = b
     isConnected.value = true
-    statusMsg.value = null
-  } catch {
-    // user cancelled picker or open failed
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    if (!msg.toLowerCase().includes('cancel') && !msg.toLowerCase().includes('no device selected')) {
+      statusMsg.value = `Connection failed: ${msg}`
+    }
+  } finally {
+    isConnecting.value = false
   }
 }
 
