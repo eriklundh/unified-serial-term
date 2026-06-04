@@ -66,8 +66,14 @@ the Web Serial API talks to. So this rig proves terminal-app Phase 2
    written ahead of it. See `docs/phases/` — every phase doc leads with
    the test.
 
-2. **Small commits.** One logical step per commit, same convention as
-   the sibling repos.
+2. **Small commits, pushed immediately.** One logical step per commit,
+   same convention as the sibling repos. Push to `origin` after
+   **every commit** — do not batch. This project is worked on across
+   multiple hardware environments (agentlab1, picotester Pi5, etc.);
+   any unpushed commit is stranded on one machine and causes branch
+   divergence when you switch. If the remote is temporarily unreachable,
+   note it explicitly and push at the first opportunity. Never stop a
+   session with unpushed commits.
 3. **No speculative features.** Stick to `PLAN.md`. The rig's job is
    loopback + settings reporting, nothing more.
 4. **Maintain the docs as code.** `PLAN.md`, `docs/DEV-ENVIRONMENT.md`,
