@@ -20,8 +20,13 @@ terminal on top of this library. This repo is **library-only**.
 
 1. **Test-First Development.** Every behavioural change starts with a failing
    test. No production code is written without a red test that demands it.
-2. **Small commits.** One logical step per commit. Commit message format
-   below. Push after each phase.
+2. **Small commits, pushed immediately.** One logical step per commit.
+   Push to `origin` after **every commit** — do not batch. This project
+   is worked on across multiple hardware environments (agentlab1,
+   picotester Pi5, etc.); any unpushed commit is stranded on one machine
+   and causes branch divergence when you switch. If the remote is
+   temporarily unreachable, note it explicitly and push at the first
+   opportunity. Never stop a session with unpushed commits.
 3. **No speculative API.** If a feature isn't covered by a test or a task in
    `PLAN.md`, don't add it.
 4. **Verify against authoritative sources, not prior chat output.** The
