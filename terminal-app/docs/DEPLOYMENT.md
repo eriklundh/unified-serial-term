@@ -221,13 +221,20 @@ preserving if you change it:
   `script/fetch-build-deploy.sh`, committed and reviewable. The SSH channel
   is used *only* to invoke that script — never to run ad-hoc remote
   commands — so any deploy is exactly reproducible from git history.
-- **Self-updating.** The script fast-forwards the checkout to
+- **Dedicated deploy mirror.** The script runs **only** in a separate,
+  publish-only checkout — `~/deploy-unified-serial-term` — never in a
+  development checkout. It enforces this: the mirror's gitignored
+  `script/deploy.env` sets `DEPLOY_MIRROR=1`, and the script aborts without
+  it. That keeps the hard-reset (below) from ever touching in-progress work.
+- **Self-updating.** The script hard-resets the mirror to
   `origin/<branch>` (default `main`), then re-execs itself if that pull
   changed the script, so edits to the deploy logic take effect on the same
   trigger.
-- **Non-destructive reset.** It runs `git reset --hard origin/main` but
-  never `git clean`, so untracked `node_modules/` and `dist/` survive
-  between runs.
+- **Non-destructive + guarded reset.** `git reset --hard origin/main` (never
+  `git clean`, so untracked `node_modules/` and `dist/` survive between runs).
+  Before resetting it refuses to run if the mirror has uncommitted tracked
+  changes or commits not on the remote — override with `FBD_FORCE=1` — so
+  nothing is ever lost silently.
 - **Idempotent.** Re-running with no new commits rebuilds and republishes
   identical, content-hashed assets — safe to trigger repeatedly.
 - **Parameterised targets.** A `case` block maps a target name → site host
@@ -260,7 +267,7 @@ The manual build is still available as a fallback (e.g. to pre-warm the host
 or debug a driver build in isolation):
 
 ```bash
-cd ~/unified-serial-term/ftdi-driver && npm ci && npm run build
+cd ~/deploy-unified-serial-term/ftdi-driver && npm ci && npm run build
 ```
 
 The auto-build is skipped entirely when `../ftdi-driver` isn't present
@@ -271,9 +278,13 @@ The auto-build is skipped entirely when `../ftdi-driver` isn't present
 - Deploy host: reachable **only** at `<deploy-user>@<deploy-host>` (SSH,
   certificate auth). Its internal VM name is not routable from the dev/lab
   network — always connect via the public FQDN, never by VM name.
-- Repo checkout on the host: `~/unified-serial-term` — its `terminal-app/`
-  and `ftdi-driver/` subdirectories. The driver only needs to be *present*;
-  the build auto-builds it on demand (see above).
+- Two checkouts on the host, kept separate:
+  - **Development** — `~/unified-serial-terminal/` (where changes are made,
+    committed, and pushed). The deploy script refuses to run here.
+  - **Deploy mirror** — `~/deploy-unified-serial-term/` (publish-only; the
+    script hard-resets it to `origin/main`). Its gitignored `script/deploy.env`
+    sets `DEPLOY_MIRROR=1` and `DEPLOY_SITE_HOST`. The `ftdi-driver/` subdir
+    only needs to be *present*; the build auto-builds it on demand (see above).
 - Default target alias → web root `/var/www/serial-terminal`, served
   at `https://<deploy-host>/`.
 
@@ -281,14 +292,14 @@ Trigger a deploy after pushing to `main`:
 
 ```bash
 ssh <deploy-user>@<deploy-host> \
-    'bash ~/unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
+    'bash ~/deploy-unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
 ```
 
 First-time or cautious run (builds, but writes nothing to the live site):
 
 ```bash
 ssh <deploy-user>@<deploy-host> \
-    'DRY_RUN=1 bash ~/unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
+    'DRY_RUN=1 bash ~/deploy-unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
 ```
 
 ## 7. Verification checklist after deploy

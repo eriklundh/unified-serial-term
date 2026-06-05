@@ -2,13 +2,14 @@
 #
 # fetch-build-deploy.sh — update, build, and publish the terminal-app.
 #
-# This script runs ON the deploy host, where the web server and
-# the repo checkout both live. A developer working on another machine (e.g. a
-# Windows laptop) triggers it over SSH *after* a local test-and-fix cycle has
-# been committed and pushed:
+# This script runs ON the deploy host, in a DEDICATED publish-only mirror
+# checkout (~/deploy-unified-serial-term) — kept separate from any development
+# checkout — because step 1 hard-resets it to origin. A developer on another
+# machine triggers it over SSH *after* a local test-and-fix cycle has been
+# committed and pushed:
 #
 #     ssh <deploy-user>@<deploy-host> \
-#         'bash ~/unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
+#         'bash ~/deploy-unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
 #
 # The SSH channel is only ever used to invoke this script — never to run ad-hoc
 # remote commands. Everything the deploy needs is captured here, committed, and
@@ -33,12 +34,17 @@
 # identical content.
 #
 # Environment knobs (or set them in the gitignored script/deploy.env):
+#   DEPLOY_MIRROR=1    REQUIRED — marks this checkout as the publish-only deploy
+#                      mirror. Without it the script refuses to run, so it can
+#                      never hard-reset a development checkout. Set it in the
+#                      mirror's script/deploy.env.
 #   DEPLOY_SITE_HOST   Public hostname verified after publish; keep it out of the
 #                      committed repo (set it in script/deploy.env on the host)
 #   DEPLOY_WEBROOT     Web root to publish into (default: /var/www/serial-terminal)
 #   TERMINAL_APP_DIR   Override the repo path (default: derived from this script's location)
 #   DEPLOY_BRANCH      Branch to deploy (default: main)
 #   DRY_RUN=1          Do everything except touch the live web root (safe first run)
+#   FBD_FORCE=1        Bypass the dirty/ahead safety checks before the hard-reset
 #
 # Usage:
 #   fetch-build-deploy.sh [target]
@@ -58,6 +64,14 @@ SCRIPT_DIR="$(dirname "$SELF")"
 # this committed script stays host-agnostic. See script/deploy.env.example.
 # shellcheck source=/dev/null
 [ -f "$SCRIPT_DIR/deploy.env" ] && . "$SCRIPT_DIR/deploy.env"
+
+# Publish-only mirror guard. Step 1 hard-resets this checkout to origin, which
+# would wipe in-progress work in a development checkout. So the script runs ONLY
+# in the dedicated deploy-mirror checkout (~/deploy-unified-serial-term), whose
+# gitignored script/deploy.env sets DEPLOY_MIRROR=1.
+[ "${DEPLOY_MIRROR:-}" = "1" ] || { \
+  printf '\n\033[1;31mERROR: not a deploy mirror.\033[0m Run this only in the deploy-mirror checkout\n  (~/deploy-unified-serial-term); its script/deploy.env must set DEPLOY_MIRROR=1.\n' >&2; \
+  exit 1; }
 
 # --- Configuration: deploy targets -------------------------------------------
 # Single source of truth for where each public site is served from. A second
@@ -97,6 +111,16 @@ cd "$REPO_DIR"
 log "Updating $REPO_DIR to origin/$BRANCH"
 before_self="$(sha1sum "$SELF" | cut -d' ' -f1)"
 git fetch --prune origin
+# Safety: even on a mirror, never silently destroy local work. Abort if the
+# working tree has tracked modifications, or if this checkout has commits not
+# on the remote. FBD_FORCE=1 overrides (e.g. a deliberately-dirty host).
+if [ "${FBD_FORCE:-}" != "1" ]; then
+  [ -z "$(git status --porcelain --untracked-files=no)" ] \
+    || die "uncommitted tracked changes in $REPO_DIR — refusing to hard-reset (FBD_FORCE=1 to override)."
+  ahead="$(git rev-list --count "origin/$BRANCH..HEAD" 2>/dev/null || echo 0)"
+  [ "$ahead" = 0 ] \
+    || die "$REPO_DIR is $ahead commit(s) ahead of origin/$BRANCH — push them first (FBD_FORCE=1 to override)."
+fi
 # Hard-reset to the remote branch tip. We deliberately do NOT `git clean`:
 # untracked build artefacts (node_modules/, dist/) must survive the reset.
 git reset --hard "origin/$BRANCH"
