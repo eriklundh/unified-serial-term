@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ftdi-webusb-driver minimal example</title>
+</head>
+<body>
+  <button id="connect">Connect</button>
+  <pre id="output" style="background:#111;color:#0f0;padding:1em;min-height:200px"></pre>
+
+  <script type="module">
+    import { FtdiUart } from '../dist/index.js';
+
+    const output = document.getElementById('output');
+    const log = (msg) => { output.textContent += msg + '\n'; };
+
+    document.getElementById('connect').onclick = async () => {
+      try {
+        const device = await navigator.usb.requestDevice({
+          filters: [{ vendorId: 0x0403, productId: 0x6015 }],
+        });
+        log('Device opened: ' + device.productName);
+
+        const ftdi = await FtdiUart.open(device);
+        await ftdi.configure({ baud: 115200, latencyMs: 4 });
+        log('Configured 115200 8N1');
+
+        const reader = ftdi.readable.getReader();
+        const decoder = new TextDecoder();
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          if (value) output.textContent += decoder.decode(value);
+        }
+      } catch (err) {
+        log('Error: ' + err.message);
+      }
+    };
+  </script>
+</body>
+</html>
