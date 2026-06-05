@@ -9,6 +9,59 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+---
+
+## [1.1.0] — 2026-06-05
+
+Terminal UX & theming release.
+
+### Added
+
+- **Colour themes** — four built-in themes (Dark, Light, Solarized Dark,
+  Nord), selectable in Settings → Appearance. The chrome (toolbar, drawer)
+  and the xterm terminal stay visually consistent because both are driven
+  from one set of design tokens.
+- **Font selection** — choose the terminal typeface in Settings: the
+  zero-download system-monospace stack (default) plus five self-hosted
+  faces — Source Code Pro, JetBrains Mono, Fira Code, Cascadia Code, and
+  IBM Plex Mono. Each woff2 (Latin-400, SIL OFL 1.1) is bundled and
+  **lazy-loaded** — downloaded only when its family is selected — with
+  `font-display: swap`. Font size is configurable (8–32 px).
+- **Clear terminal** — an easy-to-find toolbar **Clear** button plus a
+  **configurable hotkey** (default `Ctrl+Shift+K`) that can be rebound or
+  turned off. The hotkey is intercepted app-level (capture phase) so it
+  never leaks to the device.
+- **Non-modal settings drawer** — settings open in a native `<dialog>`
+  drawer that slides in from the right; the terminal keeps streaming and
+  rendering behind it. `Esc` or the ✕ closes it; `inert` when hidden.
+- **Durable, portable settings** — appearance and connection settings
+  persist in `localStorage`, `navigator.storage.persist()` can be requested
+  ("Keep on this device"), and settings round-trip through JSON
+  **Export/Import**.
+- Token-driven control styling (contemporary buttons, selects, focus rings)
+  with `:focus-visible` outlines and a `prefers-reduced-motion` fallback for
+  the drawer transition.
+
+### Changed
+
+- **Dark is the standard default theme**, independent of the OS
+  `prefers-color-scheme`.
+
+### Fixed
+
+- **Clear** now fully resets the terminal and homes the cursor to the
+  top-left (it maps to xterm `reset()`); previously it kept the prompt line
+  and left the cursor in place.
+- Keyboard focus returns to the terminal after clicking **Clear**, after the
+  settings drawer closes, and after connect/disconnect — so typing resumes
+  immediately instead of staying trapped on the clicked control.
+
+---
+
+## [1.0.0] — 2026-06-05
+
+First production release: the v0.1.0 app plus the tag-gated deploy pipeline.
+
 ### Added
 
 - **Remote deploy trigger** — `script/fetch-build-deploy.sh` runs on the
