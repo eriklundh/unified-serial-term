@@ -3,33 +3,41 @@ import { mount } from '@vue/test-utils'
 import Terminal from './Terminal.vue'
 
 vi.mock('@xterm/xterm', () => {
-  const Terminal = vi.fn().mockImplementation(() => ({
-    open: vi.fn(),
-    dispose: vi.fn(),
-    loadAddon: vi.fn(),
-    write: vi.fn(),
-    onData: vi.fn(),
-    focus: vi.fn(),
-  }))
+  const Terminal = vi.fn().mockImplementation(function () {
+    return {
+      open: vi.fn(),
+      dispose: vi.fn(),
+      loadAddon: vi.fn(),
+      write: vi.fn(),
+      onData: vi.fn(),
+      focus: vi.fn(),
+    }
+  })
   return { Terminal }
 })
 
 vi.mock('@xterm/addon-fit', () => ({
-  FitAddon: vi.fn().mockImplementation(() => ({ fit: vi.fn() })),
+  FitAddon: vi.fn().mockImplementation(function () {
+    return { fit: vi.fn() }
+  }),
 }))
 
 vi.mock('@xterm/addon-web-links', () => ({
-  WebLinksAddon: vi.fn().mockImplementation(() => ({})),
+  WebLinksAddon: vi.fn().mockImplementation(function () {
+    return {}
+  }),
 }))
 
 // ResizeObserver is not available in jsdom — stub it for all tests.
 // Tests that specifically verify ResizeObserver behaviour override this stub.
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.stubGlobal('ResizeObserver', vi.fn().mockImplementation(() => ({
-    observe: vi.fn(),
-    disconnect: vi.fn(),
-  })))
+  vi.stubGlobal('ResizeObserver', vi.fn().mockImplementation(function () {
+    return {
+      observe: vi.fn(),
+      disconnect: vi.fn(),
+    }
+  }))
 })
 
 afterEach(() => {
@@ -81,15 +89,17 @@ describe('Terminal.vue', () => {
     const { Terminal: XTerm } = await import('@xterm/xterm')
 
     let onDataCb: ((data: string) => void) | undefined
-    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      open: vi.fn(),
-      dispose: vi.fn(),
-      loadAddon: vi.fn(),
-      write: vi.fn(),
-      onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
-        onDataCb = cb
-      }),
-    }))
+    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
+      return {
+        open: vi.fn(),
+        dispose: vi.fn(),
+        loadAddon: vi.fn(),
+        write: vi.fn(),
+        onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
+          onDataCb = cb
+        }),
+      }
+    })
 
     const wrapper = mount(Terminal, { attachTo: document.body })
     onDataCb!('hello')
@@ -101,15 +111,17 @@ describe('Terminal.vue', () => {
     const { Terminal: XTerm } = await import('@xterm/xterm')
 
     let onDataCb: ((data: string) => void) | undefined
-    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      open: vi.fn(),
-      dispose: vi.fn(),
-      loadAddon: vi.fn(),
-      write: vi.fn(),
-      onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
-        onDataCb = cb
-      }),
-    }))
+    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
+      return {
+        open: vi.fn(),
+        dispose: vi.fn(),
+        loadAddon: vi.fn(),
+        write: vi.fn(),
+        onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
+          onDataCb = cb
+        }),
+      }
+    })
 
     const written: Uint8Array[] = []
     const writable = new WritableStream<Uint8Array>({
@@ -129,15 +141,17 @@ describe('Terminal.vue', () => {
     const { Terminal: XTerm } = await import('@xterm/xterm')
 
     let onDataCb: ((data: string) => void) | undefined
-    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      open: vi.fn(),
-      dispose: vi.fn(),
-      loadAddon: vi.fn(),
-      write: vi.fn(),
-      onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
-        onDataCb = cb
-      }),
-    }))
+    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
+      return {
+        open: vi.fn(),
+        dispose: vi.fn(),
+        loadAddon: vi.fn(),
+        write: vi.fn(),
+        onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
+          onDataCb = cb
+        }),
+      }
+    })
 
     mount(Terminal, { props: { localEcho: true }, attachTo: document.body })
     onDataCb!('X')
@@ -150,15 +164,17 @@ describe('Terminal.vue', () => {
     const { Terminal: XTerm } = await import('@xterm/xterm')
 
     let onDataCb: ((data: string) => void) | undefined
-    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      open: vi.fn(),
-      dispose: vi.fn(),
-      loadAddon: vi.fn(),
-      write: vi.fn(),
-      onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
-        onDataCb = cb
-      }),
-    }))
+    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
+      return {
+        open: vi.fn(),
+        dispose: vi.fn(),
+        loadAddon: vi.fn(),
+        write: vi.fn(),
+        onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
+          onDataCb = cb
+        }),
+      }
+    })
 
     mount(Terminal, { props: { localEcho: false }, attachTo: document.body })
     onDataCb!('X')
@@ -171,15 +187,17 @@ describe('Terminal.vue', () => {
     const { Terminal: XTerm } = await import('@xterm/xterm')
 
     let onDataCb: ((data: string) => void) | undefined
-    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(() => ({
-      open: vi.fn(),
-      dispose: vi.fn(),
-      loadAddon: vi.fn(),
-      write: vi.fn(),
-      onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
-        onDataCb = cb
-      }),
-    }))
+    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
+      return {
+        open: vi.fn(),
+        dispose: vi.fn(),
+        loadAddon: vi.fn(),
+        write: vi.fn(),
+        onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
+          onDataCb = cb
+        }),
+      }
+    })
 
     mount(Terminal, { attachTo: document.body }) // no localEcho prop
     onDataCb!('X')
@@ -236,10 +254,12 @@ describe('Terminal.vue', () => {
 
   it('creates a ResizeObserver and observes the container on mount', () => {
     const mockObserve = vi.fn()
-    const MockResizeObserver = vi.fn().mockImplementation(() => ({
-      observe: mockObserve,
-      disconnect: vi.fn(),
-    }))
+    const MockResizeObserver = vi.fn().mockImplementation(function () {
+      return {
+        observe: mockObserve,
+        disconnect: vi.fn(),
+      }
+    })
     vi.stubGlobal('ResizeObserver', MockResizeObserver)
 
     mount(Terminal, { attachTo: document.body })
@@ -252,7 +272,7 @@ describe('Terminal.vue', () => {
     const { FitAddon } = await import('@xterm/addon-fit')
 
     let resizeCb: ResizeObserverCallback | null = null
-    vi.stubGlobal('ResizeObserver', vi.fn().mockImplementation((cb: ResizeObserverCallback) => {
+    vi.stubGlobal('ResizeObserver', vi.fn().mockImplementation(function (cb: ResizeObserverCallback) {
       resizeCb = cb
       return { observe: vi.fn(), disconnect: vi.fn() }
     }))
@@ -268,10 +288,12 @@ describe('Terminal.vue', () => {
 
   it('disconnects ResizeObserver on unmount', () => {
     const mockDisconnect = vi.fn()
-    vi.stubGlobal('ResizeObserver', vi.fn().mockImplementation(() => ({
-      observe: vi.fn(),
-      disconnect: mockDisconnect,
-    })))
+    vi.stubGlobal('ResizeObserver', vi.fn().mockImplementation(function () {
+      return {
+        observe: vi.fn(),
+        disconnect: mockDisconnect,
+      }
+    }))
 
     const wrapper = mount(Terminal, { attachTo: document.body })
     wrapper.unmount()

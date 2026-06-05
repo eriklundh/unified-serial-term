@@ -31,6 +31,17 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 - Stopped tracking `node_modules/` in git (it had been committed despite
   `.gitignore`); enforced LF endings for `*.sh` via `.gitattributes`.
+- Upgraded Vitest and `@vitest/coverage-v8` to v4 (from v3), aligning with
+  the sibling `ftdi-webusb-driver`. Component-test mocks were updated to the
+  v4 requirement that constructor mocks use `function`/`class` (not arrows).
+
+### Security
+
+- Resolved [GHSA-5xrq-8626-4rwp](https://github.com/advisories/GHSA-5xrq-8626-4rwp)
+  (critical) by upgrading Vitest to ≥ 4.1.8. The flaw is in the Vitest UI
+  dev server (a devDependency, never shipped or used by this project's
+  scripts), so production and CI were unaffected; upgraded to keep `npm
+  audit` clean.
 
 ---
 
