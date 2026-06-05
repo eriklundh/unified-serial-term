@@ -16,7 +16,7 @@ both loopback devices in Chromium.
 | HIL — Web Serial (Pico CDC) | `npm run test:hw` | Pico CDC test rig | `TERMINAL_HW_TEST=1` |
 | HIL — WebUSB FTDI | `npm run test:hw` | FTDI loopback plug | `TERMINAL_HW_TEST=1` |
 
-`npm run test:hw` automatically runs `../hil-preflight/preflight.sh` before
+`npm run test:hw` automatically runs `../../hil-preflight/preflight.sh` before
 Playwright starts. The HIL tests are tagged `@hardware` in test titles;
 without `TERMINAL_HW_TEST=1` those tests are excluded by the Playwright grep filter.
 
@@ -43,11 +43,11 @@ without `TERMINAL_HW_TEST=1` those tests are excluded by the Playwright grep fil
 - Plug wiring: TX→RX shorted; RTS→CTS shorted; DTR→DSR shorted.
 - `ftdi_sio` kernel driver **unbound** before the run:
   ```
-  ../ftdi-rebind-scripts/ftdi-unbind 0403:6015
+  ../../ftdi-unbind/macos-linux/ftdi-unbind 0403:6015
   ```
 - After the run, rebind:
   ```
-  ../ftdi-rebind-scripts/ftdi-bind 0403:6015
+  ../../ftdi-unbind/macos-linux/ftdi-bind 0403:6015
   ```
 - The WebUSB HIL tests (§5) are manual; see `docs/MANUAL-SMOKE.md` (Smoke test B).
   Automated Playwright tests use mocked backends — see implementation note in §4.
@@ -362,7 +362,7 @@ Playwright: use `page.keyboard.press('Control+Shift+C')` and
 
 ### §5  HIL — WebUSB FTDI backend (FTDI loopback plug)
 
-Prerequisite: `ftdi_sio` unbound (`../ftdi-rebind-scripts/ftdi-unbind 0403:6015`).
+Prerequisite: `ftdi_sio` unbound (`../../ftdi-unbind/macos-linux/ftdi-unbind 0403:6015`).
 The tests in this section mirror the Web Serial section but use the
 "WebUSB (FTDI)" backend. Differences from §4 are called out explicitly.
 

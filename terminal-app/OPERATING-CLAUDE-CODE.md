@@ -1,12 +1,13 @@
 # OPERATING-CLAUDE-CODE.md — running this project autonomously
 
-How to drive both repos with Claude Code on Pro, monitor from the
-mobile app, integrate with your existing VS Code Remote-SSH workflow,
-and stay inside the budget.
+How to drive both components of this repo with Claude Code on Pro,
+monitor from the mobile app, integrate with your existing VS Code
+Remote-SSH workflow, and stay inside the budget.
 
-This document is referenced from `README.md` and both `CLAUDE.md` files.
-Copy it into each repo's `docs/` folder so Claude Code can read it
-from inside its workspace.
+This document is referenced from the root `README.md` and from each
+subdirectory's `CLAUDE.md`. An identical copy lives in both
+`ftdi-driver/` and `terminal-app/` so Claude Code can read it from
+inside whichever component it is working in.
 
 ## 1. Prerequisites
 
@@ -42,41 +43,44 @@ by default, with push notifications when Claude finishes or needs you.
 
 ## 2. Project topology
 
-Two repos as siblings under `~/unified-serial-terminal/`:
+One repository, `unified-serial-term`, with two components as
+subdirectories:
 
 ```
-~/unified-serial-terminal/
-├── ftdi-webusb-driver/   ← library (TDD, pure-function-heavy)
-└── terminal-app/         ← Vue 3 + Vite browser terminal
+unified-serial-term/
+├── ftdi-driver/    ← library (TDD, pure-function-heavy); npm package `ftdi-webusb-driver`
+└── terminal-app/   ← Vue 3 + Vite browser terminal (depends on the library)
 ```
 
-A `claude` session runs **inside one repo at a time**. To work on both
-in parallel, open two terminals (e.g. via `tmux` so they survive
-disconnection), one in each repo.
+Although it's one repo, a `claude` session is most effective scoped to
+**one component at a time** — each subdirectory has its own `CLAUDE.md`,
+`PLAN.md`, and conventions. To work on both in parallel, open two
+terminals (e.g. via `tmux` so they survive disconnection), each `cd`'d
+into one subdirectory. See §3 for why.
 
-## 3. One session per repo, not one for both
+## 3. One session per component, not one for both
 
-This project has two repos as siblings under `~/unified-serial-terminal/`. Technically
-you can start Claude Code from the parent directory and have it see both
-as subdirectories. **Don't.** The pattern that works is one
-`claude --remote-control` session per repo, opened only when that repo
-actually needs work.
+This is one repo with two component subdirectories. Technically you can
+start Claude Code from the repo root and have it see both. **For focused
+work, don't.** The pattern that works is one `claude --remote-control`
+session scoped (`cd`'d) to one subdirectory, opened only when that
+component actually needs work.
 
-### Why two separate sessions
+### Why scope to one component
 
-Each `CLAUDE.md` was written as the project memory for *its repo*.
-Reading two of them as siblings in one session forces Claude Code to
-constantly arbitrate which set of conventions applies to the current
-edit — wrong scope prefix on commits, tests written in the wrong style,
-dependencies installed in the wrong `package.json`. The arbitration also
-burns tokens and produces drift across phases.
+Each subdirectory's `CLAUDE.md` is the project memory for *that
+component*. Holding both in one session forces Claude Code to constantly
+arbitrate which set of conventions applies to the current edit — wrong
+scope prefix on commits, tests written in the wrong style, dependencies
+installed in the wrong `package.json`. The arbitration also burns tokens
+and produces drift across phases.
 
-Two sessions also isolate git blast radius. One session in a parent
-directory is in one git state at a time but managing two repos; a
-failed merge or dirty worktree on one side can leave both repos in a
-half-state. Two sessions, each in its own repo, can't do that.
+Scoping also narrows what a mistake can touch. It's one repo, so a commit
+is a commit either way — but a session working only inside `ftdi-driver/`
+won't accidentally stage or rewrite files under `terminal-app/`, and
+vice versa.
 
-### The dependency graph between repos
+### The dependency graph between components
 
 Library work goes first because the terminal-app's Phase 3 (WebUSB
 backend) imports `FtdiUart` from the library. Until the library has
@@ -117,18 +121,18 @@ no reason.
 ### The tmux pattern
 
 Use `tmux` so the sessions survive SSH drops. Naming the windows after
-the repo makes the mobile app session list readable at a glance.
+the component makes the mobile app session list readable at a glance.
 
 ```bash
 # Session 1 — library work (start this first)
 tmux new -s lib
-cd ~/unified-serial-terminal/ftdi-webusb-driver
-claude --remote-control "ftdi-webusb-driver"
+cd ~/unified-serial-term/ftdi-driver
+claude --remote-control "ftdi-driver"
 # detach with Ctrl-B d; reattach later with: tmux a -t lib
 
 # Session 2 — terminal-app work (start only after library Phase 6 lands)
 tmux new -s app
-cd ~/unified-serial-terminal/terminal-app
+cd ~/unified-serial-term/terminal-app
 claude --remote-control "terminal-app"
 # detach with Ctrl-B d; reattach with: tmux a -t app
 ```
@@ -154,8 +158,8 @@ separate windows.
 The standard pattern:
 
 ```bash
-cd ~/unified-serial-terminal/ftdi-webusb-driver
-claude --remote-control "ftdi-webusb-driver Phase N"
+cd ~/unified-serial-term/ftdi-driver
+claude --remote-control "ftdi-driver Phase N"
 ```
 
 At the prompt, give Claude exactly one phase to do:
@@ -199,7 +203,7 @@ session.
 
 ```bash
 # NOW, interactively — clear the trust prompt under your supervision:
-tmux new -s app -c ~/unified-serial-terminal/terminal-app   # or: tmux attach -t app
+tmux new -s app -c ~/unified-serial-term/terminal-app   # or: tmux attach -t app
 claude --remote-control --permission-mode auto
 # → approve the "trust this folder?" prompt
 # → wait until the normal input prompt appears
@@ -208,7 +212,7 @@ claude --remote-control --permission-mode auto
 
 # Schedule ONLY the prompt injection for after the window resets:
 at 02:15 <<'EOF'
-tmux send-keys -t app 'Read CLAUDE.md, docs/OPERATING-CLAUDE-CODE.md (especially §3 and §8), and PLAN.md. Sibling repo ~/unified-serial-terminal/ftdi-webusb-driver has Phases 1-8 complete; treat its FtdiUart API as available. Execute Phase 0 from PLAN.md end-to-end, committing per the conventions in CLAUDE.md. Read zaxbux/web-serial-console as reference before writing code. Stop and ask only if a step needs my decision. When the Phase 0 acceptance checklist passes, run /usage and exit.' Enter
+tmux send-keys -t app 'Read CLAUDE.md, OPERATING-CLAUDE-CODE.md (especially §3 and §8), and PLAN.md. Sibling component ../ftdi-driver has Phases 1-8 complete; treat its FtdiUart API as available. Execute Phase 0 from PLAN.md end-to-end, committing per the conventions in CLAUDE.md. Read zaxbux/web-serial-console as reference before writing code. Stop and ask only if a step needs my decision. When the Phase 0 acceptance checklist passes, run /usage and exit.' Enter
 EOF
 atq
 ```
@@ -323,11 +327,11 @@ doing. Topology:
                │ + Anthropic API (outbound HTTPS, mobile push)
                ↓
 ┌──────────────────────────────────┐
-│  Lab VM (~/unified-serial-terminal)            │
+│  Lab VM (~/unified-serial-term)  │
 │  ├── VS Code Server              │
 │  ├── Claude Code extension       │   ← installed on REMOTE, not local
 │  ├── claude process              │   ← spawned by extension or terminal
-│  └── repos: ftdi-webusb-driver,  │
+│  └── subdirs: ftdi-driver,       │
 │            terminal-app          │
 └──────────────────────────────────┘
 ```
@@ -335,7 +339,7 @@ doing. Topology:
 ### Setup
 
 1. Open VS Code on the laptop. Use the **Remote - SSH** extension to
-   connect to the lab VM and open `~/unified-serial-terminal/ftdi-webusb-driver/`
+   connect to the lab VM and open `~/unified-serial-term/ftdi-driver/`
    (or `terminal-app/`) as a workspace.
 2. Install the **Claude Code** VS Code extension. When VS Code asks
    where to install it, choose **Install on SSH: \<your-vm-host\>**.
@@ -366,7 +370,7 @@ Four synced surfaces for one session running on the VM:
 You can switch between them mid-conversation. The Claude Code session
 itself never moves — it stays on the lab VM the entire time,
 preserving all local context (sudo, MCP servers, environment, network
-position on `194.14.84.44`).
+position on `<deploy-host-ip>`).
 
 ### The launch flavor that fits this workflow best
 
@@ -742,7 +746,7 @@ claude --version
 # → Push when Claude decides: true
 
 # Launch a phase (terminal)
-cd ~/unified-serial-terminal/ftdi-webusb-driver
+cd ~/unified-serial-term/ftdi-driver
 claude --remote-control "Phase N name"
 
 # Launch a phase (VS Code panel via Remote-SSH)
@@ -762,7 +766,7 @@ claude --remote-control --permission-mode auto "Phase N name"
 
 # Schedule a phase for later (split pattern: pre-start, then inject prompt)
 #   1. Now, interactively — clear the trust prompt, then detach:
-tmux new -s app -c ~/unified-serial-terminal/terminal-app
+tmux new -s app -c ~/unified-serial-term/terminal-app
 claude --remote-control --permission-mode auto   # approve trust, Ctrl-B d
 #   2. Schedule only the prompt injection:
 at 02:15 <<'SCHED'

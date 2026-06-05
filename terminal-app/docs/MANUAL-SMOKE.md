@@ -29,7 +29,7 @@ real keystrokes rather than `fill()` the xterm input).
 
 - Chromium (version matching the Playwright bundle, or `/usr/bin/chromium` on Pi5)
 - App running: `npm run dev` (or deployed URL over HTTPS)
-- Both hardware rigs connected and verified: `../hil-preflight/preflight.sh`
+- Both hardware rigs connected and verified: `../../hil-preflight/preflight.sh`
 
 ---
 
@@ -70,7 +70,7 @@ Wiring: TX→RX shorted, RTS→CTS shorted, DTR→DSR shorted.
 
 ```bash
 # Unbind the kernel driver so Chromium can claim the device
-../ftdi-rebind-scripts/ftdi-unbind 0403:6015
+../../ftdi-unbind/macos-linux/ftdi-unbind 0403:6015
 ```
 
 ### Steps
@@ -94,7 +94,7 @@ Wiring: TX→RX shorted, RTS→CTS shorted, DTR→DSR shorted.
 
 ```bash
 # Rebind the kernel driver
-../ftdi-rebind-scripts/ftdi-bind 0403:6015
+../../ftdi-unbind/macos-linux/ftdi-bind 0403:6015
 ```
 
 ---

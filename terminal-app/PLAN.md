@@ -273,7 +273,7 @@ swapping which factory is registered in the app composition root.
 ### Sub-steps
 
 1. **Add dependency**
-   - `npm install file:../ftdi-webusb-driver` (or whatever path matches your
+   - `npm install file:../ftdi-driver` (or whatever path matches your
      workspace layout — adjust if Claude Code's VM has them elsewhere)
    - Verify the library's types are visible in your TS setup
 
@@ -640,7 +640,7 @@ Apache or nginx server with no Node.js required.
   `/var/www/` does not exist on the lab VM. Manual step required before the
   app is reachable to students.
 - Git push is pending SSH key configuration for the remote at
-  `git@gitlab.compelcon.se`.
+  `<git origin>`.
 
 ### Commits (actual)
 

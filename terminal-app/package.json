@@ -12,7 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "pretest:hw": "bash ../hil-preflight/preflight.sh",
+    "pretest:hw": "bash ../../hil-preflight/preflight.sh",
     "test:hw": "TERMINAL_HW_TEST=1 playwright test",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . --ext .ts,.vue",
@@ -22,7 +22,7 @@
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
-    "ftdi-webusb-driver": "file:../ftdi-webusb-driver",
+    "ftdi-webusb-driver": "file:../ftdi-driver",
     "vue": "^3.5.34"
   },
   "devDependencies": {

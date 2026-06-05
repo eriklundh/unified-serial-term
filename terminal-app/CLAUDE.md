@@ -43,8 +43,9 @@ non-FTDI boards or for students who haven't bound WinUSB yet.
 
 ## Relationship to the `ftdi-webusb-driver` library
 
-This app depends on `ftdi-webusb-driver`. During development the dependency is
-`file:../ftdi-webusb-driver` (or `npm link`). For production it's a fixed
+This app depends on `ftdi-webusb-driver` (the library in the sibling
+`ftdi-driver/` directory). During development the dependency is
+`file:../ftdi-driver` (or `npm link`). For production it's a fixed
 version from a registry once published.
 
 Both backends present the **same shape** to the rest of the app: a
@@ -60,7 +61,7 @@ library repo first. This app never reaches into FTDI internals.
 
 ## Operating principles (non-negotiable)
 
-Same as the library repo:
+Same as the library component:
 
 1. **Test-First.** Every behavioural change starts with a failing
    test. Pure modules (backend abstraction, settings persistence,
@@ -68,8 +69,8 @@ Same as the library repo:
    before the implementation.
 2. **Small commits, pushed immediately.** One logical step per commit.
    Push to `origin` after **every commit** — do not batch. This project
-   is worked on across multiple hardware environments (agentlab1,
-   picotester Pi5, etc.); any unpushed commit is stranded on one machine
+   is worked on across multiple hardware environments (a dev VM, a
+   Raspberry Pi test host, etc.); any unpushed commit is stranded on one machine
    and causes branch divergence when you switch. If the remote is
    temporarily unreachable, note it explicitly and push at the first
    opportunity. Never stop a session with unpushed commits.
@@ -103,8 +104,8 @@ Same as the library repo:
 The lab VM where Claude Code runs:
 
 - **Debian 13 (Trixie)**
-- **External IP** `194.14.84.44` reachable as `serial-lab.test.delivery-academy.se`
-  (wildcard DNS `*.test.delivery-academy.se` → `194.14.84.44`)
+- **External IP** `<deploy-host-ip>` reachable as `<deploy-host>`
+  (wildcard DNS `*.<deploy-domain>` → `<deploy-host-ip>`)
 - **Privileged user** has `NOPASSWD: ALL` in `/etc/sudoers.d/`, so
   `sudo` runs non-interactively. Use sudo only where it's actually
   needed (web-server config, ufw, certbot, writes under `/var/www/`,
@@ -118,7 +119,7 @@ by Playwright smoke tests.
 
 ## Commit message convention
 
-Same format as the library repo:
+Same format as the library component:
 
 ```
 <type>(<scope>): <imperative subject ≤ 60 chars>
@@ -168,7 +169,7 @@ graph genuinely demands it. Vue's `ref`, `computed`, and
    token-conserving habits, VS Code Remote-SSH workflow. Read once at
    the start of any session.
 3. `PLAN.md` — the phased plan
-4. The sibling `ftdi-webusb-driver` repo's `CLAUDE.md` for shared conventions
+4. The sibling `ftdi-driver/` directory's `CLAUDE.md` for shared conventions
    and the library's API
 5. zaxbux/web-serial-console — as **reference reading** before Phase 0,
    to see how they structured the Vue components and the connection

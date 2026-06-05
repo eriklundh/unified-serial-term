@@ -14,7 +14,7 @@ integration tests against the real FT231XS loopback plug.
 | HIL standard | `npm run test:hw` | FTDI loopback plug | `FTDI_HW_TEST=1` |
 | HIL + modem | `FTDI_HW_MODEM=1 npm run test:hw` | FTDI plug w/ modem jumpers | `FTDI_HW_TEST=1 FTDI_HW_MODEM=1` |
 
-`npm run test:hw` automatically runs `../hil-preflight/preflight.sh` before
+`npm run test:hw` automatically runs `../../hil-preflight/preflight.sh` before
 Vitest starts. If the device is absent the suite exits immediately.
 
 ---
@@ -34,11 +34,11 @@ None. `npm install` is sufficient.
    - DTR shorted to DSR — required for modem truth-table (`FTDI_HW_MODEM=1`)
 3. Kernel driver unbound before the run:
    ```
-   ../ftdi-rebind-scripts/ftdi-unbind 0403:6015
+   ../../ftdi-unbind/macos-linux/ftdi-unbind 0403:6015
    ```
 4. After the run, rebind:
    ```
-   ../ftdi-rebind-scripts/ftdi-bind 0403:6015
+   ../../ftdi-unbind/macos-linux/ftdi-bind 0403:6015
    ```
 
 ---

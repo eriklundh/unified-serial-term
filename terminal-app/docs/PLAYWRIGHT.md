@@ -416,7 +416,7 @@ Your Windows laptop
 ├── Claude Code (desktop app or CLI)
 ├── @playwright/mcp server  ← Claude talks to this
 └── Chromium (launched by MCP server)
-    └── https://serial-lab.test.delivery-academy.se
+    └── https://<deploy-host>
         └── WebUSB / Web Serial → USB device
 ```
 
@@ -533,7 +533,7 @@ Write hardware-dependent tests with the tag in the test name:
 
 ```ts
 test('@hardware Web Serial — bytes from FT231XS appear in terminal', async ({ page }) => {
-  await page.goto('https://serial-lab.test.delivery-academy.se/')
+  await page.goto('https://<deploy-host>/')
   // Claude clicks Connect, you grant the picker, Claude observes
   await page.getByRole('button', { name: /connect/i }).click()
   // ↑ triggers the picker — you must click the device in the dialog
@@ -619,7 +619,7 @@ continue; it does not recur.
 
 ### Connecting to the deployed app vs. the dev server
 
-The deployed app at `https://serial-lab.test.delivery-academy.se/`
+The deployed app at `https://<deploy-host>/`
 is a valid secure context (HTTPS), so Web Serial and WebUSB are
 available. You do not need to run the dev server locally on your
 laptop for hardware tests.

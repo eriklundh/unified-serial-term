@@ -7,8 +7,8 @@ status of each phase, and what must be read or re-executed next.
 
 ## What changed
 
-A `TEST-PLAN.md` was added to this repo alongside the `terminal-app/TEST-PLAN.md`
-and the root `TEST-PLAN.md`. These files document the authoritative acceptance
+A `TEST-PLAN.md` was added to this component alongside the
+`../terminal-app/TEST-PLAN.md` and the root `TEST-PLAN.md`. These files document the authoritative acceptance
 criteria for all test tiers. No phase content in `PLAN.md` changed.
 
 ---
@@ -32,9 +32,9 @@ criteria for all test tiers. No phase content in `PLAN.md` changed.
 ### Phase 9 verification (run at any time to confirm still-green)
 
 ```bash
-../ftdi-rebind-scripts/ftdi-unbind 0403:6015
+../../ftdi-unbind/macos-linux/ftdi-unbind 0403:6015
 FTDI_HW_TEST=1 FTDI_HW_MODEM=1 npm run test:hw    # 14/14 must pass
-../ftdi-rebind-scripts/ftdi-bind 0403:6015
+../../ftdi-unbind/macos-linux/ftdi-bind 0403:6015
 npm test                                            # 89/89 must pass
 npm run typecheck
 npm run lint

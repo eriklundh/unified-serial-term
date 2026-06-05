@@ -44,7 +44,7 @@ Additionally:
 **Outstanding Phase 8 items (require external access):**
 
 - nginx not yet configured on lab VM; `/var/www/` does not exist; deploy pending
-- SSH key not confirmed for `git@gitlab.compelcon.se`; `git push origin main` and `git push origin v0.1.0` pending
+- SSH key not confirmed for `<git origin>`; `git push origin main` and `git push origin v0.1.0` pending
 
 ---
 

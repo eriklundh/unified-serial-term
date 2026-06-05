@@ -34,7 +34,7 @@ below.
     kernel driver unbound so Chromium can claim it (Linux only; on
     Windows bind WinUSB with Zadig once).
 - A secure-context URL: the deployed app
-  (`https://serial-lab.test.delivery-academy.se/`) or a local
+  (`https://<deploy-host>/`) or a local
   `http://localhost:5173` dev server.
 
 > **Why loopback rigs make this work:** both devices reflect every byte

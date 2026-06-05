@@ -100,9 +100,9 @@ To unbind without a persistent rule (testing only):
 
 ```bash
 # From this repo's parent:
-../ftdi-rebind-scripts/ftdi-unbind 0403:6015
+../../ftdi-unbind/macos-linux/ftdi-unbind 0403:6015
 # Rebind after:
-../ftdi-rebind-scripts/ftdi-bind 0403:6015
+../../ftdi-unbind/macos-linux/ftdi-bind 0403:6015
 ```
 
 ### Web Serial

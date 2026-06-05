@@ -19,8 +19,9 @@ The preflight verifies both the Pico CDC rig and the FTDI loopback plug before
 Vitest starts. If either device is missing the run exits immediately with a clear
 hardware error.
 
-Requires `../hil-preflight/` to be cloned alongside this repo (standard layout
-under `unified-serial-terminal/`).
+Requires the `hil-preflight` repo to be cloned alongside the
+`unified-serial-term` repo, so it resolves at `../../hil-preflight/` from
+this component.
 
 ## Running
 

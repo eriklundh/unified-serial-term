@@ -2,13 +2,13 @@
 #
 # fetch-build-deploy.sh — update, build, and publish the terminal-app.
 #
-# This script runs ON the deploy host (agentlab1), where the web server and
+# This script runs ON the deploy host, where the web server and
 # the repo checkout both live. A developer working on another machine (e.g. a
 # Windows laptop) triggers it over SSH *after* a local test-and-fix cycle has
 # been committed and pushed:
 #
-#     ssh eriklundh@serial-lab.test.delivery-academy.se \
-#         'bash ~/unified-serial-terminal/terminal-app/script/fetch-build-deploy.sh'
+#     ssh <deploy-user>@<deploy-host> \
+#         'bash ~/unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
 #
 # The SSH channel is only ever used to invoke this script — never to run ad-hoc
 # remote commands. Everything the deploy needs is captured here, committed, and
@@ -20,7 +20,7 @@
 #      take effect on the same trigger).
 #   3. Reproducible install + production build (static dist/, no runtime). The
 #      build's prebuild hook (script/ensure-driver-built.mjs) auto-builds the
-#      sibling ftdi-webusb-driver if its dist/ is missing or stale, so no manual
+#      sibling ftdi-driver if its dist/ is missing or stale, so no manual
 #      driver build is needed.
 #   4. Publish the static bundle to the target site's web root.
 #   5. Verify the site answers 200 over HTTPS.
@@ -33,7 +33,7 @@
 # identical content.
 #
 # Environment knobs:
-#   TERMINAL_APP_DIR   Override the repo path (default: ~/unified-serial-terminal/terminal-app)
+#   TERMINAL_APP_DIR   Override the repo path (default: ~/unified-serial-term/terminal-app)
 #   DRY_RUN=1          Do everything except touch the live web root (safe first run)
 #
 # Usage:
@@ -53,7 +53,7 @@ SELF="$(readlink -f "$0")"
 TARGET="${1:-serial-lab}"
 case "$TARGET" in
   serial-lab)
-    SITE_HOST="serial-lab.test.delivery-academy.se"
+    SITE_HOST="<deploy-host>"
     WEBROOT="/var/www/serial-terminal"
     ;;
   # Add the second publish target here once its URL and web root are known:
@@ -68,7 +68,7 @@ case "$TARGET" in
 esac
 
 BRANCH="${DEPLOY_BRANCH:-main}"
-REPO_DIR="${TERMINAL_APP_DIR:-$HOME/unified-serial-terminal/terminal-app}"
+REPO_DIR="${TERMINAL_APP_DIR:-$HOME/unified-serial-term/terminal-app}"
 
 # --- Helpers -----------------------------------------------------------------
 log()  { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
@@ -103,7 +103,7 @@ DEPLOY_SUBJECT="$(git log -1 --pretty=%s)"
 # build host; the published bundle needs no runtime — a plain web server
 # (nginx/apache) serves it. `npm ci` installs against the committed lockfile.
 #
-# terminal-app imports `ftdi-webusb-driver` (a `file:../ftdi-webusb-driver`
+# terminal-app imports `ftdi-webusb-driver` (a `file:../ftdi-driver`
 # dependency) whose entry points resolve to its built dist/. `npm run build`
 # runs a prebuild hook that builds that sibling on demand if its dist/ is
 # missing or stale — so this script needs no separate driver-build step and

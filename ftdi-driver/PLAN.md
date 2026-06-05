@@ -374,7 +374,7 @@ Branch: `phase/10-release`
 - API.md generated from TSDoc comments (use `typedoc`).
 - An `examples/minimal.html` that opens a device and prints incoming
   bytes to the dev console. This is a sanity smoke-test, not the full
-  terminal app (that lives in the `terminal-app` repo).
+  terminal app (that lives in the sibling `terminal-app/` directory).
 - CHANGELOG.md.
 - Version bump to `0.1.0`. Tag `v0.1.0`. Push tag.
 

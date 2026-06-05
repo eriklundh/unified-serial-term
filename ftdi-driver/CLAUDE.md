@@ -13,8 +13,9 @@ the device, this library reproduces the chip's serial functionality entirely
 in JavaScript over WebUSB, so the same WinUSB binding can serve both JTAG
 (via separate code) and UART access — no driver swapping in the lab.
 
-A companion repo (`terminal-app`) builds an xterm.js-based browser
-terminal on top of this library. This repo is **library-only**.
+A companion component (`terminal-app/`, a sibling directory in this
+repo) builds an xterm.js-based browser terminal on top of this library.
+This directory is **library-only**.
 
 ## Operating principles (non-negotiable)
 
@@ -22,8 +23,8 @@ terminal on top of this library. This repo is **library-only**.
    test. No production code is written without a red test that demands it.
 2. **Small commits, pushed immediately.** One logical step per commit.
    Push to `origin` after **every commit** — do not batch. This project
-   is worked on across multiple hardware environments (agentlab1,
-   picotester Pi5, etc.); any unpushed commit is stranded on one machine
+   is worked on across multiple hardware environments (a dev VM, a
+   Raspberry Pi test host, etc.); any unpushed commit is stranded on one machine
    and causes branch divergence when you switch. If the remote is
    temporarily unreachable, note it explicitly and push at the first
    opportunity. Never stop a session with unpushed commits.

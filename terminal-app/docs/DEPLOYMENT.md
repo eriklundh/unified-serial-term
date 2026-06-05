@@ -64,7 +64,7 @@ If the lab server serves this over plain HTTP from anywhere other than
 backend selector shows "no backends available." Students will not be
 able to connect to anything.
 
-The lab VM at `serial-lab.test.delivery-academy.se` is set up with a
+The lab VM at `<deploy-host>` is set up with a
 Let's Encrypt cert and an HTTP-to-HTTPS redirect — see
 `docs/LAB-SERVER-SETUP.md` for the one-time provisioning. Don't try to
 work around HTTPS; the browsers won't let you.
@@ -83,10 +83,10 @@ server {
     listen 443 ssl;
     listen [::]:443 ssl;
     http2 on;
-    server_name serial-lab.test.delivery-academy.se;
+    server_name <deploy-host>;
 
-    ssl_certificate     /etc/letsencrypt/live/serial-lab.test.delivery-academy.se/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/serial-lab.test.delivery-academy.se/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/<deploy-host>/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/<deploy-host>/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
@@ -113,7 +113,7 @@ server {
 server {
     listen 80;
     listen [::]:80;
-    server_name serial-lab.test.delivery-academy.se;
+    server_name <deploy-host>;
     return 301 https://$host$request_uri;
 }
 ```
@@ -132,12 +132,12 @@ root is:
 
 ```apache
 <VirtualHost *:443>
-    ServerName serial-lab.test.delivery-academy.se
+    ServerName <deploy-host>
     DocumentRoot /var/www/serial-terminal
 
     SSLEngine on
-    SSLCertificateFile      /etc/letsencrypt/live/serial-lab.test.delivery-academy.se/fullchain.pem
-    SSLCertificateKeyFile   /etc/letsencrypt/live/serial-lab.test.delivery-academy.se/privkey.pem
+    SSLCertificateFile      /etc/letsencrypt/live/<deploy-host>/fullchain.pem
+    SSLCertificateKeyFile   /etc/letsencrypt/live/<deploy-host>/privkey.pem
 
     <Directory /var/www/serial-terminal/>
         Require all granted
@@ -158,8 +158,8 @@ root is:
 </VirtualHost>
 
 <VirtualHost *:80>
-    ServerName serial-lab.test.delivery-academy.se
-    Redirect permanent / https://serial-lab.test.delivery-academy.se/
+    ServerName <deploy-host>
+    Redirect permanent / https://<deploy-host>/
 </VirtualHost>
 ```
 
@@ -170,9 +170,9 @@ Enable: `sudo a2enmod rewrite headers ssl` and `sudo a2ensite serial-terminal`.
 Because `vite.config.ts` uses `base: './'`, the same `dist/` works at
 any path on any host:
 
-- `https://serial-lab.test.delivery-academy.se/` — drop into the document root
-- `https://serial-lab.test.delivery-academy.se/serial-terminal/` — drop into a subfolder
-- `https://serial-lab.test.delivery-academy.se/courses/embedded-101/tools/serial/` — same
+- `https://<deploy-host>/` — drop into the document root
+- `https://<deploy-host>/serial-terminal/` — drop into a subfolder
+- `https://<deploy-host>/courses/embedded-101/tools/serial/` — same
 
 No rebuild needed when you move it. The HTML references its sibling
 assets relatively, so they're found wherever the HTML is served from.
@@ -196,7 +196,7 @@ sudo chown -R www-data:www-data /var/www/serial-terminal
 
 # Option B — Claude Code runs on a separate dev VM, pushing to the lab VM:
 rsync -avz --delete dist/ \
-    user@serial-lab.test.delivery-academy.se:/var/www/serial-terminal/
+    user@<deploy-host>:/var/www/serial-terminal/
 ```
 
 That's the whole deploy. No npm install on the target, no Node.js, no
@@ -247,7 +247,7 @@ the university public URL never needs an app server. Don't add anything to
 the serve path that assumes Node.
 
 **The sibling driver is built on demand.** terminal-app imports
-`ftdi-webusb-driver` (a `file:../ftdi-webusb-driver` dependency) whose entry
+`ftdi-webusb-driver` (a `file:../ftdi-driver` dependency) whose entry
 points resolve to its built `dist/`. `npm run build` (and `npm run dev`) runs
 a `prebuild`/`predev` hook — `script/ensure-driver-built.mjs` — that builds
 the sibling automatically when its `dist/` is **missing or stale** (any
@@ -260,45 +260,44 @@ The manual build is still available as a fallback (e.g. to pre-warm the host
 or debug a driver build in isolation):
 
 ```bash
-cd ~/unified-serial-terminal/ftdi-webusb-driver && npm ci && npm run build
+cd ~/unified-serial-term/ftdi-driver && npm ci && npm run build
 ```
 
-The auto-build is skipped entirely when `../ftdi-webusb-driver` isn't present
+The auto-build is skipped entirely when `../ftdi-driver` isn't present
 (e.g. CI building against a published registry version).
 
 **Internal specifics (this lab).**
 
-- Deploy host: reachable **only** at
-  `eriklundh@serial-lab.test.delivery-academy.se` (SSH, certificate auth).
-  Its internal VM name is `agentlab1`, which is *not* routable from the
-  dev/lab network — always connect via the public FQDN, never by VM name.
-- Collection root on the host: `~/unified-serial-terminal` — holds
-  `terminal-app` plus its sibling `ftdi-webusb-driver`. The driver only needs
-  to be *present*; the build auto-builds it on demand (see above).
-- Default target `serial-lab` → web root `/var/www/serial-terminal`, served
-  at `https://serial-lab.test.delivery-academy.se/`.
+- Deploy host: reachable **only** at `<deploy-user>@<deploy-host>` (SSH,
+  certificate auth). Its internal VM name is not routable from the dev/lab
+  network — always connect via the public FQDN, never by VM name.
+- Repo checkout on the host: `~/unified-serial-term` — its `terminal-app/`
+  and `ftdi-driver/` subdirectories. The driver only needs to be *present*;
+  the build auto-builds it on demand (see above).
+- Default target alias → web root `/var/www/serial-terminal`, served
+  at `https://<deploy-host>/`.
 
 Trigger a deploy after pushing to `main`:
 
 ```bash
-ssh eriklundh@serial-lab.test.delivery-academy.se \
-    'bash ~/unified-serial-terminal/terminal-app/script/fetch-build-deploy.sh'
+ssh <deploy-user>@<deploy-host> \
+    'bash ~/unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
 ```
 
 First-time or cautious run (builds, but writes nothing to the live site):
 
 ```bash
-ssh eriklundh@serial-lab.test.delivery-academy.se \
-    'DRY_RUN=1 bash ~/unified-serial-terminal/terminal-app/script/fetch-build-deploy.sh'
+ssh <deploy-user>@<deploy-host> \
+    'DRY_RUN=1 bash ~/unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
 ```
 
 ## 7. Verification checklist after deploy
 
-- [ ] `curl -I https://serial-lab.test.delivery-academy.se/` returns 200 and
+- [ ] `curl -I https://<deploy-host>/` returns 200 and
       `content-type: text/html`
-- [ ] `curl -I https://serial-lab.test.delivery-academy.se/assets/index-*.js`
+- [ ] `curl -I https://<deploy-host>/assets/index-*.js`
       returns 200 and `content-type: application/javascript`
-- [ ] `curl -I http://serial-lab.test.delivery-academy.se/` returns
+- [ ] `curl -I http://<deploy-host>/` returns
       301 → https (the redirect from `LAB-SERVER-SETUP.md` step 6)
 - [ ] Browser DevTools console is clean on page load (no 404s, no
       CORS errors, no mixed content warnings)

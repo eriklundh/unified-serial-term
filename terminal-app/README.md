@@ -128,8 +128,8 @@ No code was copied; all lines in this repo were written from scratch under TDD
 discipline.
 
 The FTDI USB backend uses the
-[ftdi-webusb-driver](../ftdi-webusb-driver/README.md) library developed
-alongside this app.
+[ftdi-webusb-driver](../ftdi-driver/README.md) library developed
+alongside this app (the sibling `ftdi-driver/` directory).
 
 ---
 

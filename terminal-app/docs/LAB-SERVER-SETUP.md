@@ -7,9 +7,9 @@ deploy procedure.
 
 ## Target environment
 
-- **VM:** Debian 13 (Trixie), external IP `194.14.84.44`
-- **Hostname:** `serial-lab.test.delivery-academy.se`
-- **DNS:** `*.test.delivery-academy.se` already wildcard-points at the VM
+- **VM:** Debian 13 (Trixie), external IP `<deploy-host-ip>`
+- **Hostname:** `<deploy-host>`
+- **DNS:** `*.<deploy-domain>` already wildcard-points at the VM
 - **Web server:** nginx
 - **TLS:** Let's Encrypt (HTTP-01 challenge, single-hostname cert)
 - **Firewall:** ufw
@@ -20,16 +20,16 @@ deploy procedure.
 
 ```bash
 # DNS resolves to the right IP
-dig +short serial-lab.test.delivery-academy.se
-# expected: 194.14.84.44
+dig +short <deploy-host>
+# expected: <deploy-host-ip>
 
 # Sudo works without prompting
 sudo -n true && echo OK
 # expected: OK
 
 # Ports 80 and 443 reachable from outside (test from another host)
-nc -zv 194.14.84.44 80
-nc -zv 194.14.84.44 443
+nc -zv <deploy-host-ip> 80
+nc -zv <deploy-host-ip> 443
 # expected: connection succeeds (or "Connection refused" if nothing's
 # listening yet — that's fine; "filtered" or "timeout" is the bad one,
 # meaning the external firewall blocks the port)
@@ -126,7 +126,7 @@ sudo tee /etc/nginx/sites-available/serial-terminal >/dev/null <<'NGINX'
 server {
     listen 80;
     listen [::]:80;
-    server_name serial-lab.test.delivery-academy.se;
+    server_name <deploy-host>;
 
     root /var/www/serial-terminal;
     index index.html;
@@ -148,10 +148,10 @@ sudo systemctl reload nginx
 From a different machine (your workstation, not the VM):
 
 ```bash
-curl -I http://serial-lab.test.delivery-academy.se/
+curl -I http://<deploy-host>/
 # expected: 200 OK
 
-curl -s http://serial-lab.test.delivery-academy.se/ | grep -i smoke
+curl -s http://<deploy-host>/ | grep -i smoke
 # expected: <title>Serial terminal — smoke test</title>
 ```
 
@@ -169,8 +169,8 @@ next step makes them available.
 ## 6. Get the Let's Encrypt cert
 
 ```bash
-sudo certbot --nginx -d serial-lab.test.delivery-academy.se \
-  --email YOUR-EMAIL@delivery-academy.se \
+sudo certbot --nginx -d <deploy-host> \
+  --email YOUR-EMAIL@<deploy-domain> \
   --agree-tos --redirect --no-eff-email
 ```
 
@@ -178,7 +178,7 @@ Flags explained:
 
 - `--nginx`: use the nginx authenticator + installer (rewrites the
   site config automatically)
-- `-d serial-lab.test.delivery-academy.se`: issue a cert for this name
+- `-d <deploy-host>`: issue a cert for this name
 - `--email ...`: where Let's Encrypt sends renewal-failure warnings
 - `--agree-tos`: accept Let's Encrypt TOS non-interactively
 - `--redirect`: rewrite the site config so HTTP redirects to HTTPS
@@ -195,22 +195,22 @@ set of names per week. While iterating, use `--staging` to get the
 wiring right without burning quota:
 
 ```bash
-sudo certbot --nginx --staging -d serial-lab.test.delivery-academy.se \
-  --email YOUR-EMAIL@delivery-academy.se --agree-tos --redirect --no-eff-email
+sudo certbot --nginx --staging -d <deploy-host> \
+  --email YOUR-EMAIL@<deploy-domain> --agree-tos --redirect --no-eff-email
 # Verify everything works (browser will warn about cert; that's fine)
-sudo certbot delete --cert-name serial-lab.test.delivery-academy.se
+sudo certbot delete --cert-name <deploy-host>
 # Then issue the real one:
-sudo certbot --nginx -d serial-lab.test.delivery-academy.se \
-  --email YOUR-EMAIL@delivery-academy.se --agree-tos --redirect --no-eff-email
+sudo certbot --nginx -d <deploy-host> \
+  --email YOUR-EMAIL@<deploy-domain> --agree-tos --redirect --no-eff-email
 ```
 
 ## 7. Verify HTTPS works end-to-end
 
 ```bash
-curl -I https://serial-lab.test.delivery-academy.se/
+curl -I https://<deploy-host>/
 # expected: 200 OK
 
-curl -I http://serial-lab.test.delivery-academy.se/
+curl -I http://<deploy-host>/
 # expected: 301 Moved Permanently → https://...
 ```
 
@@ -297,12 +297,12 @@ add_header Strict-Transport-Security "max-age=31536000" always;
 ```
 
 Don't add `includeSubDomains` unless you're prepared to commit *every*
-subdomain of `test.delivery-academy.se` to HTTPS forever, including
+subdomain of `<deploy-domain>` to HTTPS forever, including
 ones you haven't created yet.
 
 ## 10. Alternative: wildcard cert via DNS-01
 
-Since you have `*.test.delivery-academy.se` wildcarded at the VM, you
+Since you have `*.<deploy-domain>` wildcarded at the VM, you
 could get a single wildcard cert covering every subdomain at once.
 This requires DNS-01 challenges, which need API access to your DNS
 provider so certbot can create temporary TXT records.
@@ -328,11 +328,11 @@ sudo tail -f /var/log/nginx/error.log
 sudo tail -f /var/log/letsencrypt/letsencrypt.log
 
 # Cert files (don't move these — certbot expects this layout for renewal)
-sudo ls /etc/letsencrypt/live/serial-lab.test.delivery-academy.se/
+sudo ls /etc/letsencrypt/live/<deploy-host>/
 
 # Test the cert chain
-echo | openssl s_client -servername serial-lab.test.delivery-academy.se \
-  -connect serial-lab.test.delivery-academy.se:443 2>/dev/null \
+echo | openssl s_client -servername <deploy-host> \
+  -connect <deploy-host>:443 2>/dev/null \
   | openssl x509 -noout -dates -subject -issuer
 ```
 

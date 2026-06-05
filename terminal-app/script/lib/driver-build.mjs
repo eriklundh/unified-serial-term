@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 
-// Pure helpers for deciding whether the sibling ftdi-webusb-driver needs
+// Pure helpers for deciding whether the sibling ftdi-driver needs
 // (re)building. terminal-app imports the driver as a `file:` dependency whose
 // package entry points resolve to its built dist/ (.js + .d.ts). If that build
 // is missing or stale, terminal-app's own build fails with a "cannot find
