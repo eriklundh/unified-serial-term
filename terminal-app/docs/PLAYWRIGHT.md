@@ -396,12 +396,124 @@ Remote-SSH + X forwarding or a VNC session):
 npx playwright test --ui
 ```
 
+## Playwright MCP on Windows (real hardware, Claude-driven)
+
+The Pi5 section above covers automated CI-style tests with mocked
+APIs. This section covers a different workflow: using the Playwright
+MCP server to let Claude Code drive a **real browser on your Windows
+laptop** against the deployed app, with real USB devices connected.
+
+### How it works
+
+The Playwright MCP server runs on the **same machine as Claude Code**.
+To reach a browser that has access to your laptop's USB ports, Claude
+Code itself must run on your laptop — either the Claude Code desktop
+app or the CLI. The lab server's Claude Code instance cannot reach a
+browser on a different machine.
+
+```
+Your Windows laptop
+├── Claude Code (desktop app or CLI)
+├── @playwright/mcp server  ← Claude talks to this
+└── Chromium (launched by MCP server)
+    └── https://serial-lab.test.delivery-academy.se
+        └── WebUSB / Web Serial → USB device
+```
+
+### Setup (one-time, on your Windows laptop)
+
+```powershell
+# 1. Install the MCP server
+npm install -g @playwright/mcp
+
+# 2. Install Playwright's Chromium bundle
+npx playwright install chromium
+
+# 3. Register the server in Claude Code
+claude mcp add playwright -- npx @playwright/mcp --headed
+```
+
+The `--headed` flag is mandatory for hardware testing: it launches a
+visible browser window so you can see every action Claude takes and
+intervene at any point.
+
+### The permission boundary — what you must do yourself
+
+Web Serial and WebUSB enforce that the device picker can only open in
+response to a real user gesture. Even in a Playwright-controlled
+session, Chromium will show the OS-level picker dialog and wait for a
+human click. Claude cannot select a device programmatically.
+
+Workflow:
+
+1. Claude navigates to the app, selects the backend, configures
+   settings, and clicks Connect.
+2. **You click Allow / select the device** in the picker dialog.
+3. Claude observes the terminal, asserts on output, types commands,
+   etc.
+
+This is the natural break point: Claude sets up and observes; you own
+the hardware grant.
+
+### Risk profile
+
+| Concern | Mitigation |
+|---------|------------|
+| Claude accesses saved browser passwords / sessions | MCP server launches a **fresh isolated Chromium profile**, not your regular Chrome |
+| Claude takes unexpected browser actions | Run `--headed`; you see every action in real time and can close the window |
+| Claude sends unexpected bytes to hardware | Real serial/USB commands go through your port grant — only possible after you approved the picker. Add "observe only, don't type into the terminal" to your prompt if you want to be explicit |
+| MCP server accesses your filesystem | `@playwright/mcp` only exposes browser control tools — no shell, no file reads |
+
+### Tagging real-hardware tests
+
+The playwright config already excludes tests tagged `@hardware` unless
+`TERMINAL_HW_TEST=1` is set:
+
+```ts
+// playwright.config.ts
+...(!HW_TEST && { grep: /^(?!.*@hardware)/ })
+```
+
+Write hardware-dependent tests with the tag in the test name:
+
+```ts
+test('@hardware Web Serial — bytes from FT231XS appear in terminal', async ({ page }) => {
+  await page.goto('https://serial-lab.test.delivery-academy.se/')
+  // Claude clicks Connect, you grant the picker, Claude observes
+  await page.getByRole('button', { name: /connect/i }).click()
+  // ↑ triggers the picker — you must click the device in the dialog
+  await expect(page.locator('.xterm-rows')).toContainText('>', { timeout: 10_000 })
+})
+```
+
+Run hardware tests from the Claude Code session on your laptop:
+
+```powershell
+$env:TERMINAL_HW_TEST=1; npx playwright test --headed
+```
+
+Or ask Claude Code (running on your laptop) to run them via the
+Playwright MCP server — it will drive the browser and pause for your
+input at the device picker.
+
+### Connecting to the deployed app vs. the dev server
+
+The deployed app at `https://serial-lab.test.delivery-academy.se/`
+is a valid secure context (HTTPS), so Web Serial and WebUSB are
+available. You do not need to run the dev server locally on your
+laptop for hardware tests.
+
+The Pi5 `localhost` requirement only applies when running tests against
+the dev server in a headless environment; it does not apply here.
+
 ## What we don't test with Playwright
 
-- **Real WebUSB device communication.** The library's `test-hw/` suite
-  covers this from Node-side via the library's `MockUsbTransport`.
-  Real-hardware browser testing is manual: open the deployed app in
-  Chromium, click Connect, plug in the FT231XS, verify byte flow.
+- **Real WebUSB device communication in CI.** The library's `test-hw/`
+  suite covers this from Node-side via the library's `MockUsbTransport`.
+  Real-hardware browser testing uses the Playwright MCP approach
+  described above — Claude drives the browser, you grant the device
+  picker, Claude observes. This is not CI-runnable (no physical device),
+  but it is Claude-assisted rather than purely manual.
 - **Cross-browser behaviour.** WebUSB and Web Serial are Chromium-only
   in 2026. No point running these tests in Firefox or WebKit; they'd
   all fail at the availability check.
