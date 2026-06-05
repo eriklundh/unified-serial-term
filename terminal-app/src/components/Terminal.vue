@@ -106,6 +106,8 @@ onUnmounted(() => {
   void reader?.cancel() // fire-and-forget; component is destroyed
   writer?.releaseLock()
 })
+
+defineExpose({ focus: () => terminal?.focus() })
 </script>
 
 <style scoped>

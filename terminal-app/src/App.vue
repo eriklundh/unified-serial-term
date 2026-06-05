@@ -96,6 +96,7 @@
             v-model="settings.localEcho"
             data-testid="echo-checkbox"
             type="checkbox"
+            @change="terminalRef?.focus()"
           >
           <span>Echo</span>
         </label>
@@ -111,6 +112,7 @@
     </header>
     <main class="terminal-pane">
       <Terminal
+        ref="terminalRef"
         :readable="activeReadable ?? undefined"
         :writable="activeWritable ?? undefined"
         :local-echo="settings.localEcho"
@@ -131,6 +133,7 @@ import type { BackendId, SerialBackend } from './backends/SerialBackend'
 
 const BAUD_RATES = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
 
+const terminalRef = ref<InstanceType<typeof Terminal> | null>(null)
 const factories = inject(FACTORIES_KEY, [])
 const selectedId = ref<BackendId | null>(resolveFactory(factories)?.id ?? null)
 

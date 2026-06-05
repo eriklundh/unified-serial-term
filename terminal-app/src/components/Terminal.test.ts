@@ -9,6 +9,7 @@ vi.mock('@xterm/xterm', () => {
     loadAddon: vi.fn(),
     write: vi.fn(),
     onData: vi.fn(),
+    focus: vi.fn(),
   }))
   return { Terminal }
 })
@@ -185,6 +186,18 @@ describe('Terminal.vue', () => {
 
     const instance = (XTerm as ReturnType<typeof vi.fn>).mock.results[0]!.value
     expect(instance.write).not.toHaveBeenCalled()
+  })
+
+  // ── focus() ──────────────────────────────────────────────────────────────────
+
+  it('exposes focus() which delegates to xterm terminal.focus()', async () => {
+    const { Terminal: XTerm } = await import('@xterm/xterm')
+    const wrapper = mount(Terminal, { attachTo: document.body })
+    const instance = (XTerm as ReturnType<typeof vi.fn>).mock.results[0]!.value
+
+    wrapper.vm.focus()
+
+    expect(instance.focus).toHaveBeenCalledOnce()
   })
 
   // ── disconnect event ─────────────────────────────────────────────────────────
