@@ -1,0 +1,41 @@
+default:
+  image: node:22-alpine
+  cache:
+    key:
+      files:
+        - package-lock.json
+    paths:
+      - node_modules/
+
+stages:
+  - verify
+  - build
+
+install:
+  stage: .pre
+  script:
+    - npm ci
+
+lint:
+  stage: verify
+  script:
+    - npm run lint
+
+typecheck:
+  stage: verify
+  script:
+    - npm run typecheck
+
+test:
+  stage: verify
+  script:
+    - npm test
+
+build:
+  stage: build
+  script:
+    - npm run build
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
