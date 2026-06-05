@@ -10,11 +10,17 @@ type Fixtures = {
   pairedPage: Page
 }
 
+/** Open the settings drawer (serial + appearance controls live there). */
+export async function openSettings(page: Page): Promise<void> {
+  await page.locator('[data-testid="settings-btn"]').click()
+}
+
 export const test = base.extend<Fixtures>({
   mockedPage: async ({ page }, use) => {
     await installMockSerial(page)
     await installMockUsb(page)
     await page.goto('/')
+    await openSettings(page)
     await use(page)
   },
 
@@ -22,6 +28,7 @@ export const test = base.extend<Fixtures>({
     await installMockSerial(page, { paired: true })
     await installMockUsb(page, { paired: true })
     await page.goto('/')
+    await openSettings(page)
     await use(page)
   },
 })

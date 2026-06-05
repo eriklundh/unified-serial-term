@@ -82,5 +82,11 @@ export function useSettings() {
     settings.value = { ...DEFAULTS }
   }
 
-  return { settings, reset }
+  /** Re-read from localStorage (e.g. after importing a settings file). */
+  function reload() {
+    skipNextSave = true
+    settings.value = load()
+  }
+
+  return { settings, reset, reload }
 }

@@ -86,5 +86,11 @@ export function useAppearance() {
     appearance.value = defaults()
   }
 
-  return { appearance, reset }
+  /** Re-read from localStorage (e.g. after importing a settings file). */
+  function reload() {
+    skipNextSave = true
+    appearance.value = load()
+  }
+
+  return { appearance, reset, reload }
 }

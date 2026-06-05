@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { nextTick } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import App from './App.vue'
 import type { BackendId, SerialBackend, SerialBackendFactory } from './backends/SerialBackend'
@@ -412,5 +413,56 @@ describe('App.vue — clear terminal', () => {
     mount(App, { attachTo: document.body })
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'K', ctrlKey: true })) // no Shift
     expect(terminalClear).not.toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — settings drawer & appearance', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('settings drawer is closed by default and toggles open/closed', async () => {
+    const wrapper = mount(App, { attachTo: document.body })
+    expect(wrapper.find('[data-testid="settings-drawer"]').attributes('open')).toBeUndefined()
+    await wrapper.get('[data-testid="settings-btn"]').trigger('click')
+    expect(wrapper.find('[data-testid="settings-drawer"]').attributes('open')).toBeDefined()
+    await wrapper.get('[data-testid="drawer-close"]').trigger('click')
+    expect(wrapper.find('[data-testid="settings-drawer"]').attributes('open')).toBeUndefined()
+  })
+
+  it('changing the theme persists it', async () => {
+    const wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('[data-testid="settings-btn"]').trigger('click')
+    await wrapper.get('[data-testid="theme-select"]').setValue('nord')
+    await nextTick()
+    expect(localStorage.getItem('appearance.themeId')).toBe('nord')
+  })
+
+  it('changing the font size persists it', async () => {
+    const wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('[data-testid="settings-btn"]').trigger('click')
+    await wrapper.get('[data-testid="fontsize-input"]').setValue('18')
+    await nextTick()
+    expect(localStorage.getItem('appearance.fontSize')).toBe('18')
+  })
+
+  it('turning the clear hotkey off persists empty and shows Off', async () => {
+    const wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('[data-testid="settings-btn"]').trigger('click')
+    await wrapper.get('[data-testid="hotkey-off"]').trigger('click')
+    await nextTick()
+    expect(localStorage.getItem('appearance.clearHotkey')).toBe('')
+    expect(wrapper.get('[data-testid="hotkey-value"]').text()).toBe('Off')
+  })
+
+  it('rebinds the clear hotkey from a captured keypress', async () => {
+    const wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('[data-testid="settings-btn"]').trigger('click')
+    await wrapper.get('[data-testid="hotkey-rebind"]').trigger('click')
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'g', ctrlKey: true, altKey: true }))
+    await nextTick()
+    expect(wrapper.get('[data-testid="hotkey-value"]').text()).toBe('Ctrl+Alt+G')
+    expect(localStorage.getItem('appearance.clearHotkey')).toBe('Ctrl+Alt+G')
   })
 })

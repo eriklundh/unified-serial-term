@@ -15,6 +15,7 @@ test.describe('auto-reconnect', () => {
     await installMockSerial(page)
     await installMockUsb(page)
     await page.goto('/')
+    await page.locator('[data-testid="settings-btn"]').click() // serial settings live in the drawer now
     await page.locator('[data-testid="baud-select"]').selectOption('9600')
 
     // Second load: paired device triggers auto-reconnect with saved settings

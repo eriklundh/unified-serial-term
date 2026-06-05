@@ -1,7 +1,7 @@
 <template>
   <div class="app">
-    <header class="app-header">
-      <div class="controls">
+    <header class="toolbar">
+      <div class="toolbar__group">
         <BackendSelector
           v-model="selectedId"
           :factories="factories"
@@ -9,6 +9,7 @@
         />
         <button
           v-if="!isConnected"
+          class="btn btn--primary"
           data-testid="connect-btn"
           :disabled="!canConnect || isConnecting"
           @click="connect"
@@ -17,12 +18,14 @@
         </button>
         <button
           v-if="isConnected"
+          class="btn btn--danger"
           data-testid="disconnect-btn"
           @click="disconnect"
         >
           Disconnect
         </button>
         <button
+          class="btn"
           type="button"
           data-testid="clear-btn"
           title="Clear terminal"
@@ -30,94 +33,27 @@
         >
           Clear
         </button>
-        <span
-          v-if="statusMsg"
-          data-testid="status-msg"
-          class="status-msg"
-        >{{ statusMsg }}</span>
       </div>
-      <div
-        data-testid="settings-panel"
-        class="settings-panel"
+
+      <span
+        v-if="statusMsg"
+        data-testid="status-msg"
+        class="status"
+      >{{ statusMsg }}</span>
+
+      <button
+        class="btn btn--icon"
+        type="button"
+        data-testid="settings-btn"
+        :aria-expanded="drawerOpen"
+        aria-controls="settings-drawer"
+        title="Settings"
+        @click="drawerOpen = !drawerOpen"
       >
-        <label class="setting">
-          <span>Baud</span>
-          <select
-            v-model.number="settings.baudRate"
-            data-testid="baud-select"
-            :disabled="isConnected"
-          >
-            <option
-              v-for="b in BAUD_RATES"
-              :key="b"
-              :value="b"
-            >{{ b }}</option>
-          </select>
-        </label>
-        <label class="setting">
-          <span>Data</span>
-          <select
-            v-model.number="settings.dataBits"
-            data-testid="databits-select"
-            :disabled="isConnected"
-          >
-            <option :value="8">8</option>
-            <option :value="7">7</option>
-          </select>
-        </label>
-        <label class="setting">
-          <span>Parity</span>
-          <select
-            v-model="settings.parity"
-            data-testid="parity-select"
-            :disabled="isConnected"
-          >
-            <option value="none">None</option>
-            <option value="even">Even</option>
-            <option value="odd">Odd</option>
-          </select>
-        </label>
-        <label class="setting">
-          <span>Stop</span>
-          <select
-            v-model.number="settings.stopBits"
-            data-testid="stopbits-select"
-            :disabled="isConnected"
-          >
-            <option :value="1">1</option>
-            <option :value="2">2</option>
-          </select>
-        </label>
-        <label class="setting">
-          <span>Flow</span>
-          <select
-            v-model="settings.flowControl"
-            data-testid="flowcontrol-select"
-            :disabled="isConnected"
-          >
-            <option value="none">None</option>
-            <option value="hardware">RTS/CTS</option>
-          </select>
-        </label>
-        <label class="setting setting--inline">
-          <input
-            v-model="settings.localEcho"
-            data-testid="echo-checkbox"
-            type="checkbox"
-            @change="terminalRef?.focus()"
-          >
-          <span>Echo</span>
-        </label>
-        <button
-          data-testid="reset-btn"
-          class="reset-btn"
-          :disabled="isConnected"
-          @click="reset"
-        >
-          Reset
-        </button>
-      </div>
+        <span aria-hidden="true">⚙</span> Settings
+      </button>
     </header>
+
     <main class="terminal-pane">
       <Terminal
         ref="terminalRef"
@@ -130,6 +66,225 @@
         @disconnect="disconnect"
       />
     </main>
+
+    <dialog
+      id="settings-drawer"
+      class="drawer"
+      data-testid="settings-drawer"
+      aria-label="Settings"
+      :open="drawerOpen"
+      :inert="!drawerOpen"
+    >
+      <div
+        data-testid="settings-panel"
+        class="drawer__panel"
+      >
+        <div class="drawer__head">
+          <h2 class="drawer__title">
+            Settings
+          </h2>
+          <button
+            class="btn btn--icon"
+            type="button"
+            data-testid="drawer-close"
+            aria-label="Close settings"
+            @click="drawerOpen = false"
+          >
+            ✕
+          </button>
+        </div>
+
+        <section class="group">
+          <h3 class="group__title">
+            Connection
+          </h3>
+          <label class="field">
+            <span class="field__label">Baud</span>
+            <select
+              v-model.number="settings.baudRate"
+              data-testid="baud-select"
+              :disabled="isConnected"
+            >
+              <option
+                v-for="b in BAUD_RATES"
+                :key="b"
+                :value="b"
+              >{{ b }}</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">Data bits</span>
+            <select
+              v-model.number="settings.dataBits"
+              data-testid="databits-select"
+              :disabled="isConnected"
+            >
+              <option :value="8">8</option>
+              <option :value="7">7</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">Parity</span>
+            <select
+              v-model="settings.parity"
+              data-testid="parity-select"
+              :disabled="isConnected"
+            >
+              <option value="none">None</option>
+              <option value="even">Even</option>
+              <option value="odd">Odd</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">Stop bits</span>
+            <select
+              v-model.number="settings.stopBits"
+              data-testid="stopbits-select"
+              :disabled="isConnected"
+            >
+              <option :value="1">1</option>
+              <option :value="2">2</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">Flow control</span>
+            <select
+              v-model="settings.flowControl"
+              data-testid="flowcontrol-select"
+              :disabled="isConnected"
+            >
+              <option value="none">None</option>
+              <option value="hardware">RTS/CTS</option>
+            </select>
+          </label>
+          <label class="field field--check">
+            <input
+              v-model="settings.localEcho"
+              data-testid="echo-checkbox"
+              type="checkbox"
+              @change="terminalRef?.focus()"
+            >
+            <span class="field__label">Local echo</span>
+          </label>
+          <button
+            class="btn btn--subtle"
+            data-testid="reset-btn"
+            :disabled="isConnected"
+            @click="reset"
+          >
+            Reset connection defaults
+          </button>
+        </section>
+
+        <section class="group">
+          <h3 class="group__title">
+            Appearance
+          </h3>
+          <label class="field">
+            <span class="field__label">Theme</span>
+            <select
+              v-model="appearance.themeId"
+              data-testid="theme-select"
+            >
+              <option
+                v-for="t in THEMES"
+                :key="t.id"
+                :value="t.id"
+              >{{ t.label }}</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">Font</span>
+            <select
+              v-model="appearance.fontFamily"
+              data-testid="font-select"
+            >
+              <option
+                v-for="f in FONT_CHOICES"
+                :key="f.label"
+                :value="f.value"
+              >{{ f.label }}</option>
+            </select>
+          </label>
+          <label class="field">
+            <span class="field__label">Font size</span>
+            <input
+              v-model.number="appearance.fontSize"
+              data-testid="fontsize-input"
+              type="number"
+              min="8"
+              max="32"
+              step="1"
+            >
+          </label>
+          <div class="field">
+            <span class="field__label">Clear hotkey</span>
+            <div class="hotkey">
+              <code data-testid="hotkey-value">{{ appearance.clearHotkey || 'Off' }}</code>
+              <button
+                class="btn btn--subtle"
+                type="button"
+                data-testid="hotkey-rebind"
+                @click="startRebind"
+              >
+                {{ capturingHotkey ? 'Press a key…' : 'Rebind' }}
+              </button>
+              <button
+                class="btn btn--subtle"
+                type="button"
+                data-testid="hotkey-off"
+                @click="hotkeyOff"
+              >
+                Off
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <h3 class="group__title">
+            Storage
+          </h3>
+          <p class="group__hint">
+            Settings are saved in this browser. Export a file to move them to
+            another machine or to survive a reset.
+          </p>
+          <div class="row">
+            <button
+              class="btn btn--subtle"
+              type="button"
+              data-testid="export-btn"
+              @click="exportSettingsFile"
+            >
+              Export…
+            </button>
+            <label class="btn btn--subtle">
+              Import…
+              <input
+                data-testid="import-input"
+                type="file"
+                accept="application/json,.json"
+                hidden
+                @change="importSettingsFile"
+              >
+            </label>
+            <button
+              class="btn btn--subtle"
+              type="button"
+              data-testid="persist-btn"
+              @click="makePersistent"
+            >
+              Keep on this device
+            </button>
+          </div>
+          <span
+            v-if="storageMsg"
+            data-testid="storage-msg"
+            class="group__hint"
+          >{{ storageMsg }}</span>
+        </section>
+      </div>
+    </dialog>
   </div>
 </template>
 
@@ -140,12 +295,21 @@ import BackendSelector from './components/BackendSelector.vue'
 import { FACTORIES_KEY } from './backends/injectionKeys'
 import { resolveFactory, writePreference } from './settings/backendPreference'
 import { useSettings } from './settings/useSettings'
-import { useAppearance } from './settings/useAppearance'
-import { matchesHotkey } from './settings/hotkey'
-import { getTheme, applyThemeTokens } from './themes'
+import { useAppearance, SYSTEM_MONO } from './settings/useAppearance'
+import { matchesHotkey, eventToHotkey } from './settings/hotkey'
+import { exportSettings, importSettings, requestPersistentStorage } from './settings/io'
+import { THEMES, getTheme, applyThemeTokens } from './themes'
 import type { BackendId, SerialBackend } from './backends/SerialBackend'
 
 const BAUD_RATES = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
+
+const FONT_CHOICES = [
+  { label: 'System monospace', value: SYSTEM_MONO },
+  { label: 'Source Code Pro', value: `'Source Code Pro', ${SYSTEM_MONO}` },
+  { label: 'JetBrains Mono', value: `'JetBrains Mono', ${SYSTEM_MONO}` },
+  { label: 'Cascadia Code', value: `'Cascadia Code', ${SYSTEM_MONO}` },
+  { label: 'IBM Plex Mono', value: `'IBM Plex Mono', ${SYSTEM_MONO}` },
+]
 
 const terminalRef = ref<InstanceType<typeof Terminal> | null>(null)
 const factories = inject(FACTORIES_KEY, [])
@@ -157,21 +321,56 @@ watch(selectedId, (id) => {
 
 const selectedFactory = computed(() => factories.find((f) => f.id === selectedId.value) ?? null)
 
-const { settings, reset } = useSettings()
+const { settings, reset, reload: reloadSettings } = useSettings()
 
-const { appearance } = useAppearance()
+const { appearance, reload: reloadAppearance } = useAppearance()
 const currentTheme = computed(() => getTheme(appearance.value.themeId))
 // Apply the theme's design tokens to the document root (chrome) immediately and
 // on change; the terminal receives the xterm theme via the <Terminal> props.
 watch(currentTheme, (t) => applyThemeTokens(t), { immediate: true })
 
+// --- Settings drawer ---------------------------------------------------------
+const drawerOpen = ref(false)
+
+// --- Clear terminal + hotkey -------------------------------------------------
 function clearTerminal() {
   terminalRef.value?.clear()
 }
 
-// App-level clear hotkey. Capture phase so we intercept before xterm's own
-// keydown handler runs (which would otherwise send the keys to the device).
+const capturingHotkey = ref(false)
+function startRebind() {
+  if (capturingHotkey.value) return
+  capturingHotkey.value = true
+  window.addEventListener('keydown', captureHotkey, true)
+}
+function captureHotkey(e: KeyboardEvent) {
+  e.preventDefault()
+  e.stopPropagation()
+  if (e.key === 'Escape') {
+    stopRebind()
+    return
+  }
+  const spec = eventToHotkey(e)
+  if (!spec) return // modifier-only press; wait for a real key
+  appearance.value.clearHotkey = spec
+  stopRebind()
+}
+function stopRebind() {
+  capturingHotkey.value = false
+  window.removeEventListener('keydown', captureHotkey, true)
+}
+function hotkeyOff() {
+  appearance.value.clearHotkey = ''
+}
+
+// App-level shortcuts. Capture phase so we intercept before xterm's own keydown
+// handler runs (which would otherwise send the keys to the device).
 function onKeydown(e: KeyboardEvent) {
+  if (capturingHotkey.value) return
+  if (e.key === 'Escape' && drawerOpen.value) {
+    drawerOpen.value = false
+    return
+  }
   if (appearance.value.clearHotkey && matchesHotkey(e, appearance.value.clearHotkey)) {
     e.preventDefault()
     e.stopPropagation()
@@ -179,8 +378,47 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 onMounted(() => window.addEventListener('keydown', onKeydown, true))
-onUnmounted(() => window.removeEventListener('keydown', onKeydown, true))
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKeydown, true)
+  stopRebind()
+})
 
+// --- Settings import/export/persistence --------------------------------------
+const storageMsg = ref<string | null>(null)
+
+function exportSettingsFile() {
+  const blob = new Blob([exportSettings()], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'serial-console-settings.json'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function importSettingsFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  try {
+    const count = importSettings(await file.text())
+    reloadSettings()
+    reloadAppearance()
+    storageMsg.value = `Imported ${count} setting(s).`
+  } catch (err) {
+    storageMsg.value = `Import failed: ${err instanceof Error ? err.message : String(err)}`
+  } finally {
+    input.value = ''
+  }
+}
+
+async function makePersistent() {
+  storageMsg.value = (await requestPersistentStorage())
+    ? 'Storage will be kept on this device.'
+    : 'Persistent storage was not granted by the browser.'
+}
+
+// --- Connection --------------------------------------------------------------
 const backend = ref<SerialBackend | null>(null)
 const isConnected = ref(false)
 const isConnecting = ref(false)
@@ -258,9 +496,9 @@ html,
 body,
 #app {
   height: 100%;
-  background: #1e1e1e;
-  color: #d4d4d4;
-  font-family: monospace;
+  background: var(--bg, #1e1e1e);
+  color: var(--fg, #e6e6e6);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
 .app {
@@ -269,92 +507,233 @@ body,
   height: 100%;
 }
 
-.app-header {
+/* --- Toolbar --------------------------------------------------------------- */
+.toolbar {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.5rem 1rem;
-  background: #252526;
-  border-bottom: 1px solid #3e3e42;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface, #252526);
+  border-bottom: 1px solid var(--border, #3c3c3c);
   flex-shrink: 0;
   flex-wrap: wrap;
+  /* Stay above the drawer so the toolbar (incl. the Settings toggle) is always
+     clickable; the drawer then visually slides in below the toolbar bar. */
+  position: relative;
+  z-index: 20;
 }
 
-.controls {
+.toolbar__group {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-button {
-  padding: 0.25rem 0.75rem;
-  background: #0e639c;
-  color: #fff;
-  border: none;
-  border-radius: 2px;
+.status {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: var(--muted, #9a9a9a);
+  max-width: 50ch;
+}
+
+.status + .btn--icon {
+  margin-left: 0;
+}
+
+.btn--icon {
+  margin-left: auto;
+}
+
+/* --- Buttons --------------------------------------------------------------- */
+.btn {
+  font: inherit;
+  font-size: 0.85rem;
+  line-height: 1.2;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--border, #3c3c3c);
+  border-radius: 6px;
+  background: var(--surface-2, #2d2d30);
+  color: var(--fg, #e6e6e6);
   cursor: pointer;
-  font-size: 0.875rem;
+  transition: background 0.12s ease, border-color 0.12s ease;
 }
 
-button:disabled {
+.btn:hover:not(:disabled) {
+  border-color: var(--accent, #3b82f6);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent, #3b82f6);
+  outline-offset: 1px;
+}
+
+.btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-button[data-testid='disconnect-btn'] {
-  background: #6c3030;
+.btn--primary {
+  background: var(--accent, #3b82f6);
+  color: var(--accent-fg, #fff);
+  border-color: transparent;
 }
 
-.reset-btn {
-  background: #4a3f3f;
-  font-size: 0.75rem;
-  padding: 0.15rem 0.5rem;
+.btn--danger {
+  background: var(--danger, #ef4444);
+  color: #fff;
+  border-color: transparent;
 }
 
-.status-msg {
-  font-size: 0.75rem;
-  color: #9cdcfe;
+.btn--subtle {
+  background: transparent;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
 }
 
-.settings-panel {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex: 1;
-  flex-wrap: wrap;
+.btn--icon {
+  background: transparent;
 }
 
-.setting {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  color: #9d9d9d;
-}
-
-.setting--inline {
-  flex-direction: row;
-  gap: 0.25rem;
-}
-
-.setting select {
-  padding: 0.15rem 0.3rem;
-  background: #3c3c3c;
-  color: #d4d4d4;
-  border: 1px solid #555;
-  border-radius: 2px;
-  font-size: 0.75rem;
-}
-
-.setting select:disabled,
-.setting input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
+/* --- Terminal -------------------------------------------------------------- */
 .terminal-pane {
   flex: 1;
   overflow: hidden;
   padding: 0.25rem;
+  background: var(--bg, #1e1e1e);
+}
+
+/* --- Settings drawer ------------------------------------------------------- */
+.drawer {
+  /* Override the UA `display:none` so the slide transition can run. */
+  display: block;
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(24rem, 100%);
+  max-width: 100%;
+  margin: 0;
+  border: 0;
+  border-left: 1px solid var(--border, #3c3c3c);
+  background: var(--surface, #252526);
+  color: var(--fg, #e6e6e6);
+  box-shadow: -8px 0 24px rgb(0 0 0 / 0.25);
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+  z-index: 10;
+  overflow: auto;
+}
+
+.drawer[open] {
+  transform: translateX(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    transition: none;
+  }
+}
+
+.drawer__panel {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.drawer__title {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.group__title {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted, #9a9a9a);
+  border-bottom: 1px solid var(--border, #3c3c3c);
+  padding-bottom: 0.3rem;
+}
+
+.group__hint {
+  font-size: 0.75rem;
+  color: var(--muted, #9a9a9a);
+  line-height: 1.4;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.field--check {
+  justify-content: flex-start;
+  gap: 0.5rem;
+}
+
+.field__label {
+  color: var(--muted, #9a9a9a);
+}
+
+.field select,
+.field input[type='number'] {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.4rem;
+  background: var(--surface-2, #2d2d30);
+  color: var(--fg, #e6e6e6);
+  border: 1px solid var(--border, #3c3c3c);
+  border-radius: 5px;
+  min-width: 8rem;
+}
+
+.field input[type='number'] {
+  min-width: 5rem;
+  width: 5rem;
+}
+
+.field select:focus-visible,
+.field input:focus-visible {
+  outline: 2px solid var(--accent, #3b82f6);
+  outline-offset: 1px;
+}
+
+.field :disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hotkey {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.hotkey code {
+  font-family: ui-monospace, monospace;
+  background: var(--surface-2, #2d2d30);
+  border: 1px solid var(--border, #3c3c3c);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.8rem;
+}
+
+.row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 </style>
