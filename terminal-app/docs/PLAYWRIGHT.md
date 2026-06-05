@@ -422,20 +422,75 @@ Your Windows laptop
 
 ### Setup (one-time, on your Windows laptop)
 
-```powershell
-# 1. Install the MCP server
-npm install -g @playwright/mcp
+The commands below work identically in **PowerShell** and **CMD**.
 
-# 2. Install Playwright's Chromium bundle
-npx playwright install chromium
+```text
+:: 1. Install the MCP server (bundles its own Playwright) plus the
+::    Playwright CLI, so a real `playwright` command lands on PATH.
+npm install -g @playwright/mcp playwright
 
-# 3. Register the server in Claude Code
-claude mcp add playwright -- npx @playwright/mcp --headed
+:: 2. Download the Chromium build Playwright will drive.
+playwright install chromium
+
+:: 3. Register the server in Claude Code (see Windows note below).
+claude mcp add playwright -- cmd /c npx @playwright/mcp
 ```
 
-The `--headed` flag is mandatory for hardware testing: it launches a
-visible browser window so you can see every action Claude takes and
-intervene at any point.
+**Why `playwright install` and not `npx playwright install`?** On a
+fresh machine there is no local `playwright` package, so `npx
+playwright …` fails with `'playwright' is not recognized`. Installing
+`playwright` globally in step 1 puts a real shim on PATH that runs the
+same way in PowerShell and CMD — no `npx`, no PowerShell `&` call
+operator, no digging into `node_modules\.bin\playwright.cmd`.
+
+If you prefer not to install the CLI globally, run the copy bundled
+inside the MCP server instead. In PowerShell this needs the `&` call
+operator and the `.cmd` extension:
+
+```powershell
+& "$(npm root -g)\@playwright\mcp\node_modules\.bin\playwright.cmd" install chromium
+```
+
+Also use this bundled form if the MCP server ever reports a missing or
+incompatible browser: it guarantees you download the exact Chromium
+revision that server's Playwright expects (the global `playwright` may
+be a newer release that pulls a different revision).
+
+**Windows note on step 3.** Claude Code spawns the MCP command without
+a shell, and a bare `npx` is really `npx.cmd`, which Windows cannot
+spawn directly — you get a `spawn npx ENOENT` failure. Wrap it in
+`cmd /c`:
+
+```text
+claude mcp add playwright -- cmd /c npx @playwright/mcp
+```
+
+On macOS / Linux the `cmd /c` prefix is unnecessary:
+
+```bash
+claude mcp add playwright -- npx @playwright/mcp
+```
+
+**Do not pass `--headed`.** As of `@playwright/mcp` 0.0.75 a *visible*
+browser is the default, and `--headed` is no longer a valid option —
+passing it makes the server exit immediately with
+`error: unknown option '--headed'`, which shows up in Claude Code as
+`✗ Failed to connect`. A visible window is exactly what hardware
+testing needs: you watch every action Claude takes and grant the device
+picker yourself. Pass `--headless` only if you ever want to opt out of
+the visible window.
+
+After registering, verify the server actually launches — `add` only
+writes config, it does not start anything:
+
+```text
+claude mcp list
+```
+
+The `playwright` entry should read `✓ Connected`. If it shows
+`✗ Failed to connect`, run the configured command by hand
+(`cmd /c npx @playwright/mcp`) to see the real error; a server that
+starts correctly will sit silently waiting on stdin (Ctrl+C to exit).
 
 ### The permission boundary — what you must do yourself
 
@@ -460,7 +515,7 @@ the hardware grant.
 | Concern | Mitigation |
 |---------|------------|
 | Claude accesses saved browser passwords / sessions | MCP server launches a **fresh isolated Chromium profile**, not your regular Chrome |
-| Claude takes unexpected browser actions | Run `--headed`; you see every action in real time and can close the window |
+| Claude takes unexpected browser actions | The MCP server runs headed by default (don't pass `--headless`); you see every action in real time and can close the window |
 | Claude sends unexpected bytes to hardware | Real serial/USB commands go through your port grant — only possible after you approved the picker. Add "observe only, don't type into the terminal" to your prompt if you want to be explicit |
 | MCP server accesses your filesystem | `@playwright/mcp` only exposes browser control tools — no shell, no file reads |
 
