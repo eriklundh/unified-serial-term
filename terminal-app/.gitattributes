@@ -1,3 +1,28 @@
-# Shell scripts must keep LF endings — they run on the Linux deploy host,
-# and a CRLF shebang (`#!/usr/bin/env bash\r`) breaks execution there.
+# ── Line endings ──────────────────────────────────────────────────────────────
+# Normalise every text file to LF — in the repository AND in every working tree,
+# including Windows. This keeps builds byte-identical across machines and stops
+# CRLF from entering the repo via a Windows editor (VS Code, Notepad++).
+#
+# `eol=lf` overrides a local `core.autocrlf=true`, so a Windows checkout gets LF
+# in the working directory, not CRLF. Git still auto-detects binary files and
+# leaves them untouched.
+* text=auto eol=lf
+
+# Shell scripts: LF is mandatory — a CRLF shebang (`#!/usr/bin/env bash\r`)
+# breaks execution on the Linux deploy host.
 *.sh text eol=lf
+
+# ── Binary files ──────────────────────────────────────────────────────────────
+# Never apply EOL (or text) conversion to these, even if auto-detection misfires.
+*.png   binary
+*.ico   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.eot   binary
+*.pdf   binary
+*.zip   binary

@@ -1,0 +1,9 @@
+{
+  // Write LF for new and edited files, matching .gitattributes and
+  // .editorconfig, so a Windows checkout never introduces CRLF into the repo
+  // or into a local build. VS Code does not read .gitattributes itself, so we
+  // set this explicitly (and the EditorConfig extension reinforces it).
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true
+}
