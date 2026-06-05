@@ -70,7 +70,7 @@ production via the tag-gated deploy (`fetch-build-deploy.sh production v1.1.0`);
       hotkey; hotkey can be turned off.
 - [ ] Font family + size selectable and applied live; Source Code Pro available.
 - [ ] At least 4 colour themes; chrome and terminal stay visually consistent;
-      default respects `prefers-color-scheme`.
+      dark is the standard default (independent of `prefers-color-scheme`).
 - [ ] Settings open in a non-modal drawer; the terminal keeps streaming.
 - [ ] Settings persist across restarts; `persist()` requested; Export/Import a
       `.json` round-trips.
