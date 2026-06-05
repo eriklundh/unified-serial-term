@@ -203,6 +203,69 @@ That's the whole deploy. No npm install on the target, no Node.js, no
 service to restart. The web server is already running and just serves
 whatever is on disk; we replaced what's on disk.
 
+### Automated remote deploy — `script/fetch-build-deploy.sh`
+
+For the day-to-day workflow the manual steps above are captured in a
+committed script that runs **on the deploy host** and is **triggered over
+SSH** from a dev machine after a local test-and-fix cycle. The loop is:
+
+1. Edit, test, and verify the app **locally** (Vitest, Playwright E2E, and
+   the Playwright-MCP real-hardware smoke in `SEMIAUTO-SMOKE.md`).
+2. Commit and push to `origin/main`.
+3. Trigger the deploy host to fetch, build, and publish.
+
+**The model (for maintainers / contributors).** Design choices worth
+preserving if you change it:
+
+- **The repo is the single source of truth.** All deploy logic lives in
+  `script/fetch-build-deploy.sh`, committed and reviewable. The SSH channel
+  is used *only* to invoke that script — never to run ad-hoc remote
+  commands — so any deploy is exactly reproducible from git history.
+- **Self-updating.** The script fast-forwards the checkout to
+  `origin/<branch>` (default `main`), then re-execs itself if that pull
+  changed the script, so edits to the deploy logic take effect on the same
+  trigger.
+- **Non-destructive reset.** It runs `git reset --hard origin/main` but
+  never `git clean`, so untracked `node_modules/` and `dist/` survive
+  between runs.
+- **Idempotent.** Re-running with no new commits rebuilds and republishes
+  identical, content-hashed assets — safe to trigger repeatedly.
+- **Parameterised targets.** A `case` block maps a target name → site host
+  + web root, so a second publish cycle to a different URL is one added
+  branch, not a forked script: `fetch-build-deploy.sh <target>`.
+- **Safe dry run.** `DRY_RUN=1` does everything up to (but not including)
+  writing the live web root or curling the site — use it for a first run
+  against a new host.
+
+It publishes with the same `rsync --delete` + `chown www-data` shown by
+hand above, then curls the site to confirm it answers `200` over HTTPS.
+
+**Internal specifics (this lab).**
+
+- Deploy host: reachable **only** at
+  `eriklundh@serial-lab.test.delivery-academy.se` (SSH, certificate auth).
+  Its internal VM name is `agentlab1`, which is *not* routable from the
+  dev/lab network — always connect via the public FQDN, never by VM name.
+- Collection root on the host: `~/unified-serial-terminal` — holds
+  `terminal-app` plus its sibling `ftdi-webusb-driver`, which both the
+  `file:` dependency and the Vite build need present and built.
+- Default target `serial-lab` → web root `/var/www/serial-terminal`, served
+  at `https://serial-lab.test.delivery-academy.se/`.
+
+Trigger a deploy after pushing to `main`:
+
+```bash
+ssh eriklundh@serial-lab.test.delivery-academy.se \
+    'bash ~/unified-serial-terminal/terminal-app/script/fetch-build-deploy.sh'
+```
+
+First-time or cautious run (builds, but writes nothing to the live site):
+
+```bash
+ssh eriklundh@serial-lab.test.delivery-academy.se \
+    'DRY_RUN=1 bash ~/unified-serial-terminal/terminal-app/script/fetch-build-deploy.sh'
+```
+
 ## 7. Verification checklist after deploy
 
 - [ ] `curl -I https://serial-lab.test.delivery-academy.se/` returns 200 and
