@@ -108,7 +108,7 @@ sudo usermod -aG dialout $USER
 ## Testing
 
 ```bash
-npm test             # Vitest unit + component tests (105 tests)
+npm test             # Vitest unit + component tests (120 tests)
 npm run test:e2e     # Playwright E2E (41 tests, mocked backends)
 npm run test:hw      # @hardware tests (TERMINAL_HW_TEST=1 required)
 npm run typecheck    # vue-tsc strict

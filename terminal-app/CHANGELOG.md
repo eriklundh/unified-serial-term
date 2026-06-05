@@ -7,6 +7,33 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Remote deploy trigger** — `script/fetch-build-deploy.sh` runs on the
+  deploy host and is invoked over SSH after a local test-and-fix cycle. It
+  fast-forwards to `origin/main`, builds, and publishes the static `dist/`
+  to the site web root (`rsync --delete` + `chown`), then verifies HTTPS
+  `200`. Idempotent, self-updating (re-execs on script change), parameterised
+  per publish target, with a `DRY_RUN=1` mode. See `docs/DEPLOYMENT.md`.
+- **Self-healing driver build** — `npm run build`/`npm run dev` run a
+  `prebuild`/`predev` hook (`script/ensure-driver-built.mjs`) that builds the
+  sibling `ftdi-webusb-driver` on demand when its `dist/` is missing or stale,
+  so a fresh checkout or a pulled driver change builds without a manual step.
+
+### Fixed
+
+- `package-lock.json` is back in sync with `ftdi-webusb-driver@0.1.0`, so
+  `npm ci` succeeds on the deploy host.
+
+### Changed
+
+- Stopped tracking `node_modules/` in git (it had been committed despite
+  `.gitignore`); enforced LF endings for `*.sh` via `.gitattributes`.
+
+---
+
 ## [0.1.0] — 2026-06-02
 
 First release.

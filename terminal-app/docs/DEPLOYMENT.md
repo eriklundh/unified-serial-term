@@ -246,19 +246,25 @@ by nginx with **no Node runtime**. That's the whole point of a static SPA —
 the university public URL never needs an app server. Don't add anything to
 the serve path that assumes Node.
 
-**Prerequisite — the sibling driver must be built.** terminal-app imports
+**The sibling driver is built on demand.** terminal-app imports
 `ftdi-webusb-driver` (a `file:../ftdi-webusb-driver` dependency) whose entry
-points resolve to its built `dist/`. The deploy script **does not** build the
-driver — it's built out-of-band on the host. Before the first deploy (and
-after any driver change), build it once:
+points resolve to its built `dist/`. `npm run build` (and `npm run dev`) runs
+a `prebuild`/`predev` hook — `script/ensure-driver-built.mjs` — that builds
+the sibling automatically when its `dist/` is **missing or stale** (any
+`src/` file newer than the built types). So a fresh checkout or a pulled
+driver change Just Works: no manual driver build, and no cryptic `vue-tsc`
+"cannot find module" failure. If the driver's own build fails, the hook stops
+the build with a clear message.
+
+The manual build is still available as a fallback (e.g. to pre-warm the host
+or debug a driver build in isolation):
 
 ```bash
 cd ~/unified-serial-terminal/ftdi-webusb-driver && npm ci && npm run build
 ```
 
-The script fails fast with an actionable message if `ftdi-webusb-driver/dist`
-is missing, rather than emitting a cryptic `vue-tsc` "cannot find module"
-error.
+The auto-build is skipped entirely when `../ftdi-webusb-driver` isn't present
+(e.g. CI building against a published registry version).
 
 **Internal specifics (this lab).**
 
@@ -267,8 +273,8 @@ error.
   Its internal VM name is `agentlab1`, which is *not* routable from the
   dev/lab network — always connect via the public FQDN, never by VM name.
 - Collection root on the host: `~/unified-serial-terminal` — holds
-  `terminal-app` plus its sibling `ftdi-webusb-driver`, which both the
-  `file:` dependency and the Vite build need present and built.
+  `terminal-app` plus its sibling `ftdi-webusb-driver`. The driver only needs
+  to be *present*; the build auto-builds it on demand (see above).
 - Default target `serial-lab` → web root `/var/www/serial-terminal`, served
   at `https://serial-lab.test.delivery-academy.se/`.
 
