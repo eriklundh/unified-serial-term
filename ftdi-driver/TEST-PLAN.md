@@ -14,7 +14,7 @@ integration tests against the real FT231XS loopback plug.
 | HIL standard | `npm run test:hw` | FTDI loopback plug | `FTDI_HW_TEST=1` |
 | HIL + modem | `FTDI_HW_MODEM=1 npm run test:hw` | FTDI plug w/ modem jumpers | `FTDI_HW_TEST=1 FTDI_HW_MODEM=1` |
 
-`npm run test:hw` automatically runs `../../hil-preflight/preflight.sh` before
+`npm run test:hw` automatically runs `../hil-preflight/preflight.sh` before
 Vitest starts. If the device is absent the suite exits immediately.
 
 ---

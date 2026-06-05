@@ -16,7 +16,7 @@ them. See each sub-suite's own README for device-specific setup.
 
 ## When to run
 
-Before any HIL test run in `ftdi-webusb-driver` or `terminal-app` that
+Before any HIL test run in `ftdi-driver` or `terminal-app` that
 requires real USB hardware. A failed preflight means the hardware environment
 is not ready; the browser-facing tests will fail with confusing errors rather
 than a clear hardware diagnosis.

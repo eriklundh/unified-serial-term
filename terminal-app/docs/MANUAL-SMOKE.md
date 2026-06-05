@@ -29,7 +29,7 @@ real keystrokes rather than `fill()` the xterm input).
 
 - Chromium (version matching the Playwright bundle, or `/usr/bin/chromium` on Pi5)
 - App running: `npm run dev` (or deployed URL over HTTPS)
-- Both hardware rigs connected and verified: `../../hil-preflight/preflight.sh`
+- Both hardware rigs connected and verified: `../hil-preflight/preflight.sh`
 
 ---
 

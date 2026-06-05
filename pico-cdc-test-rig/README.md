@@ -9,7 +9,7 @@ This is the **third** repo in the FTDI WebUSB project family:
 
 | Repo | What it is | Tests which backend |
 |------|-----------|---------------------|
-| `ftdi-webusb-driver` | TypeScript WebUSB driver for FT-X chips | — (it *is* the driver) |
+| `ftdi-driver` | TypeScript WebUSB driver for FT-X chips | — (it *is* the driver) |
 | `terminal-app` | Vue browser terminal, dual backend | both |
 | **`pico-cdc-test-rig`** | **Pico CDC loopback firmware** | **Web Serial (the hardware target)** |
 
@@ -58,7 +58,7 @@ The key operational difference from the TypeScript repos: **building
 firmware and flashing it are different jobs**.
 
 - **Build** (`cmake` → `.uf2`): pure compilation. Claude Code on
-  agentlab1 does this autonomously.
+  <build-host> does this autonomously.
 - **Flash** (UF2 / picotool / SWD) and **test** (open port, assert
   echo): need the Pico physically attached — a bench step on the Pi 5
   or your laptop.
@@ -107,7 +107,7 @@ pico-cdc-test-rig-plan/
 From the library's `PHASE-09-hw-tests.md` "Hardware test topology": the
 two test devices map onto the two backends —
 
-- **FT231X dongle → WebUSB** (validated via `ftdi-webusb-driver` Phase 9
+- **FT231X dongle → WebUSB** (validated via `ftdi-driver` Phase 9
   and terminal-app Phase 3 smoke)
 - **This Pico → Web Serial** (validated via terminal-app Phase 2 smoke)
 

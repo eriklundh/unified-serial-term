@@ -1,6 +1,6 @@
 """Shared helpers for the FTDI loopback verification suite.
 
-Independent of the ftdi-webusb-driver under test: this talks to the chip
+Independent of the ftdi-driver under test: this talks to the chip
 via pyftdi (libusb), using modem-status bit definitions taken directly
 from the FTDI vendor protocol. The masks below are defined here on their
 own, NOT imported from the driver — that independence is the point. If

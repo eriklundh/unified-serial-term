@@ -1,13 +1,14 @@
 # CLAUDE.md — hil-preflight
 
-Claude Code's project memory for the `hil-preflight` repo.
-Read this at the start of every session in this directory.
+Claude Code's project memory for the `hil-preflight` component (a
+subdirectory of the `unified-serial-term` repo). Read this at the start
+of every session in this directory.
 
-## What this repo is
+## What this component is
 
-A standalone Python preflight suite that verifies all USB hardware rigs are
-present and working **before** hardware-in-loop (HIL) tests run in the sibling
-repos.
+A Python preflight suite that verifies all USB hardware rigs are present
+and working **before** hardware-in-loop (HIL) tests run in the sibling
+components.
 
 It orchestrates two independent verification suites in sequence:
 
@@ -23,25 +24,27 @@ Both sub-suites are independently runnable (they have their own `verify.sh` /
 `run_tests.sh` and `.venv`). This repo is **only an orchestration layer** — it
 calls the sub-suites, never duplicates their logic.
 
-## Repo location and layout
+## Repository layout
 
-All repos in the group live under `~/unified-serial-terminal/` on this machine:
+This repo, `unified-serial-term`, contains these components as
+subdirectories:
 
 ```
-unified-serial-terminal/
-├── hil-preflight/          ← this repo
-├── pico-cdc-test-rig/      ← Pico CDC firmware + py-verify/ harness
+unified-serial-term/
+├── hil-preflight/          ← this component (HIL preflight orchestrator)
+├── pico-cdc-test-rig/      ← Pico CDC firmware + verification harness
 ├── ftdi-loopback-verify/   ← FTDI loopback verification (pyftdi)
-├── ftdi-webusb-driver/     ← TypeScript WebUSB driver library
+├── ftdi-driver/            ← TypeScript WebUSB driver library
 └── terminal-app/           ← Browser terminal app (Vue 3 + xterm.js)
 ```
 
-`hil-preflight` is a **standalone git repo** hosted in the
-`unified-serial-terminal` group on the user's personal GitLab server.
+`hil-preflight/` orchestrates the two verification suites in the sibling
+`pico-cdc-test-rig/` and `ftdi-loopback-verify/` directories. The repo
+origin is `<git origin>`.
 
 ## Why this exists
 
-`ftdi-webusb-driver` and `terminal-app` run HIL tests against real USB devices.
+`ftdi-driver` and `terminal-app` run HIL tests against real USB devices.
 Without a preflight gate, a missing or misbehaving device causes confusing
 browser test failures rather than a clear hardware diagnosis.
 
@@ -50,7 +53,7 @@ so the downstream test runner never starts against a broken hardware environment
 
 ## Operating principles
 
-These apply across all repos in the group — they are non-negotiable:
+These apply across all components — they are non-negotiable:
 
 1. **Test-first, always.** Every behavioural change starts with a test that
    fails before the code exists. For this repo: a new sub-suite check is added
@@ -60,7 +63,7 @@ These apply across all repos in the group — they are non-negotiable:
 2. **Small commits, pushed immediately.** One logical step per commit,
    following the convention below. Push to `origin` after **every
    commit** — do not batch. This project is worked on across multiple
-   hardware environments (agentlab1, picotester Pi5, etc.); any
+   hardware environments (a dev VM, a Raspberry Pi test host, etc.); any
    unpushed commit is stranded on one machine and causes branch
    divergence when you switch. If the remote is temporarily unreachable,
    note it explicitly and push at the first opportunity. Never stop a
@@ -85,7 +88,7 @@ These apply across all repos in the group — they are non-negotiable:
 
 ## Commit message convention
 
-Same format as all sibling repos:
+Same format as all sibling components:
 
 ```
 <type>(<scope>): <imperative subject ≤ 60 chars>
@@ -106,7 +109,7 @@ Examples:
 
 ## Branching
 
-Same as sibling repos:
+Same as sibling components:
 - `main` is always green.
 - Feature work on `phase/NN-short-name` branches.
 - Merge `--no-ff` after acceptance criteria pass.
@@ -122,7 +125,7 @@ Same as sibling repos:
 
 ## Downstream integration
 
-Both `ftdi-webusb-driver` and `terminal-app` call the preflight via npm
+Both `ftdi-driver` and `terminal-app` call the preflight via npm
 lifecycle hooks before their hardware test commands:
 
 ```json
@@ -131,7 +134,8 @@ lifecycle hooks before their hardware test commands:
 ```
 
 npm runs `pretest:hw` automatically before `test:hw`. The `../hil-preflight`
-path is correct when the repos are siblings under `unified-serial-terminal/`.
+path is correct because the components are sibling subdirectories of the
+`unified-serial-term` repo.
 
 ## How to extend for a new rig
 
@@ -148,7 +152,7 @@ path is correct when the repos are siblings under `unified-serial-terminal/`.
 3. `README.md` — usage and downstream integration patterns
 4. `pico-cdc-test-rig/CLAUDE.md` — CDC test rig conventions, TDD pattern
 5. `ftdi-loopback-verify/README.md` — FTDI rig wiring and device binding
-6. `ftdi-webusb-driver/CLAUDE.md` — library conventions, `test:hw` pattern
+6. `ftdi-driver/CLAUDE.md` — library conventions, `test:hw` pattern
 7. `terminal-app/CLAUDE.md` — app conventions, Playwright patterns
 
 ## Out of scope

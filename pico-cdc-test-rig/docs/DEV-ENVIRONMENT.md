@@ -8,13 +8,13 @@ procedure covers both.
 ## Where to run this
 
 - **Building firmware** works anywhere the toolchain installs: the
-  agentlab1 VM, a Pi 5, or your laptop. Claude Code on agentlab1 can do
+  <build-host> VM, a Pi 5, or your laptop. Claude Code on <build-host> can do
   all the building.
 - **Flashing and hardware testing** need the Pico physically attached.
   A Pi 5 with the Pico plugged into a USB port is the convenient bench;
   your Windows laptop works too. See `docs/FLASHING.md`.
 
-If you set the toolchain up on both agentlab1 (for autonomous builds)
+If you set the toolchain up on both <build-host> (for autonomous builds)
 and the Pi 5 (for flash + test), keep the SDK at the same 2.2.0 tag on
 both so builds are reproducible.
 
@@ -159,7 +159,7 @@ ls build/*.uf2          # the artifact you flash
 ```
 
 A clean build producing a `.uf2` confirms the toolchain is good. If
-this works on agentlab1, Claude Code can build autonomously; the `.uf2`
+this works on <build-host>, Claude Code can build autonomously; the `.uf2`
 is then copied to the bench machine for flashing.
 
 ## 8. Optional: VS Code extension
@@ -168,7 +168,7 @@ The official Raspberry Pi Pico VS Code extension wraps all of the above
 (toolchain, SDK, CMake, flashing) behind a GUI and bundles its own
 toolchain so you don't need the apt packages. It works over Remote-SSH
 the same way the Claude Code extension does — install it on the remote
-(the Pi 5 or agentlab1), not locally. For this project the command-line
+(the Pi 5 or <build-host>), not locally. For this project the command-line
 flow above is sufficient and more scriptable for Claude Code, but the
 extension is a fine alternative if you prefer it for the flash step.
 

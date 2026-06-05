@@ -14,7 +14,7 @@ written before the firmware behavior it checks).
 4. Phase doc / PLAN.md updated with any deviation.
 5. Branch merged into `main` with `--no-ff`.
 
-Phases 0–1 can be done by Claude Code on agentlab1 for the build parts;
+Phases 0–1 can be done by Claude Code on <build-host> for the build parts;
 the flash-and-verify steps need a Pico attached (see CLAUDE.md's
 build-vs-flash split).
 

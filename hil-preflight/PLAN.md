@@ -49,23 +49,23 @@ device in a multi-test run.
 
 ---
 
-## Phase 2 — Integrate into ftdi-webusb-driver ✅
+## Phase 2 — Integrate into ftdi-driver ✅
 
-**Goal:** `npm run test:hw` in `ftdi-webusb-driver` is automatically gated
+**Goal:** `npm run test:hw` in `ftdi-driver` is automatically gated
 behind the full hardware preflight.
 
 **What changes:**
-- `ftdi-webusb-driver/package.json`: add `pretest:hw` lifecycle hook.
+- `ftdi-driver/package.json`: add `pretest:hw` lifecycle hook.
   npm runs `pre<script>` automatically before `<script>`.
   ```json
   "pretest:hw": "bash ../hil-preflight/preflight.sh"
   ```
-- `ftdi-webusb-driver/test-hw/README.md`: add **Preflight** section documenting
+- `ftdi-driver/test-hw/README.md`: add **Preflight** section documenting
   the automatic gate; simplify run command (no longer needs to be shown as
   `FTDI_HW_TEST=1 npm run test:hw` since that env var is set by `test:hw`).
 
 **Acceptance criteria:**
-- `npm run test:hw` from `ftdi-webusb-driver/` runs the preflight first, then
+- `npm run test:hw` from `ftdi-driver/` runs the preflight first, then
   Vitest hardware tests.
 - If a device is absent, the run exits before Vitest starts.
 
@@ -76,7 +76,7 @@ behind the full hardware preflight.
 
 ## Phase 3 — Integrate into terminal-app ✅
 
-**Goal:** `terminal-app` gets the same `test:hw` pattern as `ftdi-webusb-driver`,
+**Goal:** `terminal-app` gets the same `test:hw` pattern as `ftdi-driver`,
 plus a Playwright grep filter that gates `@hardware`-tagged tests behind
 `TERMINAL_HW_TEST=1`.
 
@@ -119,7 +119,7 @@ device via WebUSB) must not run unless hardware is present.
   and/or the FTDI device via WebUSB and assert correct behavior in the browser
   terminal.
 - **Phase 5 — CI integration.** Wire `preflight.sh` into the GitLab CI pipeline
-  for the group, running on the Pi 5 runner that has both devices attached.
+  for the repo, running on the Pi 5 runner that has both devices attached.
 - **Phase 6 — Additional rigs.** If a third USB device joins the HIL suite,
   extend `preflight.sh` with a new section and add a `test_0_device_present.py`
   to its verification repo.

@@ -16,7 +16,7 @@ both loopback devices in Chromium.
 | HIL — Web Serial (Pico CDC) | `npm run test:hw` | Pico CDC test rig | `TERMINAL_HW_TEST=1` |
 | HIL — WebUSB FTDI | `npm run test:hw` | FTDI loopback plug | `TERMINAL_HW_TEST=1` |
 
-`npm run test:hw` automatically runs `../../hil-preflight/preflight.sh` before
+`npm run test:hw` automatically runs `../hil-preflight/preflight.sh` before
 Playwright starts. The HIL tests are tagged `@hardware` in test titles;
 without `TERMINAL_HW_TEST=1` those tests are excluded by the Playwright grep filter.
 

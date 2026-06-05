@@ -5,7 +5,7 @@ written in Python with **pyFTDI**.
 
 ## Why independent
 
-The `ftdi-webusb-driver` (TypeScript) has its own Phase 9 hardware
+The `ftdi-driver` (TypeScript) has its own Phase 9 hardware
 tests. This suite is deliberately *separate*: a different language, a
 different library (pyFTDI, maintained by a different author), talking to
 the same chip the same way (libusb/WinUSB, vendor control transfers) but

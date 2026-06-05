@@ -102,9 +102,9 @@ Commit: `docs(harness): document usage and terminal-app integration`
 ## Where this runs
 
 On the bench machine with the Pico attached (Pi 5 or laptop). Claude
-Code on agentlab1 can *write* the harness (it's just Python) but can't
+Code on <build-host> can *write* the harness (it's just Python) but can't
 *run* it meaningfully without a flashed Pico on a port it can see — so
 the run-and-verify step is a bench step, like flashing. If the Pico is
-passed through to agentlab1 (the same usbip/passthrough trick discussed
-for the FTDI rig), agentlab1 could run the harness too — but for a
+passed through to <build-host> (the same usbip/passthrough trick discussed
+for the FTDI rig), <build-host> could run the harness too — but for a
 firmware project the bench (Pi 5) is usually where the device lives.

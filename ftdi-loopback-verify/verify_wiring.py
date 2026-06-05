@@ -6,7 +6,7 @@ Verifies the soldered connections specified for the rig:
     RTS --> CTS + DCD   RTS fans out to two inputs
     DTR --> DSR + RI    DTR fans out to two inputs
 
-Run this BEFORE the ftdi-webusb-driver Phase 9 hardware tests. If this
+Run this BEFORE the ftdi-driver Phase 9 hardware tests. If this
 passes, the wiring is good — so any Phase 9 failure is the driver, not
 the solder joints.
 
