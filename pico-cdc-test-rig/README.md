@@ -153,7 +153,7 @@ release/
 
 | Repo | Role | Tests |
 |------|------|-------|
-| `ftdi-webusb-driver` | TypeScript WebUSB driver | — |
+| `ftdi-driver` | TypeScript WebUSB driver | — |
 | `terminal-app` | Browser terminal, dual backend | both backends |
 | **`pico-cdc-test-rig`** | **CDC loopback firmware** | **Web Serial backend** |
 

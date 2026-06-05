@@ -6,12 +6,12 @@ usually fine — but the faster methods pay off during Phase 0–3
 iteration.
 
 Remember the build-vs-flash split (see `CLAUDE.md`): Claude Code on
-agentlab1 produces the `.uf2`; flashing happens on a machine with the
-Pico attached. If you build on agentlab1 and flash on a Pi 5, copy the
+<build-host> produces the `.uf2`; flashing happens on a machine with the
+Pico attached. If you build on <build-host> and flash on a Pi 5, copy the
 artifact over first:
 
 ```bash
-scp agentlab1:~/FPGA_work/pico-cdc-test-rig/build/*.uf2 .
+scp <build-host>:~/FPGA_work/pico-cdc-test-rig/build/*.uf2 .
 ```
 
 ## Method 1: UF2 drag-drop via BOOTSEL (simplest, no tools)
@@ -91,7 +91,7 @@ Pros: fastest, full debugging, no BOOTSEL ever. Cons: needs a probe and
 | Flashing a finished rig onto spare Picos | 1 (drag-drop the release UF2) |
 | Phase 0–3 iteration on the bench | 2 (picotool) |
 | Debugging a USB callback that misbehaves | 3 (SWD + gdb) |
-| Claude Code on agentlab1 | builds only — produces the `.uf2`, doesn't flash |
+| Claude Code on <build-host> | builds only — produces the `.uf2`, doesn't flash |
 
 ## A note on the test rig's lifecycle
 

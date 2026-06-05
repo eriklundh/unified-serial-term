@@ -109,7 +109,7 @@ ls build/pico-cdc-test-rig.uf2
 ```
 
 If this produces a `.uf2`, the toolchain is good. **This step is what
-Claude Code on agentlab1 can verify autonomously** — no hardware needed
+Claude Code on <build-host> can verify autonomously** — no hardware needed
 to confirm the build chain.
 
 Commit (if any build-config tweaks were needed): `build: confirm clean

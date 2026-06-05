@@ -28,7 +28,7 @@ and WebUSB+FTDI. Hardware-validating them needs two real devices:
 
 | Device | Backend it validates |
 |--------|----------------------|
-| FT231X dongle (TX↔RX loopback) | WebUSB + `ftdi-webusb-driver` |
+| FT231X dongle (TX↔RX loopback) | WebUSB + `ftdi-driver` |
 | **This Pico firmware** (CDC loopback) | **Web Serial (`navigator.serial`)** |
 
 A CDC-ACM device is bound by the OS's standard USB-serial driver and
@@ -39,8 +39,8 @@ the Web Serial API talks to. So this rig proves terminal-app Phase 2
 ## Operating principles
 
 1. **Test-Driven Development (TDD), as far as the target allows.** This
-   repo follows the same TDD discipline as its sibling repos
-   (`ftdi-webusb-driver`, `terminal-app`): every behavioural change
+   repo follows the same TDD discipline as its sibling components
+   (`ftdi-driver`, `terminal-app`): every behavioural change
    starts with a failing test, then the minimum code to pass it, then
    refactor — red, green, refactor — committed at each transition
    (`test(...)` red commit, `feat(...)` green commit, optional
@@ -67,7 +67,7 @@ the Web Serial API talks to. So this rig proves terminal-app Phase 2
    the test.
 
 2. **Small commits.** One logical step per commit, same convention as
-   the sibling repos.
+   the sibling components.
 3. **No speculative features.** Stick to `PLAN.md`. The rig's job is
    loopback + settings reporting, nothing more.
 4. **Maintain the docs as code.** `PLAN.md`, `docs/DEV-ENVIRONMENT.md`,
@@ -80,15 +80,15 @@ the Web Serial API talks to. So this rig proves terminal-app Phase 2
 
 Building firmware and flashing it are different jobs with different
 location requirements — the same pattern as the browser-local
-constraint in the sibling repos:
+constraint in the sibling components:
 
 | Job | Needs the Pico physically attached? | Where |
 |-----|-------------------------------------|-------|
-| **Build** (`cmake` → `.uf2`) | No — pure compilation | Claude Code on agentlab1 can do this autonomously |
+| **Build** (`cmake` → `.uf2`) | No — pure compilation | Claude Code on <build-host> can do this autonomously |
 | **Flash** (UF2 / picotool / SWD) | Yes | A machine with the Pico attached (Pi 5, or your laptop) |
 | **Test** (open port, assert echo) | Yes, and running | Same machine the Pico is attached to |
 
-So Claude Code on agentlab1 owns the build — it produces a `.uf2`
+So Claude Code on <build-host> owns the build — it produces a `.uf2`
 artifact and can iterate on compilation, CMake config, and host-side
 pure-logic tests. Flashing and the hardware-in-loop test are a human
 step (or run on the Pi 5 where the Pico lives). Don't expect Claude
@@ -96,7 +96,7 @@ Code on a headless VM to flash a Pico it can't see.
 
 ## Commit message convention
 
-Same format as the sibling repos:
+Same format as the sibling components:
 
 ```
 <type>(<scope>): <imperative subject ≤ 60 chars>
@@ -152,7 +152,7 @@ Examples:
 ## Relationship to the other repos
 
 This rig is standalone — it has no code dependency on
-`ftdi-webusb-driver` or `terminal-app`. It produces a `.uf2` you flash
+`ftdi-driver` or `terminal-app`. It produces a `.uf2` you flash
 onto a Pico, and a host harness that proves the Pico behaves. The
 terminal-app consumes it only at test time: a flashed Pico plugged into
 the test machine is the Web Serial backend's hardware target.
