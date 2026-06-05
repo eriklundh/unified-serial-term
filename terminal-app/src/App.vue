@@ -22,6 +22,14 @@
         >
           Disconnect
         </button>
+        <button
+          type="button"
+          data-testid="clear-btn"
+          title="Clear terminal"
+          @click="clearTerminal"
+        >
+          Clear
+        </button>
         <span
           v-if="statusMsg"
           data-testid="status-msg"
@@ -126,13 +134,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, inject, computed, watch, onMounted } from 'vue'
+import { ref, inject, computed, watch, onMounted, onUnmounted } from 'vue'
 import Terminal from './components/Terminal.vue'
 import BackendSelector from './components/BackendSelector.vue'
 import { FACTORIES_KEY } from './backends/injectionKeys'
 import { resolveFactory, writePreference } from './settings/backendPreference'
 import { useSettings } from './settings/useSettings'
 import { useAppearance } from './settings/useAppearance'
+import { matchesHotkey } from './settings/hotkey'
 import { getTheme, applyThemeTokens } from './themes'
 import type { BackendId, SerialBackend } from './backends/SerialBackend'
 
@@ -155,6 +164,22 @@ const currentTheme = computed(() => getTheme(appearance.value.themeId))
 // Apply the theme's design tokens to the document root (chrome) immediately and
 // on change; the terminal receives the xterm theme via the <Terminal> props.
 watch(currentTheme, (t) => applyThemeTokens(t), { immediate: true })
+
+function clearTerminal() {
+  terminalRef.value?.clear()
+}
+
+// App-level clear hotkey. Capture phase so we intercept before xterm's own
+// keydown handler runs (which would otherwise send the keys to the device).
+function onKeydown(e: KeyboardEvent) {
+  if (appearance.value.clearHotkey && matchesHotkey(e, appearance.value.clearHotkey)) {
+    e.preventDefault()
+    e.stopPropagation()
+    clearTerminal()
+  }
+}
+onMounted(() => window.addEventListener('keydown', onKeydown, true))
+onUnmounted(() => window.removeEventListener('keydown', onKeydown, true))
 
 const backend = ref<SerialBackend | null>(null)
 const isConnected = ref(false)

@@ -124,7 +124,10 @@ onUnmounted(() => {
   writer?.releaseLock()
 })
 
-defineExpose({ focus: () => terminal?.focus() })
+defineExpose({
+  focus: () => terminal?.focus(),
+  clear: () => terminal?.clear(),
+})
 </script>
 
 <style scoped>

@@ -5,12 +5,17 @@ import type { BackendId, SerialBackend, SerialBackendFactory } from './backends/
 import { MockSerialBackend } from './backends/MockSerialBackend'
 import { FACTORIES_KEY } from './backends/injectionKeys'
 
+const { terminalClear } = vi.hoisted(() => ({ terminalClear: vi.fn() }))
+
 vi.mock('./components/Terminal.vue', () => ({
   default: {
     name: 'Terminal',
     template: '<div class="mock-terminal" />',
     props: ['readable', 'writable', 'localEcho', 'fontFamily', 'fontSize', 'theme'],
     emits: ['disconnect'],
+    setup(_props: unknown, { expose }: { expose: (e: Record<string, unknown>) => void }) {
+      expose({ clear: terminalClear, focus: () => {} })
+    },
   },
 }))
 
@@ -376,5 +381,36 @@ describe('App.vue — auto-reconnect', () => {
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
     expect(pickDeviceSpy).toHaveBeenCalledOnce()
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — clear terminal', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    terminalClear.mockClear()
+  })
+
+  it('renders an always-visible Clear button', () => {
+    const wrapper = mount(App, { attachTo: document.body })
+    expect(wrapper.find('[data-testid="clear-btn"]').exists()).toBe(true)
+  })
+
+  it('clears the terminal when the Clear button is clicked', async () => {
+    const wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('[data-testid="clear-btn"]').trigger('click')
+    expect(terminalClear).toHaveBeenCalled()
+  })
+
+  it('clears the terminal on the default hotkey (Ctrl+Shift+K)', () => {
+    mount(App, { attachTo: document.body })
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'K', ctrlKey: true, shiftKey: true }))
+    expect(terminalClear).toHaveBeenCalled()
+  })
+
+  it('does not clear on a non-matching key (missing modifier)', () => {
+    mount(App, { attachTo: document.body })
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'K', ctrlKey: true })) // no Shift
+    expect(terminalClear).not.toHaveBeenCalled()
   })
 })

@@ -11,6 +11,7 @@ vi.mock('@xterm/xterm', () => {
       write: vi.fn(),
       onData: vi.fn(),
       focus: vi.fn(),
+      clear: vi.fn(),
     }
   })
   return { Terminal }
@@ -65,6 +66,14 @@ describe('Terminal.vue', () => {
     const instance = (XTerm as ReturnType<typeof vi.fn>).mock.results[0]!.value
     wrapper.unmount()
     expect(instance.dispose).toHaveBeenCalledOnce()
+  })
+
+  it('exposes clear() which clears the xterm buffer', async () => {
+    const { Terminal: XTerm } = await import('@xterm/xterm')
+    const wrapper = mount(Terminal, { attachTo: document.body })
+    const instance = (XTerm as ReturnType<typeof vi.fn>).mock.results[0]!.value
+    ;(wrapper.vm as unknown as { clear: () => void }).clear()
+    expect(instance.clear).toHaveBeenCalledOnce()
   })
 
   it('writes bytes from readable prop to xterm', async () => {
