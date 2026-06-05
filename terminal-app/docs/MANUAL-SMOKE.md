@@ -8,6 +8,21 @@ Automated Playwright tests cover all UI behavior with mocked backends.
 This protocol covers the path that cannot be automated: the real USB device
 picker dialog and full physical data path.
 
+You can run this protocol two ways: by hand (click through the steps), or
+**Claude-assisted via the Playwright MCP server** — Claude drives the
+browser and observes, you grant the device picker. See
+`PLAYWRIGHT.md` → "Playwright MCP on Windows" for setup and the
+verified driving patterns (how to read echoed bytes from the DOM, why the
+picker often doesn't fire thanks to auto-reconnect, and why you must send
+real keystrokes rather than `fill()` the xterm input).
+
+> **Reading echo back precisely.** Instead of eyeballing the terminal, you
+> can dump xterm's rendered rows from the browser console (or via MCP):
+> `Array.from(document.querySelector('.xterm-rows').children).map(r => r.textContent)`.
+> With **echo off** each typed char appears **once** (hardware loopback);
+> with **echo on** it appears **twice** (local echo + loopback). That count
+> is the round-trip TX→RX assertion.
+
 ---
 
 ## Prerequisites

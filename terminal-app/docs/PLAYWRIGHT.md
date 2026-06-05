@@ -549,7 +549,73 @@ $env:TERMINAL_HW_TEST=1; npx playwright test --headed
 
 Or ask Claude Code (running on your laptop) to run them via the
 Playwright MCP server — it will drive the browser and pause for your
-input at the device picker.
+input at the device picker. For a curated, step-by-step version of that
+Claude-driven protocol, see [SEMIAUTO-SMOKE.md](./SEMIAUTO-SMOKE.md).
+
+### Driving a real run via MCP — verified patterns
+
+These are lessons from actually running the MCP-driven flow against the
+deployed app with both lab loopback rigs (a Pico CDC on Web Serial and an
+FT231x on WebUSB). They are the difference between a smooth run and ten
+minutes of confusion. All verified empirically.
+
+**The HIL rigs are loopbacks — use the echo count as your assertion.**
+Both lab devices reflect every byte they receive, so you don't need the
+device to volunteer any output. Type a distinctive marker and count how
+many times each character lands in the terminal:
+
+- **Echo checkbox OFF** → each char appears **once** (hardware loopback only).
+- **Echo checkbox ON** → each char appears **twice** (app local echo + loopback).
+
+So `PING` with echo off renders `PING`; typing `ZQ` with echo on renders
+`ZZQQ`. A *single* char with echo off that shows up *doubled* would mean
+the app is wrongly local-echoing; a char that never appears means the
+write or read path is broken. This makes a one-character keystroke a
+complete round-trip TX→RX assertion.
+
+**Read the echoed bytes straight from the DOM — don't screenshot.**
+xterm renders to `.xterm-rows`; each child is one row. Pull the text with
+an `evaluate`:
+
+```js
+() => Array.from(document.querySelector('.xterm-rows').children)
+  .map(r => r.textContent).filter(s => s && s.trim().length)
+```
+
+This is exact and assertable. (MCP `browser_take_screenshot` also writes
+to the *MCP server's* output directory, not your repo's working dir, so
+the file won't be where you expect — another reason to prefer the DOM read.)
+
+**You cannot `fill()` the xterm input — send real keystrokes.** xterm's
+input sink is an intentionally off-screen `.xterm-helper-textarea`.
+Playwright considers it "not visible", so `browser_type` / `fill()` time
+out against it. Click the `.xterm-screen` to focus, then drive
+`browser_press_key` (Playwright `page.keyboard.press`) one key at a time.
+That dispatches genuine keyboard events, which is also closer to what a
+real user does.
+
+**Auto-reconnect usually swallows the device picker.** The app
+auto-reconnects on mount — Web Serial via `getPorts()`, WebUSB via its
+paired-device list — so once a device has been granted in this browser
+profile, **Connect goes straight to the connected state and no picker
+fires.** The "pause for your input at the device picker" step only
+actually happens on the *first* pairing in a fresh profile (the MCP
+server launches a clean profile each session, but pairings granted
+earlier in the same session persist). Don't wait forever for a picker
+that isn't coming — snapshot the page and check whether the button
+already flipped to **Disconnect**.
+
+**The terminal buffer carries across a backend switch.** Disconnecting
+Web Serial and connecting WebUSB does *not* clear the xterm scrollback —
+text from the previous backend is still on screen. Account for it: when
+you type a new marker, assert on the *newly appended* tail, not on the
+whole buffer being equal to your marker.
+
+**A transient `Target page closed` on the very first action is benign.**
+Occasionally the first `navigate`/`Connect` returns
+`Target page closed` and the page drops to `about:blank` — an MCP/browser
+handshake hiccup, not an app fault. Re-navigate to the app URL and
+continue; it does not recur.
 
 ### Connecting to the deployed app vs. the dev server
 
