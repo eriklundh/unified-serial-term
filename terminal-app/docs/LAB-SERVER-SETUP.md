@@ -240,7 +240,111 @@ sudo certbot renew --dry-run
 Renewal is hands-off from now on, as long as port 80 stays open to
 Let's Encrypt's validators.
 
-## 9. (Optional) Quality-of-life additions
+## 9. Adding the production site (a second vhost)
+
+Steps §1–8 install nginx + certbot and bring up the **staging** site
+(`serial-lab`). The **production** site — the students' URL, served from
+`/var/www/serial-terminal-production` — reuses that same nginx + certbot;
+you only add a second vhost and a second cert. Do this once; thereafter
+`docs/DEPLOYMENT.md` publishes verified release tags to it with
+`fetch-build-deploy.sh production <tag>`.
+
+Prerequisite: `<prod-host>` already resolves to this VM
+(`dig +short <prod-host>` → `<deploy-host-ip>`), and ports 80/443 are open
+from §1. Do **not** remove the existing `serial-terminal` (staging) or
+`default` sites — both sites are served side by side, matched by
+`server_name`.
+
+### a. Web root + placeholder
+
+```bash
+sudo mkdir -p /var/www/serial-terminal-production
+# placeholder so the vhost + ACME challenge serve cleanly before first deploy
+echo '<!doctype html><title>unified-serial</title><h1>Provisioning…</h1>' \
+  | sudo tee /var/www/serial-terminal-production/index.html >/dev/null
+sudo chown -R www-data:www-data /var/www/serial-terminal-production
+```
+
+### b. nginx vhost (HTTP only; certbot adds 443 next)
+
+```bash
+sudo tee /etc/nginx/sites-available/serial-terminal-production >/dev/null <<'NGINX'
+server {
+    listen 80;
+    listen [::]:80;
+    server_name <prod-host>;
+
+    root /var/www/serial-terminal-production;
+    index index.html;
+
+    # SPA fallback
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Long-cache hashed asset files
+    location ~* \.(js|css|woff2?|svg|png|ico)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Short-cache the entry HTML so re-deploys are picked up immediately
+    location ~* \.html$ {
+        add_header Cache-Control "no-cache, must-revalidate";
+    }
+}
+NGINX
+
+sudo ln -sf /etc/nginx/sites-available/serial-terminal-production /etc/nginx/sites-enabled/
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### c. Issue the production cert
+
+```bash
+sudo certbot --nginx -d <prod-host> \
+  --email YOUR-EMAIL@<deploy-domain> \
+  --agree-tos --redirect --no-eff-email
+```
+
+certbot reuses the existing Let's Encrypt account, adds a 443 server block +
+HTTP→HTTPS redirect to the production vhost, and registers it for auto-renewal
+alongside the staging cert. It's a separate single-hostname cert — well within
+the 5-certs/week rate limit. (If the account already exists, `--email` is
+ignored and the existing contact is reused.)
+
+### d. Enable HTTP/2 (parity with staging)
+
+certbot does **not** enable HTTP/2. Edit the new 443 block in
+`/etc/nginx/sites-available/serial-terminal-production` and add `http2 on;`
+near the `listen 443 ssl;` lines:
+
+```nginx
+    listen [::]:443 ssl;  # managed by Certbot
+    listen 443 ssl;       # managed by Certbot
+    http2 on;
+```
+
+Then `sudo nginx -t && sudo systemctl reload nginx`.
+
+### e. Verify
+
+```bash
+curl -I https://<prod-host>/        # expected: HTTP/2 200
+curl -I http://<prod-host>/         # expected: 301 → https
+sudo ls /etc/letsencrypt/live/<prod-host>/   # fullchain.pem, privkey.pem
+```
+
+The site now serves the `Provisioning…` placeholder over HTTPS. The first
+real publish replaces it (see `docs/DEPLOYMENT.md` → "Promoting a verified
+release to production"):
+
+```bash
+ssh <deploy-user>@<deploy-host> \
+    'bash ~/deploy-unified-serial-term/terminal-app/script/fetch-build-deploy.sh production <release-tag>'
+```
+
+## 10. (Optional) Quality-of-life additions
 
 These aren't required for smoke testing but you'll likely want them
 before letting students hit the URL:
@@ -300,7 +404,7 @@ Don't add `includeSubDomains` unless you're prepared to commit *every*
 subdomain of `<deploy-domain>` to HTTPS forever, including
 ones you haven't created yet.
 
-## 10. Alternative: wildcard cert via DNS-01
+## 11. Alternative: wildcard cert via DNS-01
 
 Since you have `*.<deploy-domain>` wildcarded at the VM, you
 could get a single wildcard cert covering every subdomain at once.
@@ -317,7 +421,7 @@ Wildcard certs are valuable when you're hosting many lab tools at many
 subdomains; for one terminal app at one subdomain, the per-name cert
 is simpler and has a smaller blast radius if anything goes wrong.
 
-## 11. Logs and troubleshooting
+## 12. Logs and troubleshooting
 
 ```bash
 # nginx access and errors
@@ -346,7 +450,7 @@ Common issues:
 - **nginx 502 / 503 after deploy**: `sudo nginx -t` to validate
   config, `sudo journalctl -u nginx -n 50` for runtime errors.
 
-## 12. Document divergence
+## 13. Document divergence
 
 If something in this runbook doesn't work as written for your setup,
 update this file as part of the fix (per the "Maintaining the docs"
