@@ -32,8 +32,12 @@
 # It is idempotent: re-running with no new commits rebuilds and re-publishes
 # identical content.
 #
-# Environment knobs:
-#   TERMINAL_APP_DIR   Override the repo path (default: ~/unified-serial-term/terminal-app)
+# Environment knobs (or set them in the gitignored script/deploy.env):
+#   DEPLOY_SITE_HOST   Public hostname verified after publish; keep it out of the
+#                      committed repo (set it in script/deploy.env on the host)
+#   DEPLOY_WEBROOT     Web root to publish into (default: /var/www/serial-terminal)
+#   TERMINAL_APP_DIR   Override the repo path (default: derived from this script's location)
+#   DEPLOY_BRANCH      Branch to deploy (default: main)
 #   DRY_RUN=1          Do everything except touch the live web root (safe first run)
 #
 # Usage:
@@ -44,8 +48,16 @@
 set -euo pipefail
 
 # Absolute path to this script, resolved before any checkout mutation so the
-# re-exec guard can hash and re-run the freshly pulled copy.
+# re-exec guard can hash and re-run the freshly pulled copy. Everything the
+# script needs to locate (the repo) is derived from this, so it works no matter
+# the caller's cwd — an SSH trigger starts in $HOME, not the repo.
 SELF="$(readlink -f "$0")"
+SCRIPT_DIR="$(dirname "$SELF")"
+
+# Optional, gitignored host overrides (e.g. the concrete deploy hostname) so
+# this committed script stays host-agnostic. See script/deploy.env.example.
+# shellcheck source=/dev/null
+[ -f "$SCRIPT_DIR/deploy.env" ] && . "$SCRIPT_DIR/deploy.env"
 
 # --- Configuration: deploy targets -------------------------------------------
 # Single source of truth for where each public site is served from. A second
@@ -53,8 +65,8 @@ SELF="$(readlink -f "$0")"
 TARGET="${1:-serial-lab}"
 case "$TARGET" in
   serial-lab)
-    SITE_HOST="<deploy-host>"
-    WEBROOT="/var/www/serial-terminal"
+    SITE_HOST="${DEPLOY_SITE_HOST:-<deploy-host>}"
+    WEBROOT="${DEPLOY_WEBROOT:-/var/www/serial-terminal}"
     ;;
   # Add the second publish target here once its URL and web root are known:
   # other-lab)
@@ -68,7 +80,10 @@ case "$TARGET" in
 esac
 
 BRANCH="${DEPLOY_BRANCH:-main}"
-REPO_DIR="${TERMINAL_APP_DIR:-$HOME/unified-serial-term/terminal-app}"
+# Derived from this script's location (<repo>/terminal-app/script -> terminal-app),
+# so it's independent of the caller's cwd and of where the monorepo is cloned.
+# git commands then operate on the whole monorepo (git walks up to the root).
+REPO_DIR="${TERMINAL_APP_DIR:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
 # --- Helpers -----------------------------------------------------------------
 log()  { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
@@ -132,6 +147,8 @@ fi
 # --- 5. Verify ---------------------------------------------------------------
 if [ "${DRY_RUN:-}" = "1" ]; then
   warn "[dry-run] skipping HTTPS verification"
+elif [ "$SITE_HOST" = "<deploy-host>" ]; then
+  warn "DEPLOY_SITE_HOST not set (script/deploy.env) — published, but skipping HTTPS verify"
 else
   log "Verifying https://$SITE_HOST/"
   code="$(curl -fsS -o /dev/null -w '%{http_code}' "https://$SITE_HOST/" || true)"

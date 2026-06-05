@@ -6,3 +6,7 @@ test-results/
 .playwright-mcp/
 *.local
 .DS_Store
+
+# Host-specific deploy overrides (concrete hostname etc.) — never committed.
+# Copy script/deploy.env.example to script/deploy.env on the deploy host.
+script/deploy.env
