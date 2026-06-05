@@ -1,19 +1,21 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { nextTick } from 'vue'
 import { useAppearance, SYSTEM_MONO, DEFAULT_CLEAR_HOTKEY } from './useAppearance'
-import { THEMES } from '../themes'
+import { THEMES, DEFAULT_DARK_ID } from '../themes'
 
 describe('useAppearance', () => {
   beforeEach(() => {
     localStorage.clear()
   })
 
-  it('defaults to system monospace, size 14, default hotkey, and a known theme', () => {
+  it('defaults to system monospace, size 14, default hotkey, and the dark theme', () => {
     const { appearance } = useAppearance()
     expect(appearance.value.fontFamily).toBe(SYSTEM_MONO)
     expect(appearance.value.fontSize).toBe(14)
     expect(appearance.value.clearHotkey).toBe(DEFAULT_CLEAR_HOTKEY)
     expect(THEMES.map((t) => t.id)).toContain(appearance.value.themeId)
+    // Dark is the standard out-of-the-box theme, regardless of OS preference.
+    expect(appearance.value.themeId).toBe(DEFAULT_DARK_ID)
   })
 
   it('persists a fontSize change to localStorage', async () => {

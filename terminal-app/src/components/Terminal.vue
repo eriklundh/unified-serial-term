@@ -126,7 +126,9 @@ onUnmounted(() => {
 
 defineExpose({
   focus: () => terminal?.focus(),
-  clear: () => terminal?.clear(),
+  // reset() does a full RIS: wipes scrollback and homes the cursor to the
+  // top-left. clear() keeps the prompt line and leaves the cursor in place.
+  clear: () => terminal?.reset(),
 })
 </script>
 

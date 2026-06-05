@@ -1,5 +1,5 @@
 import { ref, watch } from 'vue'
-import { defaultThemeId } from '../themes'
+import { DEFAULT_DARK_ID } from '../themes'
 
 export interface Appearance {
   themeId: string
@@ -16,17 +16,9 @@ export const SYSTEM_MONO =
 
 export const DEFAULT_CLEAR_HOTKEY = 'Ctrl+Shift+K'
 
-function prefersDark(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-color-scheme: dark)').matches
-  )
-}
-
 function defaults(): Appearance {
   return {
-    themeId: defaultThemeId(prefersDark()),
+    themeId: DEFAULT_DARK_ID,
     fontFamily: SYSTEM_MONO,
     fontSize: 14,
     clearHotkey: DEFAULT_CLEAR_HOTKEY,

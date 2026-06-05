@@ -333,9 +333,19 @@ watch(currentTheme, (t) => applyThemeTokens(t), { immediate: true })
 // --- Settings drawer ---------------------------------------------------------
 const drawerOpen = ref(false)
 
+// Return keyboard focus to the terminal whenever the drawer closes, so typing
+// resumes immediately instead of staying trapped on whatever control was last
+// clicked inside the panel.
+watch(drawerOpen, (open) => {
+  if (!open) terminalRef.value?.focus()
+})
+
 // --- Clear terminal + hotkey -------------------------------------------------
 function clearTerminal() {
   terminalRef.value?.clear()
+  // Clicking the Clear button (or any toolbar control) parks focus on that
+  // button; hand it back to the terminal so the user can keep typing.
+  terminalRef.value?.focus()
 }
 
 const capturingHotkey = ref(false)
@@ -437,6 +447,7 @@ async function connect() {
     await b.open(settings.value)
     backend.value = b
     isConnected.value = true
+    terminalRef.value?.focus()
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     const lower = msg.toLowerCase()
@@ -462,6 +473,7 @@ async function disconnect() {
     backend.value = null
     isConnected.value = false
     statusMsg.value = null
+    terminalRef.value?.focus()
   }
 }
 

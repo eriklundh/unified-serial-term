@@ -12,6 +12,7 @@ vi.mock('@xterm/xterm', () => {
       onData: vi.fn(),
       focus: vi.fn(),
       clear: vi.fn(),
+      reset: vi.fn(),
     }
   })
   return { Terminal }
@@ -68,12 +69,13 @@ describe('Terminal.vue', () => {
     expect(instance.dispose).toHaveBeenCalledOnce()
   })
 
-  it('exposes clear() which clears the xterm buffer', async () => {
+  it('exposes clear() which resets the xterm buffer and homes the cursor', async () => {
     const { Terminal: XTerm } = await import('@xterm/xterm')
     const wrapper = mount(Terminal, { attachTo: document.body })
     const instance = (XTerm as ReturnType<typeof vi.fn>).mock.results[0]!.value
     ;(wrapper.vm as unknown as { clear: () => void }).clear()
-    expect(instance.clear).toHaveBeenCalledOnce()
+    // clear() maps to terminal.reset() (full RIS) so the cursor returns home.
+    expect(instance.reset).toHaveBeenCalledOnce()
   })
 
   it('writes bytes from readable prop to xterm', async () => {
