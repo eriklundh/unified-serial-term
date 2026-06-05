@@ -105,7 +105,10 @@ warn() { printf '\033[1;33m    %s\033[0m\n' "$*"; }
 die()  { printf '\n\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
 
 # --- 1. Fetch ----------------------------------------------------------------
-[ -d "$REPO_DIR/.git" ] || die "no git checkout at $REPO_DIR (set TERMINAL_APP_DIR?)"
+# Work-tree test (not `-d .git`): REPO_DIR is the terminal-app/ subdir of the
+# monorepo, so its .git lives at the repo root, not here.
+git -C "$REPO_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
+  || die "no git checkout at $REPO_DIR (set TERMINAL_APP_DIR?)"
 cd "$REPO_DIR"
 
 log "Updating $REPO_DIR to origin/$BRANCH"
