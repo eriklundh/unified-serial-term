@@ -116,6 +116,9 @@
         :readable="activeReadable ?? undefined"
         :writable="activeWritable ?? undefined"
         :local-echo="settings.localEcho"
+        :font-family="appearance.fontFamily"
+        :font-size="appearance.fontSize"
+        :theme="currentTheme.xterm"
         @disconnect="disconnect"
       />
     </main>
@@ -129,6 +132,8 @@ import BackendSelector from './components/BackendSelector.vue'
 import { FACTORIES_KEY } from './backends/injectionKeys'
 import { resolveFactory, writePreference } from './settings/backendPreference'
 import { useSettings } from './settings/useSettings'
+import { useAppearance } from './settings/useAppearance'
+import { getTheme, applyThemeTokens } from './themes'
 import type { BackendId, SerialBackend } from './backends/SerialBackend'
 
 const BAUD_RATES = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
@@ -144,6 +149,12 @@ watch(selectedId, (id) => {
 const selectedFactory = computed(() => factories.find((f) => f.id === selectedId.value) ?? null)
 
 const { settings, reset } = useSettings()
+
+const { appearance } = useAppearance()
+const currentTheme = computed(() => getTheme(appearance.value.themeId))
+// Apply the theme's design tokens to the document root (chrome) immediately and
+// on change; the terminal receives the xterm theme via the <Terminal> props.
+watch(currentTheme, (t) => applyThemeTokens(t), { immediate: true })
 
 const backend = ref<SerialBackend | null>(null)
 const isConnected = ref(false)

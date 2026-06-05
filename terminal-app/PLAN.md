@@ -662,3 +662,13 @@ Apache or nginx server with no Node.js required.
       classroom workflow from scratch
 - [ ] `v0.1.0` tag is pushed (pending git remote SSH key)
 - [ ] App is deployed and reachable to students (pending nginx setup)
+
+---
+
+## Phase 9 — Terminal UX & theming (release v1.1.0)
+
+Clear-terminal (button + configurable/off hotkey), font + colour-theme
+selection, a non-modal settings drawer, modern token-driven control styling,
+and durable/portable settings (localStorage + `persist()` + Export/Import).
+
+Full plan and sub-phases (A–E, TDD): [`docs/phases/PHASE-09-ui-theming.md`](docs/phases/PHASE-09-ui-theming.md).

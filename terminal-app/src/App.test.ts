@@ -9,7 +9,7 @@ vi.mock('./components/Terminal.vue', () => ({
   default: {
     name: 'Terminal',
     template: '<div class="mock-terminal" />',
-    props: ['readable', 'writable', 'localEcho'],
+    props: ['readable', 'writable', 'localEcho', 'fontFamily', 'fontSize', 'theme'],
     emits: ['disconnect'],
   },
 }))
