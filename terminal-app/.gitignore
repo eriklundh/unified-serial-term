@@ -3,5 +3,6 @@ dist/
 .vite/
 coverage/
 test-results/
+.playwright-mcp/
 *.local
 .DS_Store

@@ -116,6 +116,7 @@ npm run lint         # ESLint
 ```
 
 Manual hardware smoke tests: [docs/MANUAL-SMOKE.md](docs/MANUAL-SMOKE.md)
+Claude-assisted (Playwright MCP) smoke tests: [docs/SEMIAUTO-SMOKE.md](docs/SEMIAUTO-SMOKE.md)
 
 ---
 
