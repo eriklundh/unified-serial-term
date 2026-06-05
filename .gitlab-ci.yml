@@ -1,0 +1,110 @@
+# Root CI pipeline for the unified-serial-term monorepo.
+#
+# GitLab reads ONLY this root .gitlab-ci.yml. (The legacy
+# terminal-app/.gitlab-ci.yml is superseded by this file and is ignored by
+# GitLab — it is kept for reference and can be removed once this is live.)
+#
+# Design:
+#   - One job per component, scoped with `rules: changes` so an edit to one
+#     component doesn't rebuild the others. `terminal-app` also rebuilds on a
+#     `ftdi-driver` change, since it consumes the driver (file:../ftdi-driver).
+#   - Non-hardware jobs run on any shared/instance runner.
+#   - Hardware-in-loop jobs are gated to a runner tagged `hil-hardware` (the
+#     machine with the Pico + FTDI rigs attached) and are manual-only.
+
+stages:
+  - check
+  - hw
+
+# ──────────────────────────────────────────────────────────────────────────
+# ftdi-driver — TypeScript WebUSB driver library (npm package ftdi-webusb-driver)
+# ──────────────────────────────────────────────────────────────────────────
+ftdi-driver:
+  stage: check
+  image: node:22-alpine
+  cache:
+    key: npm-ftdi-driver
+    paths: [ftdi-driver/node_modules/]
+  rules:
+    - changes: [ftdi-driver/**/*]
+  script:
+    - cd ftdi-driver
+    - npm ci --no-audit --no-fund
+    - npm run lint
+    - npm run typecheck
+    - npm test
+    - npm run build
+  artifacts:
+    paths: [ftdi-driver/dist/]
+    expire_in: 1 week
+
+# ──────────────────────────────────────────────────────────────────────────
+# terminal-app — Vue 3 + Vite browser terminal (depends on ftdi-driver)
+# ──────────────────────────────────────────────────────────────────────────
+terminal-app:
+  stage: check
+  image: node:22-alpine
+  cache:
+    key: npm-terminal-app
+    paths: [terminal-app/node_modules/]
+  rules:
+    - changes: [terminal-app/**/*, ftdi-driver/**/*]
+  script:
+    - cd terminal-app
+    - npm ci --no-audit --no-fund
+    - npm run lint
+    - npm run typecheck
+    # Build the sibling ../ftdi-driver first so the WebUSB-backend unit tests
+    # can import the package; `npm run build` would also trigger this via its
+    # prebuild hook, but tests run before build.
+    - node script/ensure-driver-built.mjs
+    - npm test
+    - npm run build
+  artifacts:
+    paths: [terminal-app/dist/]
+    expire_in: 1 week
+
+# ──────────────────────────────────────────────────────────────────────────
+# Python components — hil-preflight, ftdi-loopback-verify, pico-cdc-test-rig
+# The real device tests are hardware-gated (they pytest.fail when a device is
+# absent), so CI only does a syntax/compile smoke here; the live runs are in
+# the `hw` stage below on the rig-attached runner.
+# ──────────────────────────────────────────────────────────────────────────
+python-suites:
+  stage: check
+  image: python:3.12-slim
+  rules:
+    - changes:
+        - hil-preflight/**/*
+        - ftdi-loopback-verify/**/*
+        - pico-cdc-test-rig/**/*
+  script:
+    - python -m pip install --quiet --upgrade pip
+    - find hil-preflight ftdi-loopback-verify pico-cdc-test-rig -name '*.py' -print0 | xargs -0 -r python -m py_compile
+    - bash -n hil-preflight/preflight.sh
+
+# ──────────────────────────────────────────────────────────────────────────
+# Hardware-in-loop — runs ONLY on a runner tagged `hil-hardware` (a self-managed
+# runner on the machine with the Pico + FTDI rigs physically attached), and only
+# when triggered by hand. The runner needs node, python3, and udev access to the
+# USB devices. `npm run test:hw` runs ../hil-preflight/preflight.sh first.
+# ──────────────────────────────────────────────────────────────────────────
+.hw:
+  stage: hw
+  tags: [hil-hardware]
+  when: manual
+  # no `image:` → uses the runner's shell executor / native environment
+
+terminal-app:test:hw:
+  extends: .hw
+  script:
+    - cd terminal-app
+    - npm ci --no-audit --no-fund
+    - npm run test:hw
+
+ftdi-driver:test:hw:
+  extends: .hw
+  script:
+    - cd ftdi-driver
+    - npm ci --no-audit --no-fund
+    - npm run test:hw

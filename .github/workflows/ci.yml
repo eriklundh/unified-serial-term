@@ -1,0 +1,128 @@
+# GitHub Actions equivalent of the root .gitlab-ci.yml for this monorepo.
+#
+# - `changes` job computes which components were touched (dorny/paths-filter),
+#   the analog of GitLab `rules: changes`.
+# - Each component job is gated on that, so an edit to one component doesn't
+#   build the others. `app` also runs on an `ftdi-driver` change (it consumes
+#   the driver via file:../ftdi-driver).
+# - Non-hardware jobs use GitHub-hosted `ubuntu-latest` runners.
+# - The `hardware` job uses a SELF-HOSTED runner labelled `hil-hardware`
+#   (the machine with the Pico + FTDI rigs attached) and is manual-only
+#   (workflow_dispatch) — see "Self-hosted runner setup" in the repo notes.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:   # manual trigger; required for the hardware job
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      driver: ${{ steps.filter.outputs.driver }}
+      app: ${{ steps.filter.outputs.app }}
+      python: ${{ steps.filter.outputs.python }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            driver:
+              - 'ftdi-driver/**'
+            app:
+              - 'terminal-app/**'
+              - 'ftdi-driver/**'
+            python:
+              - 'hil-preflight/**'
+              - 'ftdi-loopback-verify/**'
+              - 'pico-cdc-test-rig/**'
+
+  ftdi-driver:
+    needs: changes
+    if: ${{ needs.changes.outputs.driver == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ftdi-driver
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ftdi-driver/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ftdi-driver-dist
+          path: ftdi-driver/dist/
+
+  terminal-app:
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'true' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terminal-app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: terminal-app/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      # Build the sibling ../ftdi-driver so the WebUSB-backend unit tests can
+      # import the package (tests run before build).
+      - run: node script/ensure-driver-built.mjs
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terminal-app-dist
+          path: terminal-app/dist/
+
+  python-suites:
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax-check Python + bash
+        # The real device tests are hardware-gated; the live runs are the
+        # `hardware` job below. Here we only compile-check the sources.
+        run: |
+          python -m pip install --upgrade pip
+          find hil-preflight ftdi-loopback-verify pico-cdc-test-rig -name '*.py' -print0 | xargs -0 -r python -m py_compile
+          bash -n hil-preflight/preflight.sh
+
+  # Hardware-in-loop — self-hosted runner attached to the rig machine.
+  # Register a runner with labels: self-hosted, hil-hardware (needs node,
+  # python3, and udev access to the USB devices). Manual trigger only.
+  hardware:
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: [self-hosted, hil-hardware]
+    steps:
+      - uses: actions/checkout@v4
+      - name: terminal-app HW tests
+        working-directory: terminal-app
+        run: |
+          npm ci --no-audit --no-fund
+          npm run test:hw          # runs ../hil-preflight/preflight.sh first
+      - name: ftdi-driver HW tests
+        working-directory: ftdi-driver
+        run: |
+          npm ci --no-audit --no-fund
+          npm run test:hw
