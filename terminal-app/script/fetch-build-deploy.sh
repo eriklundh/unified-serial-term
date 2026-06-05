@@ -18,12 +18,21 @@
 #   1. Fast-forward the checkout to origin/<branch> (default: main).
 #   2. Re-exec itself if this very script changed in the pull (so script edits
 #      take effect on the same trigger).
-#   3. Reproducible install + production build.
-#   4. Publish the static bundle to the target site's web root.
-#   5. Verify the site answers 200 over HTTPS.
+#   3. Verify the build prerequisite: the sibling ftdi-webusb-driver is built.
+#   4. Reproducible install + production build (static dist/, no runtime).
+#   5. Publish the static bundle to the target site's web root.
+#   6. Verify the site answers 200 over HTTPS.
+#
+# The published artefact is purely static (HTML/JS/CSS). Node runs only on this
+# build host; the public web server (nginx/apache) serves dist/ with no Node
+# runtime — that is why the university URL needs no app server.
 #
 # It is idempotent: re-running with no new commits rebuilds and re-publishes
 # identical content.
+#
+# This script does NOT build the sibling ftdi-webusb-driver; that is a host
+# prerequisite (built out-of-band). It fails fast if the driver's dist/ is
+# missing.
 #
 # Environment knobs:
 #   TERMINAL_APP_DIR   Override the repo path (default: ~/unified-serial-terminal/terminal-app)
@@ -91,10 +100,21 @@ fi
 DEPLOY_REF="$(git rev-parse --short HEAD)"
 DEPLOY_SUBJECT="$(git log -1 --pretty=%s)"
 
-# --- 3. Build ----------------------------------------------------------------
-# `npm ci` resolves the sibling `file:../ftdi-webusb-driver` dependency, which
-# must already be present and built under the collection root on this host.
+# --- 3. Verify build prerequisites -------------------------------------------
+# terminal-app imports `ftdi-webusb-driver` (a `file:../ftdi-webusb-driver`
+# dependency) whose package entry points resolve to its built dist/ (.js +
+# .d.ts). By design this script does NOT build the sibling driver — it is built
+# out-of-band on this host (see docs/DEPLOYMENT.md). Fail fast with an
+# actionable message instead of a cryptic vue-tsc "cannot find module" error.
 command -v npm >/dev/null 2>&1 || die "npm not found on PATH"
+DRIVER_DIR="$REPO_DIR/../ftdi-webusb-driver"
+[ -f "$DRIVER_DIR/dist/index.d.ts" ] || die \
+  "sibling ftdi-webusb-driver is not built ($DRIVER_DIR/dist missing). Build it first: (cd $DRIVER_DIR && npm ci && npm run build)"
+
+# --- 4. Build ----------------------------------------------------------------
+# Produces a purely static dist/ (HTML/JS/CSS). Node runs only here, on the
+# build host; the published bundle needs no runtime — a plain web server
+# (nginx/apache) serves it. `npm ci` installs against the committed lockfile.
 log "Installing dependencies (npm ci)"
 npm ci
 
@@ -102,7 +122,7 @@ log "Building (npm run build)"
 npm run build
 [ -f dist/index.html ] || die "build produced no dist/index.html"
 
-# --- 4. Publish --------------------------------------------------------------
+# --- 5. Publish --------------------------------------------------------------
 if [ "${DRY_RUN:-}" = "1" ]; then
   warn "[dry-run] skipping publish to $WEBROOT"
   warn "[dry-run] would: sudo rsync -a --delete dist/ $WEBROOT/"
@@ -115,7 +135,7 @@ else
   sudo chown -R www-data:www-data "$WEBROOT"
 fi
 
-# --- 5. Verify ---------------------------------------------------------------
+# --- 6. Verify ---------------------------------------------------------------
 if [ "${DRY_RUN:-}" = "1" ]; then
   warn "[dry-run] skipping HTTPS verification"
 else

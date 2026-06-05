@@ -240,6 +240,26 @@ preserving if you change it:
 It publishes with the same `rsync --delete` + `chown www-data` shown by
 hand above, then curls the site to confirm it answers `200` over HTTPS.
 
+**Build host vs. serve host.** The build runs on the deploy host (which has
+Node); the published `dist/` is *purely static* (HTML/JS/CSS) and is served
+by nginx with **no Node runtime**. That's the whole point of a static SPA —
+the university public URL never needs an app server. Don't add anything to
+the serve path that assumes Node.
+
+**Prerequisite — the sibling driver must be built.** terminal-app imports
+`ftdi-webusb-driver` (a `file:../ftdi-webusb-driver` dependency) whose entry
+points resolve to its built `dist/`. The deploy script **does not** build the
+driver — it's built out-of-band on the host. Before the first deploy (and
+after any driver change), build it once:
+
+```bash
+cd ~/unified-serial-terminal/ftdi-webusb-driver && npm ci && npm run build
+```
+
+The script fails fast with an actionable message if `ftdi-webusb-driver/dist`
+is missing, rather than emitting a cryptic `vue-tsc` "cannot find module"
+error.
+
 **Internal specifics (this lab).**
 
 - Deploy host: reachable **only** at
