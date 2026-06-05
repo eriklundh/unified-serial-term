@@ -16,7 +16,7 @@
 # reviewable in git.
 #
 # What it does, in order:
-#   1. Fast-forward the checkout to origin/<branch> (default: main).
+#   1. Hard-reset the mirror to the chosen ref (default origin/main; a tag for production).
 #   2. Re-exec itself if this very script changed in the pull (so script edits
 #      take effect on the same trigger).
 #   3. Reproducible install + production build (static dist/, no runtime). The
@@ -38,18 +38,22 @@
 #                      mirror. Without it the script refuses to run, so it can
 #                      never hard-reset a development checkout. Set it in the
 #                      mirror's script/deploy.env.
-#   DEPLOY_SITE_HOST   Public hostname verified after publish; keep it out of the
-#                      committed repo (set it in script/deploy.env on the host)
-#   DEPLOY_WEBROOT     Web root to publish into (default: /var/www/serial-terminal)
-#   TERMINAL_APP_DIR   Override the repo path (default: derived from this script's location)
-#   DEPLOY_BRANCH      Branch to deploy (default: main)
-#   DRY_RUN=1          Do everything except touch the live web root (safe first run)
-#   FBD_FORCE=1        Bypass the dirty/ahead safety checks before the hard-reset
+#   DEPLOY_SITE_HOST       serial-lab hostname verified after publish; keep it
+#                          out of the committed repo (set in script/deploy.env)
+#   DEPLOY_PROD_SITE_HOST  production hostname verified after publish
+#   DEPLOY_WEBROOT         serial-lab web root (default: /var/www/serial-terminal)
+#   DEPLOY_PROD_WEBROOT    production web root (default: /var/www/serial-terminal-production)
+#   DEPLOY_REF             Git ref to deploy (overridden by the 2nd CLI arg)
+#   TERMINAL_APP_DIR       Override the repo path (default: derived from script location)
+#   DRY_RUN=1              Do everything except touch the live web root (safe first run)
+#   FBD_FORCE=1            Bypass the dirty/unpushed safety checks before the reset
 #
 # Usage:
-#   fetch-build-deploy.sh [target]
-#     target  Which site to publish to (default: serial-lab). See the case
-#             block below — a second publish cycle is added by copying a branch.
+#   fetch-build-deploy.sh [target] [ref]
+#     target  serial-lab (staging, default) | production (students' URL)
+#     ref     git ref to deploy. Defaults to origin/main for serial-lab;
+#             REQUIRED for production — a verified release tag, e.g.:
+#               fetch-build-deploy.sh production v1.0.0
 #
 set -euo pipefail
 
@@ -74,26 +78,35 @@ SCRIPT_DIR="$(dirname "$SELF")"
   exit 1; }
 
 # --- Configuration: deploy targets -------------------------------------------
-# Single source of truth for where each public site is served from. A second
-# publish cycle (different URL / web root) is added as another case branch.
+# Single source of truth for where each public site is served from, plus which
+# git ref each deploys by default:
+#   serial-lab  = staging; tracks origin/main continuously.
+#   production  = students' URL; verified RELEASE TAGS only (no default ref).
 TARGET="${1:-serial-lab}"
+# Optional 2nd arg (or DEPLOY_REF): the git ref to deploy — a tag for releases,
+# or a branch/commit. Falls back to the target's default below.
+REF_ARG="${2:-${DEPLOY_REF:-}}"
+
 case "$TARGET" in
-  serial-lab)
+  serial-lab)                       # staging
     SITE_HOST="${DEPLOY_SITE_HOST:-<deploy-host>}"
     WEBROOT="${DEPLOY_WEBROOT:-/var/www/serial-terminal}"
+    DEFAULT_REF="origin/main"
     ;;
-  # Add the second publish target here once its URL and web root are known:
-  # other-lab)
-  #   SITE_HOST="other-lab.example.se"
-  #   WEBROOT="/var/www/other-serial-terminal"
-  #   ;;
+  production)                       # students' production URL — release tags only
+    SITE_HOST="${DEPLOY_PROD_SITE_HOST:-<prod-host>}"
+    WEBROOT="${DEPLOY_PROD_WEBROOT:-/var/www/serial-terminal-production}"
+    DEFAULT_REF=""                  # force an explicit release ref (a tag)
+    ;;
   *)
-    echo "ERROR: unknown deploy target '$TARGET'" >&2
+    echo "ERROR: unknown deploy target '$TARGET' (use: serial-lab | production)" >&2
     exit 2
     ;;
 esac
 
-BRANCH="${DEPLOY_BRANCH:-main}"
+REF="${REF_ARG:-$DEFAULT_REF}"
+[ -n "$REF" ] || { echo "ERROR: '$TARGET' needs an explicit release ref, e.g.: fetch-build-deploy.sh $TARGET v1.0.0" >&2; exit 2; }
+
 # Derived from this script's location (<repo>/terminal-app/script -> terminal-app),
 # so it's independent of the caller's cwd and of where the monorepo is cloned.
 # git commands then operate on the whole monorepo (git walks up to the root).
@@ -111,22 +124,25 @@ git -C "$REPO_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
   || die "no git checkout at $REPO_DIR (set TERMINAL_APP_DIR?)"
 cd "$REPO_DIR"
 
-log "Updating $REPO_DIR to origin/$BRANCH"
+log "Deploying $TARGET from ref: $REF"
 before_self="$(sha1sum "$SELF" | cut -d' ' -f1)"
-git fetch --prune origin
+git fetch --prune --tags origin
+# Resolve the ref to a concrete commit now (fails clearly if a tag is missing).
+TARGET_SHA="$(git rev-parse --verify "${REF}^{commit}" 2>/dev/null)" \
+  || die "ref '$REF' not found — fetch/push the tag first, or check the name."
 # Safety: even on a mirror, never silently destroy local work. Abort if the
-# working tree has tracked modifications, or if this checkout has commits not
-# on the remote. FBD_FORCE=1 overrides (e.g. a deliberately-dirty host).
+# working tree has tracked modifications, or if this checkout has commits that
+# exist on no origin branch (i.e. unpushed local work). FBD_FORCE=1 overrides.
 if [ "${FBD_FORCE:-}" != "1" ]; then
   [ -z "$(git status --porcelain --untracked-files=no)" ] \
     || die "uncommitted tracked changes in $REPO_DIR — refusing to hard-reset (FBD_FORCE=1 to override)."
-  ahead="$(git rev-list --count "origin/$BRANCH..HEAD" 2>/dev/null || echo 0)"
-  [ "$ahead" = 0 ] \
-    || die "$REPO_DIR is $ahead commit(s) ahead of origin/$BRANCH — push them first (FBD_FORCE=1 to override)."
+  local_only="$(git rev-list --count HEAD --not --remotes=origin 2>/dev/null || echo 0)"
+  [ "$local_only" = 0 ] \
+    || die "$REPO_DIR has $local_only commit(s) on no origin branch — push them first (FBD_FORCE=1 to override)."
 fi
-# Hard-reset to the remote branch tip. We deliberately do NOT `git clean`:
+# Hard-reset to the chosen ref. We deliberately do NOT `git clean`:
 # untracked build artefacts (node_modules/, dist/) must survive the reset.
-git reset --hard "origin/$BRANCH"
+git reset --hard "$TARGET_SHA"
 after_self="$(sha1sum "$SELF" | cut -d' ' -f1)"
 
 # --- 2. Re-exec guard --------------------------------------------------------
@@ -134,10 +150,10 @@ after_self="$(sha1sum "$SELF" | cut -d' ' -f1)"
 # new logic governs the rest of this deploy. FBD_REEXEC prevents a loop.
 if [ "${FBD_REEXEC:-}" != "1" ] && [ "$before_self" != "$after_self" ]; then
   log "Deploy script changed in pull — re-exec'ing updated version"
-  exec env FBD_REEXEC=1 bash "$SELF" "$TARGET"
+  exec env FBD_REEXEC=1 bash "$SELF" "$TARGET" "$REF"
 fi
 
-DEPLOY_REF="$(git rev-parse --short HEAD)"
+DEPLOYED_SHA="$(git rev-parse --short HEAD)"
 DEPLOY_SUBJECT="$(git log -1 --pretty=%s)"
 
 # --- 3. Build ----------------------------------------------------------------
@@ -182,4 +198,4 @@ else
   [ "$code" = "200" ] || die "https://$SITE_HOST/ returned HTTP ${code:-<none>}"
 fi
 
-log "Deployed $TARGET @ $DEPLOY_REF — $DEPLOY_SUBJECT"
+log "Deployed $TARGET ($REF) @ $DEPLOYED_SHA — $DEPLOY_SUBJECT"

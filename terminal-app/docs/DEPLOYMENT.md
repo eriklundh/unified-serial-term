@@ -237,9 +237,12 @@ preserving if you change it:
   nothing is ever lost silently.
 - **Idempotent.** Re-running with no new commits rebuilds and republishes
   identical, content-hashed assets — safe to trigger repeatedly.
-- **Parameterised targets.** A `case` block maps a target name → site host
-  + web root, so a second publish cycle to a different URL is one added
-  branch, not a forked script: `fetch-build-deploy.sh <target>`.
+- **Two targets, tag-gated production.** `fetch-build-deploy.sh [target] [ref]`:
+  - `serial-lab` (default) — **staging**; deploys `origin/main` continuously
+    to `/var/www/serial-terminal`.
+  - `production` — the **students' URL**; deploys only an explicit **release
+    tag** (no default ref) to `/var/www/serial-terminal-production`. That is
+    how a *verified* build is promoted — immutably and auditably.
 - **Safe dry run.** `DRY_RUN=1` does everything up to (but not including)
   writing the live web root or curling the site — use it for a first run
   against a new host.
@@ -285,10 +288,13 @@ The auto-build is skipped entirely when `../ftdi-driver` isn't present
     script hard-resets it to `origin/main`). Its gitignored `script/deploy.env`
     sets `DEPLOY_MIRROR=1` and `DEPLOY_SITE_HOST`. The `ftdi-driver/` subdir
     only needs to be *present*; the build auto-builds it on demand (see above).
-- Default target alias → web root `/var/www/serial-terminal`, served
-  at `https://<deploy-host>/`.
+- Targets / sites (hostnames come from the mirror's `deploy.env`:
+  `DEPLOY_SITE_HOST`, `DEPLOY_PROD_SITE_HOST`):
+  - `serial-lab` (staging) → `/var/www/serial-terminal`, `https://<deploy-host>/`
+  - `production` (students' URL) → `/var/www/serial-terminal-production`,
+    `https://<prod-host>/`
 
-Trigger a deploy after pushing to `main`:
+Trigger a **staging** deploy after pushing to `main`:
 
 ```bash
 ssh <deploy-user>@<deploy-host> \
@@ -301,6 +307,24 @@ First-time or cautious run (builds, but writes nothing to the live site):
 ssh <deploy-user>@<deploy-host> \
     'DRY_RUN=1 bash ~/deploy-unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
 ```
+
+### Promoting a verified release to production
+
+Once a `main` build is verified on staging, tag it and publish that **exact
+tag** to the students' URL. Production refuses to run without an explicit tag,
+so it can never drift to whatever `main` happens to be:
+
+```bash
+# 1. In the dev checkout: tag the verified commit and push the tag.
+git tag -a release-2026-06-05 -m "Verified release" && git push origin release-2026-06-05
+
+# 2. Publish that tag to production.
+ssh <deploy-user>@<deploy-host> \
+    'bash ~/deploy-unified-serial-term/terminal-app/script/fetch-build-deploy.sh production release-2026-06-05'
+```
+
+To roll back, deploy an earlier tag the same way. `serial-lab` keeps tracking
+`main` independently, so staging and production move on separate cadences.
 
 ## 7. Verification checklist after deploy
 
