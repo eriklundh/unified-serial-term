@@ -1,6 +1,9 @@
 <template>
   <div class="app">
-    <header class="toolbar">
+    <header
+      ref="toolbarRef"
+      class="toolbar"
+    >
       <div class="toolbar__group">
         <BackendSelector
           v-model="selectedId"
@@ -313,6 +316,7 @@ const FONT_CHOICES = [
 ]
 
 const terminalRef = ref<InstanceType<typeof Terminal> | null>(null)
+const toolbarRef = ref<HTMLElement | null>(null)
 const factories = inject(FACTORIES_KEY, [])
 const selectedId = ref<BackendId | null>(resolveFactory(factories)?.id ?? null)
 
@@ -389,9 +393,27 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 onMounted(() => window.addEventListener('keydown', onKeydown, true))
+
+// Publish the toolbar's height as `--toolbar-h` so the drawer can sit *below*
+// it (`inset: var(--toolbar-h) …`) instead of behind it. The toolbar wraps on
+// narrow widths, so its height is dynamic — track it with a ResizeObserver.
+let toolbarResizeObserver: ResizeObserver | null = null
+function syncToolbarHeight() {
+  const h = toolbarRef.value?.offsetHeight ?? 0
+  document.documentElement.style.setProperty('--toolbar-h', `${h}px`)
+}
+onMounted(() => {
+  syncToolbarHeight()
+  if (typeof ResizeObserver !== 'undefined' && toolbarRef.value) {
+    toolbarResizeObserver = new ResizeObserver(syncToolbarHeight)
+    toolbarResizeObserver.observe(toolbarRef.value)
+  }
+})
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown, true)
   stopRebind()
+  toolbarResizeObserver?.disconnect()
+  toolbarResizeObserver = null
 })
 
 // --- Settings import/export/persistence --------------------------------------
@@ -620,7 +642,9 @@ body,
   /* Override the UA `display:none` so the slide transition can run. */
   display: block;
   position: fixed;
-  inset: 0 0 0 auto;
+  /* Sit below the toolbar (height published as --toolbar-h) so the drawer's
+     own header — title + ✕ close — is never occluded by the toolbar bar. */
+  inset: var(--toolbar-h, 0) 0 0 auto;
   width: min(24rem, 100%);
   max-width: 100%;
   margin: 0;

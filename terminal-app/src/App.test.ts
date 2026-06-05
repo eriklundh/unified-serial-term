@@ -100,6 +100,14 @@ describe('App.vue', () => {
     expect(wrapper.find('[data-testid="settings-panel"]').exists()).toBe(true)
   })
 
+  it('publishes the toolbar height as --toolbar-h so the drawer clears it', () => {
+    mount(App, { attachTo: document.body })
+    // The drawer is offset below the toolbar via `inset: var(--toolbar-h) …`;
+    // App measures the (wrap-variable) toolbar and exposes it on :root.
+    const v = document.documentElement.style.getPropertyValue('--toolbar-h')
+    expect(v).toMatch(/px$/)
+  })
+
   it('renders the BackendSelector', () => {
     const wrapper = mountWithFactories([new MockFactory()])
     expect(wrapper.find('.backend-selector').exists()).toBe(true)

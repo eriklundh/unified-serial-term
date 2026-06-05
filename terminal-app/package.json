@@ -1,7 +1,7 @@
 {
   "name": "web-serial-console",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "scripts": {
     "predev": "node script/ensure-driver-built.mjs",

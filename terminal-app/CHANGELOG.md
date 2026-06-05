@@ -11,6 +11,21 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.1] — 2026-06-05
+
+### Fixed
+
+- **Settings drawer header no longer hides behind the toolbar.** The drawer
+  opened at `top: 0` while the toolbar sat above it (`z-index`), so the
+  drawer's own title and ✕ close button were occluded and the ✕ was
+  unclickable (Esc / the ⚙ toggle still closed it). The drawer now sits
+  *below* the toolbar via `inset: var(--toolbar-h) …`, where `--toolbar-h`
+  tracks the (wrap-variable) toolbar height through a `ResizeObserver`. The
+  ✕ is visible and clickable again, and ⚙ stays clickable — no more
+  z-index tug-of-war. Caught by the post-release production UI smoke.
+
+---
+
 ## [1.1.0] — 2026-06-05
 
 Terminal UX & theming release.
