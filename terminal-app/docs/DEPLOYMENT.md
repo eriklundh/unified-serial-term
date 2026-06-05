@@ -323,6 +323,14 @@ ssh <deploy-user>@<deploy-host> \
     'bash ~/deploy-unified-serial-term/terminal-app/script/fetch-build-deploy.sh production release-2026-06-05'
 ```
 
+**What's live right now?** Every deploy stamps the published bundle with a
+manifest, so the site self-identifies which release is serving:
+
+```bash
+curl -s https://<prod-host>/version.json
+# { "target": "production", "ref": "v1.0.0", "commit": "…", "built_at": "…Z", … }
+```
+
 To roll back, deploy an earlier tag the same way. `serial-lab` keeps tracking
 `main` independently, so staging and production move on separate cadences.
 

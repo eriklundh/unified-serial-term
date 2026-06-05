@@ -174,6 +174,23 @@ log "Building (npm run build)"
 npm run build
 [ -f dist/index.html ] || die "build produced no dist/index.html"
 
+# Stamp the bundle so the live site is self-identifying — which ref/commit is
+# actually published, and when. Published alongside the app and queryable at
+# https://<site>/version.json (that's how you tell what's live in production).
+log "Writing dist/version.json"
+python3 - "$TARGET" "$REF" "$DEPLOYED_SHA" "$DEPLOY_SUBJECT" "$SITE_HOST" > dist/version.json <<'PY'
+import json, sys, datetime
+target, ref, commit, subject, site = sys.argv[1:6]
+print(json.dumps({
+    "target":   target,
+    "ref":      ref,
+    "commit":   commit,
+    "subject":  subject,
+    "site":     site,
+    "built_at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+}, indent=2))
+PY
+
 # --- 4. Publish --------------------------------------------------------------
 if [ "${DRY_RUN:-}" = "1" ]; then
   warn "[dry-run] skipping publish to $WEBROOT"
@@ -199,3 +216,7 @@ else
 fi
 
 log "Deployed $TARGET ($REF) @ $DEPLOYED_SHA — $DEPLOY_SUBJECT"
+case "$SITE_HOST" in
+  '<deploy-host>'|'<prod-host>'|'') ;;
+  *) [ "${DRY_RUN:-}" = "1" ] || echo "    live manifest: https://$SITE_HOST/version.json" ;;
+esac
