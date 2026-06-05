@@ -5,6 +5,7 @@ import App from './App.vue'
 import type { BackendId, SerialBackend, SerialBackendFactory } from './backends/SerialBackend'
 import { MockSerialBackend } from './backends/MockSerialBackend'
 import { FACTORIES_KEY } from './backends/injectionKeys'
+import { SYSTEM_MONO } from './settings/useAppearance'
 
 const { terminalClear } = vi.hoisted(() => ({ terminalClear: vi.fn() }))
 
@@ -464,5 +465,14 @@ describe('App.vue — settings drawer & appearance', () => {
     await nextTick()
     expect(wrapper.get('[data-testid="hotkey-value"]').text()).toBe('Ctrl+Alt+G')
     expect(localStorage.getItem('appearance.clearHotkey')).toBe('Ctrl+Alt+G')
+  })
+
+  it('changing the font persists the selected family stack', async () => {
+    const wrapper = mount(App, { attachTo: document.body })
+    await wrapper.get('[data-testid="settings-btn"]').trigger('click')
+    const stack = `'Source Code Pro', ${SYSTEM_MONO}`
+    await wrapper.get('[data-testid="font-select"]').setValue(stack)
+    await nextTick()
+    expect(localStorage.getItem('appearance.fontFamily')).toBe(stack)
   })
 })

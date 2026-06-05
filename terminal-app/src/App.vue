@@ -307,6 +307,7 @@ const FONT_CHOICES = [
   { label: 'System monospace', value: SYSTEM_MONO },
   { label: 'Source Code Pro', value: `'Source Code Pro', ${SYSTEM_MONO}` },
   { label: 'JetBrains Mono', value: `'JetBrains Mono', ${SYSTEM_MONO}` },
+  { label: 'Fira Code', value: `'Fira Code', ${SYSTEM_MONO}` },
   { label: 'Cascadia Code', value: `'Cascadia Code', ${SYSTEM_MONO}` },
   { label: 'IBM Plex Mono', value: `'IBM Plex Mono', ${SYSTEM_MONO}` },
 ]

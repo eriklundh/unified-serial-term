@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import './fonts.css'
 import App from './App.vue'
 import { WebSerialFactory } from './backends/WebSerialBackend'
 import { WebUsbFtdiFactory } from './backends/WebUsbFtdiBackend'
