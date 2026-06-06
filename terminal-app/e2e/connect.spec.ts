@@ -8,7 +8,9 @@ test.describe('connect / disconnect', () => {
     await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.getByRole('button', { name: /disconnect/i })).toBeVisible()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()
-    await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeDisabled()
+    // Local echo stays live — it only affects local rendering, not the port
+    // config, so it's toggleable mid-session (unlike baud/parity/etc.).
+    await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
   })
 
   test('WebUSB — connect shows Disconnect and disables settings', async ({ mockedPage }) => {
@@ -16,7 +18,7 @@ test.describe('connect / disconnect', () => {
     await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.getByRole('button', { name: /disconnect/i })).toBeVisible()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()
-    await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeDisabled()
+    await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
   })
 
   test('Disconnect cleans up — Connect visible and settings re-enabled', async ({

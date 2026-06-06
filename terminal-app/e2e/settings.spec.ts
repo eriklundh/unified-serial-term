@@ -56,15 +56,16 @@ test.describe('settings panel', () => {
     await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).not.toBeChecked()
   })
 
-  test('all controls disabled while connected', async ({ mockedPage }) => {
+  test('port-config controls disabled while connected (echo stays live)', async ({ mockedPage }) => {
     await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="databits-select"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="parity-select"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="stopbits-select"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="flowcontrol-select"]')).toBeDisabled()
-    await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="reset-btn"]')).toBeDisabled()
+    // Local echo is a live rendering toggle, not a port setting — stays enabled.
+    await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
   })
 
   test('controls re-enabled after disconnect', async ({ mockedPage }) => {
