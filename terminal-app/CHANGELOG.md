@@ -11,6 +11,38 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.2] — 2026-06-06
+
+Serial stream-lifecycle hardening. Found on a Raspberry Pi 5 host with an
+FTDI loopback plug: after disconnecting in the browser you couldn't
+reconnect, a page refresh showed a live connection that wasn't usable, and
+the kernel kept renumbering the `ttyUSB*` node — all symptoms of a leaked OS
+serial handle.
+
+### Fixed
+
+- **Web Serial disconnect no longer leaks the port / blocks reconnect.** The
+  backend exposed `port.writable` raw, so `Terminal.vue`'s session-long writer
+  locked the native port stream and only released it *after* disconnect.
+  `port.close()` then ran with the lock held and rejected ("Cannot cancel a
+  locked stream"); the error was swallowed, the OS handle stayed open, and the
+  next `open()` on the same `SerialPort` failed. The backend now owns a single
+  internal writer on `port.writable` (mirroring the existing readable pump) and
+  releases it before `port.close()`, so the consumer locks an intermediate
+  stream that never blocks teardown.
+- **Disconnect failures are surfaced, not hidden.** A rejected `backend.close()`
+  is now reported as a "Disconnect warning: …" status instead of being caught
+  and discarded, while state cleanup still happens unconditionally. A clean
+  disconnect clears the status line.
+- **Auto-reconnect verifies the port and never leaves a half-open handle.** On
+  page load the app trusted `open()` resolving and showed a live connection
+  without confirming the port was usable, and a rejected `open()` left its
+  partially-acquired handle claimed. It now best-effort `close()`s the device on
+  an `open()` failure, and only claims connected when the backend reports
+  `isOpen` — tearing down anything that opened but isn't actually ready.
+
+---
+
 ## [1.1.1] — 2026-06-05
 
 ### Fixed
