@@ -24,6 +24,14 @@ interface WsSerial {
 // `readable` stream. This lets close() cancel the pump (releasing
 // port.readable's lock) before calling port.close(), avoiding the
 // "port is busy" footgun.
+//
+// The writable side mirrors this: the public `writable` is a backend-owned
+// stream whose sink forwards to a single internal writer on port.writable.
+// The consumer (Terminal.vue) locks *this* stream, never port.writable
+// directly, so close() can release the port-side writer before port.close().
+// Exposing port.writable raw would let the consumer's long-lived writer lock
+// outlive disconnect — port.close() then rejects ("Cannot cancel a locked
+// stream"), the OS fd leaks, and the next open() on the same SerialPort fails.
 // ---------------------------------------------------------------------------
 
 export class WebSerialBackend implements SerialBackend {
@@ -33,23 +41,27 @@ export class WebSerialBackend implements SerialBackend {
   private _port: WsSerialPort
   private _isOpen = false
   private _portReader: ReadableStreamDefaultReader<Uint8Array> | null = null
+  private _portWriter: WritableStreamDefaultWriter<Uint8Array> | null = null
   private _pumpDone: Promise<void> | null = null
   private _readController!: ReadableStreamDefaultController<Uint8Array>
   private _readableDone = false
   private _cancelledByClose = false
 
   readonly readable: ReadableStream<Uint8Array>
-
-  get writable(): WritableStream<Uint8Array> {
-    // writable is non-null while the port is open
-    return this._port.writable as WritableStream<Uint8Array>
-  }
+  readonly writable: WritableStream<Uint8Array>
 
   constructor(port: WsSerialPort) {
     this._port = port
     this.readable = new ReadableStream<Uint8Array>({
       start: (controller) => {
         this._readController = controller
+      },
+    })
+    this.writable = new WritableStream<Uint8Array>({
+      write: async (chunk) => {
+        // Dropped silently if not open; the consumer only writes while
+        // connected. The real writer is acquired in open().
+        if (this._portWriter) await this._portWriter.write(chunk)
       },
     })
   }
@@ -61,6 +73,9 @@ export class WebSerialBackend implements SerialBackend {
   async open(options: SerialOptions): Promise<void> {
     await this._port.open(options as unknown as Record<string, unknown>)
     this._isOpen = true
+    // port.writable is non-null only after open(); own its single writer so
+    // close() can release it before port.close().
+    this._portWriter = (this._port.writable as WritableStream<Uint8Array>).getWriter()
     this._pumpDone = this._pump()
   }
 
@@ -91,6 +106,12 @@ export class WebSerialBackend implements SerialBackend {
       await this._portReader.cancel()
       await this._pumpDone
       this._pumpDone = null
+    }
+    if (this._portWriter) {
+      // Release the lock on port.writable (not close()) so port.close() does
+      // the actual flush/teardown, symmetric with the reader's cancel().
+      this._portWriter.releaseLock()
+      this._portWriter = null
     }
     await this._port.close()
     if (!this._readableDone) {
