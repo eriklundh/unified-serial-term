@@ -8,7 +8,12 @@
 #   - One job per component, scoped with `rules: changes` so an edit to one
 #     component doesn't rebuild the others. `terminal-app` also rebuilds on a
 #     `ftdi-driver` change, since it consumes the driver (file:../ftdi-driver).
-#   - Non-hardware jobs run on any shared/instance runner.
+#   - The runner is a SHELL executor on Agentlab1 (a VM, no USB ports) — there
+#     is no `image:`; jobs run directly on the host, so the host provides the
+#     toolchain (Node 22 + npm, python3, and the Playwright browser deps).
+#     See terminal-app/docs/CI-RUNNER-SETUP.md for one-time host provisioning
+#     and runner registration. The check jobs are untagged, so register the
+#     runner with "Run untagged jobs" enabled.
 #   - Hardware-in-loop jobs are gated to a runner tagged `hil-hardware` (the
 #     machine with the Pico + FTDI rigs attached) and are manual-only.
 
@@ -21,7 +26,6 @@ stages:
 # ──────────────────────────────────────────────────────────────────────────
 ftdi-driver:
   stage: check
-  image: node:22-alpine
   cache:
     key: npm-ftdi-driver
     paths: [ftdi-driver/node_modules/]
@@ -43,7 +47,6 @@ ftdi-driver:
 # ──────────────────────────────────────────────────────────────────────────
 terminal-app:
   stage: check
-  image: node:22-alpine
   cache:
     key: npm-terminal-app
     paths: [terminal-app/node_modules/]
@@ -66,20 +69,21 @@ terminal-app:
 
 # ──────────────────────────────────────────────────────────────────────────
 # terminal-app:e2e — Playwright browser tests (mocked backends, no hardware)
-# Runs in the official Playwright image (browsers preinstalled, version-pinned
-# to match @playwright/test). The suite is pure-mock and needs no USB, so it
-# runs on any shared runner — including Agentlab1, which has no USB ports.
+# Pure-mock suite — no USB — so it runs on Agentlab1. `playwright install`
+# fetches the browser build matching the project's @playwright/test version
+# (idempotent; cached in the runner user's ~/.cache/ms-playwright after the
+# first run). The browser's OS-level libraries are installed once during host
+# setup (`sudo npx playwright install-deps chromium` — see CI-RUNNER-SETUP.md);
+# we deliberately omit `--with-deps` here so the job needs no sudo.
 # @hardware-tagged tests are excluded unless TERMINAL_HW_TEST is set (define it
 # as a CI/CD variable on a USB-equipped runner to include them); the real
 # device suite lives in the manual `hw` stage below.
 # ──────────────────────────────────────────────────────────────────────────
 terminal-app:e2e:
   stage: check
-  image: mcr.microsoft.com/playwright:v1.60.0-jammy
   cache:
-    # Distinct from the alpine `terminal-app` job's cache: this image is
-    # glibc-based, so its native deps (esbuild etc.) must not be shared with
-    # the musl node_modules.
+    # Separate key from the `terminal-app` job so the two, which run in the
+    # same `check` stage, don't race on the same cache archive.
     key: npm-terminal-app-e2e
     paths: [terminal-app/node_modules/]
   rules:
@@ -88,6 +92,7 @@ terminal-app:e2e:
     - cd terminal-app
     - npm ci --no-audit --no-fund
     - node script/ensure-driver-built.mjs
+    - npx playwright install chromium
     - npm run test:e2e
   artifacts:
     when: on_failure
@@ -104,15 +109,13 @@ terminal-app:e2e:
 # ──────────────────────────────────────────────────────────────────────────
 python-suites:
   stage: check
-  image: python:3.12-slim
   rules:
     - changes:
         - hil-preflight/**/*
         - ftdi-loopback-verify/**/*
         - pico-cdc-test-rig/**/*
   script:
-    - python -m pip install --quiet --upgrade pip
-    - find hil-preflight ftdi-loopback-verify pico-cdc-test-rig -name '*.py' -print0 | xargs -0 -r python -m py_compile
+    - find hil-preflight ftdi-loopback-verify pico-cdc-test-rig -name '*.py' -print0 | xargs -0 -r python3 -m py_compile
     - bash -n hil-preflight/preflight.sh
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -125,7 +128,7 @@ python-suites:
   stage: hw
   tags: [hil-hardware]
   when: manual
-  # no `image:` → uses the runner's shell executor / native environment
+  # shell executor / native environment (same as the check jobs)
 
 terminal-app:test:hw:
   extends: .hw

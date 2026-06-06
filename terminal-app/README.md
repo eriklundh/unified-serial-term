@@ -108,12 +108,16 @@ sudo usermod -aG dialout $USER
 ## Testing
 
 ```bash
-npm test             # Vitest unit + component tests (120 tests)
-npm run test:e2e     # Playwright E2E (41 tests, mocked backends)
-npm run test:hw      # @hardware tests (TERMINAL_HW_TEST=1 required)
+npm test             # Vitest unit + component tests (170 tests)
+npm run test:e2e     # Playwright E2E (38 mock tests; @hardware excluded)
+npm run test:hw      # preflight.sh + @hardware E2E (real USB; TERMINAL_HW_TEST=1)
 npm run typecheck    # vue-tsc strict
 npm run lint         # ESLint
 ```
+
+CI runs the unit/lint/typecheck/build jobs plus `test:e2e` on every relevant
+change. To stand up the (currently dormant) runners, see
+[docs/CI-RUNNER-SETUP.md](docs/CI-RUNNER-SETUP.md).
 
 Manual hardware smoke tests: [docs/MANUAL-SMOKE.md](docs/MANUAL-SMOKE.md)
 Claude-assisted (Playwright MCP) smoke tests: [docs/SEMIAUTO-SMOKE.md](docs/SEMIAUTO-SMOKE.md)
