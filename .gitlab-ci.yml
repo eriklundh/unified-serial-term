@@ -65,6 +65,38 @@ terminal-app:
     expire_in: 1 week
 
 # ──────────────────────────────────────────────────────────────────────────
+# terminal-app:e2e — Playwright browser tests (mocked backends, no hardware)
+# Runs in the official Playwright image (browsers preinstalled, version-pinned
+# to match @playwright/test). The suite is pure-mock and needs no USB, so it
+# runs on any shared runner — including Agentlab1, which has no USB ports.
+# @hardware-tagged tests are excluded unless TERMINAL_HW_TEST is set (define it
+# as a CI/CD variable on a USB-equipped runner to include them); the real
+# device suite lives in the manual `hw` stage below.
+# ──────────────────────────────────────────────────────────────────────────
+terminal-app:e2e:
+  stage: check
+  image: mcr.microsoft.com/playwright:v1.60.0-jammy
+  cache:
+    # Distinct from the alpine `terminal-app` job's cache: this image is
+    # glibc-based, so its native deps (esbuild etc.) must not be shared with
+    # the musl node_modules.
+    key: npm-terminal-app-e2e
+    paths: [terminal-app/node_modules/]
+  rules:
+    - changes: [terminal-app/**/*, ftdi-driver/**/*]
+  script:
+    - cd terminal-app
+    - npm ci --no-audit --no-fund
+    - node script/ensure-driver-built.mjs
+    - npm run test:e2e
+  artifacts:
+    when: on_failure
+    paths:
+      - terminal-app/test-results/
+      - terminal-app/playwright-report/
+    expire_in: 1 week
+
+# ──────────────────────────────────────────────────────────────────────────
 # Python components — hil-preflight, ftdi-loopback-verify, pico-cdc-test-rig
 # The real device tests are hardware-gated (they pytest.fail when a device is
 # absent), so CI only does a syntax/compile smoke here; the live runs are in
