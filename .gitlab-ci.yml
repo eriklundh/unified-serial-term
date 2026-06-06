@@ -14,6 +14,10 @@
 #     See terminal-app/docs/CI-RUNNER-SETUP.md for one-time host provisioning
 #     and runner registration. The check jobs are untagged, so register the
 #     runner with "Run untagged jobs" enabled.
+#   - No `cache:` — GitLab Runner caching needs an object-storage backend
+#     (s3/gcs/azure); a bare shell runner has none, so `cache:` only logs
+#     "Could not create cache adapter" and archives nothing. `npm ci` runs
+#     fresh each job (a few seconds); add a cache backend later if it matters.
 #   - Hardware-in-loop jobs are gated to a runner tagged `hil-hardware` (the
 #     machine with the Pico + FTDI rigs attached) and are manual-only.
 
@@ -26,9 +30,6 @@ stages:
 # ──────────────────────────────────────────────────────────────────────────
 ftdi-driver:
   stage: check
-  cache:
-    key: npm-ftdi-driver
-    paths: [ftdi-driver/node_modules/]
   rules:
     - changes: [ftdi-driver/**/*]
   script:
@@ -47,9 +48,6 @@ ftdi-driver:
 # ──────────────────────────────────────────────────────────────────────────
 terminal-app:
   stage: check
-  cache:
-    key: npm-terminal-app
-    paths: [terminal-app/node_modules/]
   rules:
     - changes: [terminal-app/**/*, ftdi-driver/**/*]
   script:
@@ -81,11 +79,6 @@ terminal-app:
 # ──────────────────────────────────────────────────────────────────────────
 terminal-app:e2e:
   stage: check
-  cache:
-    # Separate key from the `terminal-app` job so the two, which run in the
-    # same `check` stage, don't race on the same cache archive.
-    key: npm-terminal-app-e2e
-    paths: [terminal-app/node_modules/]
   rules:
     - changes: [terminal-app/**/*, ftdi-driver/**/*]
   script:
