@@ -389,6 +389,56 @@ describe('App.vue — auto-reconnect', () => {
     expect(wrapper.find('[data-testid="status-msg"]').exists()).toBe(true)
   })
 
+  it('a manual disconnect suppresses auto-reconnect on the next load', async () => {
+    const factory = new AutoReconnectMockFactory()
+    const first = mountWithFactories([factory])
+    await flushPromises()
+    expect(first.find('[data-testid="disconnect-btn"]').exists()).toBe(true)
+
+    await first.find('[data-testid="disconnect-btn"]').trigger('click')
+    await flushPromises()
+    first.unmount()
+
+    // Simulate a page reload: a fresh mount, same still-paired device.
+    const second = mountWithFactories([factory])
+    await flushPromises()
+    expect(second.find('[data-testid="connect-btn"]').exists()).toBe(true)
+    expect(second.find('[data-testid="disconnect-btn"]').exists()).toBe(false)
+  })
+
+  it('an unexpected device drop still auto-reconnects on the next load', async () => {
+    const factory = new AutoReconnectMockFactory()
+    const first = mountWithFactories([factory])
+    await flushPromises()
+
+    // Device error path: the Terminal emits 'disconnect' (not a user click).
+    first.findComponent({ name: 'Terminal' }).vm.$emit('disconnect')
+    await flushPromises()
+    first.unmount()
+
+    const second = mountWithFactories([factory])
+    await flushPromises()
+    expect(second.find('[data-testid="disconnect-btn"]').exists()).toBe(true)
+  })
+
+  it('connecting again clears the suppression so a reload auto-reconnects', async () => {
+    const factory = new AutoReconnectMockFactory()
+    const first = mountWithFactories([factory])
+    await flushPromises()
+    // Manual disconnect → suppressed.
+    await first.find('[data-testid="disconnect-btn"]').trigger('click')
+    await flushPromises()
+    // Manual connect → suppression cleared.
+    await first.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(first.find('[data-testid="disconnect-btn"]').exists()).toBe(true)
+    first.unmount()
+
+    const second = mountWithFactories([factory])
+    await flushPromises()
+    expect(second.find('[data-testid="disconnect-btn"]').exists()).toBe(true)
+  })
+
   it('does not auto-connect when listPaired returns empty', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])

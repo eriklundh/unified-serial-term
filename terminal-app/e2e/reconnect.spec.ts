@@ -32,6 +32,20 @@ test.describe('auto-reconnect', () => {
     expect((opts as { baudRate?: number }).baudRate).toBe(9600)
   })
 
+  test('a manual disconnect stays disconnected across a reload', async ({ pairedPage }) => {
+    // Auto-reconnected on load (paired device present).
+    await expect(pairedPage.getByRole('button', { name: /disconnect/i })).toBeVisible()
+
+    await pairedPage.getByRole('button', { name: /disconnect/i }).click()
+    await expect(pairedPage.getByTestId('connect-btn')).toBeVisible()
+
+    // Reload: the device is still paired (getPorts), but an explicit
+    // disconnect must not silently auto-reconnect.
+    await pairedPage.reload()
+    await expect(pairedPage.getByTestId('connect-btn')).toBeVisible()
+    await expect(pairedPage.getByRole('button', { name: /disconnect/i })).not.toBeVisible()
+  })
+
   test('no status message when no paired device found', async ({ mockedPage }) => {
     // Default mockedPage has paired: false — listPaired returns []
     await expect(mockedPage.locator('[data-testid="status-msg"]')).not.toBeVisible()

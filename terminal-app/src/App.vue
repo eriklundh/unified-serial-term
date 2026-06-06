@@ -23,7 +23,7 @@
           v-if="isConnected"
           class="btn btn--danger"
           data-testid="disconnect-btn"
-          @click="disconnect"
+          @click="disconnectByUser"
         >
           Disconnect
         </button>
@@ -301,6 +301,7 @@ import { useSettings } from './settings/useSettings'
 import { useAppearance, SYSTEM_MONO } from './settings/useAppearance'
 import { matchesHotkey, eventToHotkey } from './settings/hotkey'
 import { exportSettings, importSettings, requestPersistentStorage } from './settings/io'
+import { isAutoReconnectSuppressed, suppressAutoReconnect, allowAutoReconnect } from './settings/reconnect'
 import { THEMES, getTheme, applyThemeTokens } from './themes'
 import type { BackendId, SerialBackend } from './backends/SerialBackend'
 
@@ -469,6 +470,8 @@ async function connect() {
     await b.open(settings.value)
     backend.value = b
     isConnected.value = true
+    // Explicit connect — a later reload should auto-reconnect again.
+    allowAutoReconnect()
     terminalRef.value?.focus()
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
@@ -483,6 +486,14 @@ async function connect() {
   } finally {
     isConnecting.value = false
   }
+}
+
+// The Disconnect button. An explicit disconnect is sticky across reloads, so
+// remember it; the Terminal's unexpected-drop path calls disconnect() directly
+// and deliberately leaves auto-reconnect enabled.
+function disconnectByUser() {
+  suppressAutoReconnect()
+  return disconnect()
 }
 
 async function disconnect() {
@@ -505,6 +516,9 @@ async function disconnect() {
 
 onMounted(async () => {
   if (!selectedFactory.value) return
+  // Honour a previous explicit Disconnect — don't silently reconnect to the
+  // still-paired device just because the page was reloaded.
+  if (isAutoReconnectSuppressed()) return
   isConnecting.value = true
   try {
     const paired = await selectedFactory.value.listPaired()
