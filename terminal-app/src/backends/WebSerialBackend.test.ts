@@ -34,6 +34,11 @@ class FakeSerialPort {
   }
 
   async close(): Promise<void> {
+    // Faithful to Chrome: SerialPort.close() rejects if readable or writable
+    // still has an active reader/writer lock. The owner must release first.
+    if (this.readable.locked || this.writable.locked) {
+      throw new DOMException('Cannot cancel a locked stream', 'InvalidStateError')
+    }
     this.onClose?.()
     this.closeCalled = true
   }
@@ -175,10 +180,45 @@ describe('WebSerialBackend', () => {
   })
 
   it('writable forwards writes to port.writable', async () => {
+    await backend.open({ baudRate: 9600 })
     const writer = backend.writable.getWriter()
     await writer.write(new Uint8Array([0x48, 0x69]))
     writer.releaseLock()
     expect(fakePort.written).toEqual([new Uint8Array([0x48, 0x69])])
+    await backend.close()
+  })
+
+  it('close() succeeds while a consumer still holds a writer on backend.writable', async () => {
+    // Models Terminal.vue, which acquires a writer on the exposed writable for
+    // the whole session and only releases it reactively *after* disconnect.
+    await backend.open({ baudRate: 9600 })
+    const writer = backend.writable.getWriter()
+    await writer.write(new Uint8Array([0x41]))
+
+    let portWritableLockedAtClose = true
+    fakePort.onClose = () => {
+      portWritableLockedAtClose = fakePort.writable.locked
+    }
+
+    // Must not reject even though `writer` is still held by the consumer.
+    await backend.close()
+
+    expect(fakePort.closeCalled).toBe(true)
+    expect(portWritableLockedAtClose).toBe(false) // backend released port.writable first
+    writer.releaseLock()
+  })
+
+  it('allows a fresh open() on the same port after a held-writer disconnect', async () => {
+    // Chrome hands back the *same* SerialPort object on reconnect; a writer
+    // lock leaked from the previous session makes the next open() fail.
+    await backend.open({ baudRate: 9600 })
+    const writer = backend.writable.getWriter()
+    await backend.close()
+    writer.releaseLock()
+
+    const reconnected = new WebSerialBackend(fakePort as unknown as SerialPort)
+    await expect(reconnected.open({ baudRate: 9600 })).resolves.toBeUndefined()
+    await reconnected.close()
   })
 
   it('close() releases the port reader lock before calling port.close', async () => {
