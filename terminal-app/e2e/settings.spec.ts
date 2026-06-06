@@ -73,4 +73,32 @@ test.describe('settings panel', () => {
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeEnabled()
     await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
   })
+
+  test('drawer scrolls when content exceeds a short viewport', async ({ mockedPage }) => {
+    // Short viewport so Connection + Appearance + Storage overflow the drawer.
+    await mockedPage.setViewportSize({ width: 520, height: 360 })
+    const drawer = mockedPage.locator('[data-testid="settings-drawer"]')
+    await expect(drawer).toBeVisible()
+
+    const viewport = mockedPage.viewportSize()!
+
+    // The dialog must clamp to the viewport. The UA `height: fit-content`
+    // would let it grow past the bottom, hiding the lower controls with no
+    // way to reach them.
+    const box = await drawer.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height + 1)
+
+    // And it must be genuinely scrollable — a real vertical scrollbar.
+    const { scrollHeight, clientHeight } = await drawer.evaluate((el) => ({
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    }))
+    expect(scrollHeight).toBeGreaterThan(clientHeight)
+
+    // The bottom-most control is reachable by scrolling within the drawer.
+    const persist = mockedPage.locator('[data-testid="persist-btn"]')
+    await persist.scrollIntoViewIfNeeded()
+    await expect(persist).toBeVisible()
+  })
 })
