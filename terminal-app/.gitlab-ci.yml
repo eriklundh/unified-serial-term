@@ -1,3 +1,5 @@
+# SUPERSEDED — GitLab reads only the repo-root /.gitlab-ci.yml. This file is
+# retained for reference and is not used by any pipeline.
 default:
   image: node:22-alpine
   cache:
