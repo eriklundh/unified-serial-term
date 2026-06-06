@@ -37,7 +37,7 @@ test.describe('backend selector', () => {
   })
 
   test('selector disabled while connected', async ({ mockedPage }) => {
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.getByRole('combobox', { name: /backend/i })).toBeDisabled()
   })
 })

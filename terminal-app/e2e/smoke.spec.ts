@@ -9,12 +9,12 @@ test('app loads with terminal and controls visible', async ({ page }) => {
 
   // Backend selector and Connect button are present
   await expect(page.getByRole('combobox', { name: /backend/i })).toBeVisible()
-  await expect(page.getByRole('button', { name: /connect/i })).toBeVisible()
+  await expect(page.getByTestId('connect-btn')).toBeVisible()
 
   // Both Web Serial and WebUSB are present in headless Chromium on localhost
   // (see docs/PLAYWRIGHT.md §4), so at least one backend is available and
   // the Connect button is enabled.
-  await expect(page.getByRole('button', { name: /connect/i })).toBeEnabled()
+  await expect(page.getByTestId('connect-btn')).toBeEnabled()
 
   // Terminal pane is rendered and has a non-trivial size
   const box = await page.locator('.terminal-container').boundingBox()

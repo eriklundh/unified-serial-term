@@ -11,7 +11,7 @@ async function push(page: Page, bytes: number[]): Promise<void> {
 test.describe('terminal rendering and input', () => {
   test.beforeEach(async ({ mockedPage }) => {
     // Connect the default (Web Serial) backend
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     // Focus the terminal so keyboard events land in xterm
     await mockedPage.locator('.terminal-container').click()
   })
@@ -102,7 +102,7 @@ test.describe('terminal rendering and input', () => {
 test.describe('copy / paste', () => {
   test('Ctrl+Shift+V pastes clipboard text to device', async ({ mockedPage, context }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write'])
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.locator('.terminal-container').click()
     // Pre-load clipboard with "HI"
     await mockedPage.evaluate(() => navigator.clipboard.writeText('HI'))
@@ -119,7 +119,7 @@ test.describe('copy / paste', () => {
 
 test.describe('@hardware extended scenarios', () => {
   test('@hardware 100 k byte data volume — terminal remains stable', async ({ mockedPage }) => {
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     // Push 100 chunks of 1000 printable ASCII bytes each
     const chunk = Array.from({ length: 1000 }, (_, i) => (i % 95) + 32)
     chunk.push(13, 10) // end each chunk with CRLF

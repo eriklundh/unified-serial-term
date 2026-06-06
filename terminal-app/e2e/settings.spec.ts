@@ -57,7 +57,7 @@ test.describe('settings panel', () => {
   })
 
   test('all controls disabled while connected', async ({ mockedPage }) => {
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="databits-select"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="parity-select"]')).toBeDisabled()
@@ -68,7 +68,7 @@ test.describe('settings panel', () => {
   })
 
   test('controls re-enabled after disconnect', async ({ mockedPage }) => {
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.getByRole('button', { name: /disconnect/i }).click()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeEnabled()
     await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()

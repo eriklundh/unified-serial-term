@@ -4,7 +4,7 @@ test.describe('local echo', () => {
   test('echo off (default) — keystroke absent until device echoes back', async ({
     mockedPage,
   }) => {
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.locator('.terminal-container').click()
     await mockedPage.keyboard.type('X')
     // With echo off, X should not appear in xterm yet
@@ -19,7 +19,7 @@ test.describe('local echo', () => {
   test('echo on — keystroke appears immediately in xterm', async ({ mockedPage }) => {
     // Enable echo before connecting
     await mockedPage.locator('[data-testid="echo-checkbox"]').check()
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.locator('.terminal-container').click()
     await mockedPage.keyboard.type('X')
     // With echo on, X should appear immediately without a device push
@@ -28,7 +28,7 @@ test.describe('local echo', () => {
 
   test('echo on — keystroke still sent to device', async ({ mockedPage }) => {
     await mockedPage.locator('[data-testid="echo-checkbox"]').check()
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.locator('.terminal-container').click()
     await mockedPage.keyboard.type('X')
     const writes = await mockedPage.evaluate(() =>
@@ -39,7 +39,7 @@ test.describe('local echo', () => {
 
   test('echo off — keystroke still sent to device', async ({ mockedPage }) => {
     // Echo is off by default
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.locator('.terminal-container').click()
     await mockedPage.keyboard.type('X')
     const writes = await mockedPage.evaluate(() =>
