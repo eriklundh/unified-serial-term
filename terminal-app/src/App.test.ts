@@ -397,6 +397,50 @@ describe('App.vue — auto-reconnect', () => {
     expect(factory.pickDeviceCalled).toBe(false)
   })
 
+  it('closes the half-opened device when auto-reconnect open() fails', async () => {
+    // A rejected open() can still leave an OS handle claimed; releasing it
+    // keeps the next manual connect from failing on a busy port.
+    const backend = new MockSerialBackend()
+    const closeSpy = vi.spyOn(backend, 'close')
+    backend.open = async () => { throw new Error('port busy') }
+    const factory: SerialBackendFactory = {
+      id: 'web-serial',
+      displayName: 'Mock',
+      isAvailable: () => true,
+      pickDevice: async () => backend,
+      listPaired: async () => [backend],
+    }
+
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+
+    expect(closeSpy).toHaveBeenCalled()
+    expect(wrapper.find('[data-testid="connect-btn"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="disconnect-btn"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="status-msg"]').exists()).toBe(false)
+  })
+
+  it('does not claim connected if the device is not open after auto-reconnect', async () => {
+    // open() resolving is not proof of a usable port; trust isOpen and tear
+    // down anything that opened but isn't actually ready.
+    const backend = new MockSerialBackend()
+    const closeSpy = vi.spyOn(backend, 'close')
+    backend.open = async () => { /* resolves, but isOpen stays false */ }
+    const factory: SerialBackendFactory = {
+      id: 'web-serial',
+      displayName: 'Mock',
+      isAvailable: () => true,
+      pickDevice: async () => backend,
+      listPaired: async () => [backend],
+    }
+
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="disconnect-btn"]').exists()).toBe(false)
+    expect(closeSpy).toHaveBeenCalled()
+  })
+
   it('manual connect is blocked while auto-reconnect is in progress', async () => {
     // Hold listPaired in-flight to keep the auto-reconnect window open
     let resolveList!: (backends: SerialBackend[]) => void

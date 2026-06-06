@@ -510,7 +510,21 @@ onMounted(async () => {
     const paired = await selectedFactory.value.listPaired()
     const device = paired[0]
     if (!device) return
-    await device.open(settings.value)
+    try {
+      await device.open(settings.value)
+    } catch (err) {
+      // A rejected open() can still leave an OS handle claimed; release it so
+      // the next manual connect doesn't fail on a busy port.
+      await device.close().catch(() => {})
+      throw err
+    }
+    // open() resolving is not proof of a usable port. Trust the backend's own
+    // isOpen, and tear down anything that opened but isn't actually ready
+    // rather than showing a live connection the user can't use.
+    if (!device.isOpen) {
+      await device.close().catch(() => {})
+      return
+    }
     backend.value = device
     isConnected.value = true
     statusMsg.value = `Auto-reconnected to ${device.label}`
