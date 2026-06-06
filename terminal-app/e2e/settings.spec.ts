@@ -56,21 +56,50 @@ test.describe('settings panel', () => {
     await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).not.toBeChecked()
   })
 
-  test('all controls disabled while connected', async ({ mockedPage }) => {
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+  test('port-config controls disabled while connected (echo stays live)', async ({ mockedPage }) => {
+    await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="databits-select"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="parity-select"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="stopbits-select"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="flowcontrol-select"]')).toBeDisabled()
-    await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="reset-btn"]')).toBeDisabled()
+    // Local echo is a live rendering toggle, not a port setting — stays enabled.
+    await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
   })
 
   test('controls re-enabled after disconnect', async ({ mockedPage }) => {
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.getByRole('button', { name: /disconnect/i }).click()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeEnabled()
     await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
+  })
+
+  test('drawer scrolls when content exceeds a short viewport', async ({ mockedPage }) => {
+    // Short viewport so Connection + Appearance + Storage overflow the drawer.
+    await mockedPage.setViewportSize({ width: 520, height: 360 })
+    const drawer = mockedPage.locator('[data-testid="settings-drawer"]')
+    await expect(drawer).toBeVisible()
+
+    const viewport = mockedPage.viewportSize()!
+
+    // The dialog must clamp to the viewport. The UA `height: fit-content`
+    // would let it grow past the bottom, hiding the lower controls with no
+    // way to reach them.
+    const box = await drawer.boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.y + box!.height).toBeLessThanOrEqual(viewport.height + 1)
+
+    // And it must be genuinely scrollable — a real vertical scrollbar.
+    const { scrollHeight, clientHeight } = await drawer.evaluate((el) => ({
+      scrollHeight: el.scrollHeight,
+      clientHeight: el.clientHeight,
+    }))
+    expect(scrollHeight).toBeGreaterThan(clientHeight)
+
+    // The bottom-most control is reachable by scrolling within the drawer.
+    const persist = mockedPage.locator('[data-testid="persist-btn"]')
+    await persist.scrollIntoViewIfNeeded()
+    await expect(persist).toBeVisible()
   })
 })

@@ -665,6 +665,11 @@ body,
   inset: var(--toolbar-h, 0) 0 0 auto;
   width: min(24rem, 100%);
   max-width: 100%;
+  /* Override the UA <dialog> `height: fit-content`, which would let the panel
+     grow past the viewport bottom on short screens — hiding the lower
+     controls with no way to scroll. `height: auto` lets the top/bottom insets
+     clamp the height, so `overflow: auto` (below) yields a real scrollbar. */
+  height: auto;
   margin: 0;
   border: 0;
   border-left: 1px solid var(--border, #3c3c3c);

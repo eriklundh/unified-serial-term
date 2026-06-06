@@ -5,26 +5,28 @@ import { installMockUsb } from './helpers/mockUsb'
 test.describe('connect / disconnect', () => {
   test('Web Serial — connect shows Disconnect and disables settings', async ({ mockedPage }) => {
     await mockedPage.getByRole('combobox', { name: /backend/i }).selectOption('web-serial')
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.getByRole('button', { name: /disconnect/i })).toBeVisible()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()
-    await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeDisabled()
+    // Local echo stays live — it only affects local rendering, not the port
+    // config, so it's toggleable mid-session (unlike baud/parity/etc.).
+    await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
   })
 
   test('WebUSB — connect shows Disconnect and disables settings', async ({ mockedPage }) => {
     await mockedPage.getByRole('combobox', { name: /backend/i }).selectOption('webusb-ftdi')
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.getByRole('button', { name: /disconnect/i })).toBeVisible()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()
-    await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeDisabled()
+    await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
   })
 
   test('Disconnect cleans up — Connect visible and settings re-enabled', async ({
     mockedPage,
   }) => {
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.getByRole('button', { name: /disconnect/i }).click()
-    await expect(mockedPage.getByRole('button', { name: /connect/i })).toBeVisible()
+    await expect(mockedPage.getByTestId('connect-btn')).toBeVisible()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeEnabled()
   })
 
@@ -32,9 +34,9 @@ test.describe('connect / disconnect', () => {
     await installMockSerial(page, { rejectPicker: true })
     await installMockUsb(page, { rejectPicker: true })
     await page.goto('/')
-    await page.getByRole('button', { name: /connect/i }).click()
+    await page.getByTestId('connect-btn').click()
     // Button stays as Connect after a cancelled picker
-    await expect(page.getByRole('button', { name: /connect/i })).toBeVisible()
+    await expect(page.getByTestId('connect-btn')).toBeVisible()
     await expect(page.getByRole('button', { name: /disconnect/i })).not.toBeVisible()
   })
 
@@ -50,7 +52,7 @@ test.describe('connect / disconnect', () => {
   test('@hardware large data volume — terminal stable after 100 k bytes', async ({
     mockedPage,
   }) => {
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     const CHUNK = 1000
     const TOTAL = 100
     for (let i = 0; i < TOTAL; i++) {
@@ -64,7 +66,7 @@ test.describe('connect / disconnect', () => {
   })
 
   test('@hardware disconnect mid-stream — no errors, Connect visible', async ({ mockedPage }) => {
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     // Start a rapid push loop, then disconnect while it runs
     await mockedPage.evaluate(() => {
       let i = 0
@@ -80,7 +82,7 @@ test.describe('connect / disconnect', () => {
     await mockedPage.evaluate(() => {
       ;(window as Window & { __stopPush?: () => void }).__stopPush?.()
     })
-    await expect(mockedPage.getByRole('button', { name: /connect/i })).toBeVisible()
+    await expect(mockedPage.getByTestId('connect-btn')).toBeVisible()
     const errors = await mockedPage.evaluate(
       () => (window as Window & { __consoleErrors?: string[] }).__consoleErrors,
     )
@@ -88,9 +90,9 @@ test.describe('connect / disconnect', () => {
   })
 
   test('@hardware immediate reconnect — second connect succeeds', async ({ mockedPage }) => {
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.getByRole('button', { name: /disconnect/i }).click()
-    await mockedPage.getByRole('button', { name: /connect/i }).click()
+    await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.getByRole('button', { name: /disconnect/i })).toBeVisible()
   })
 })

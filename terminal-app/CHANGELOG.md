@@ -11,6 +11,29 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.4] — 2026-06-06
+
+### Fixed
+
+- **Settings drawer now scrolls on short viewports.** The `<dialog>` UA
+  stylesheet sets `height: fit-content`, which the drawer never overrode, so
+  when the Connection + Appearance + Storage sections were taller than the
+  screen the panel grew past the viewport bottom instead of clamping to its
+  insets — the lower controls were cut off with no way to scroll to them.
+  Added `height: auto` so the top/bottom insets govern the height and the
+  existing `overflow: auto` produces a real vertical scrollbar.
+
+### Internal
+
+- Repaired the Playwright e2e suite, which had silently rotted (it isn't run
+  in CI): `getByRole('button', { name: /connect/i })` was also matching the
+  "Reset **connect**ion defaults" button once settings moved into the
+  auto-opened drawer — switched all call sites to `getByTestId('connect-btn')`.
+  Also corrected stale assertions so they reflect that the local-echo toggle
+  stays live while connected (it only affects rendering, not the port config).
+
+---
+
 ## [1.1.3] — 2026-06-06
 
 ### Changed

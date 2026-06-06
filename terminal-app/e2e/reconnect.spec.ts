@@ -35,6 +35,6 @@ test.describe('auto-reconnect', () => {
   test('no status message when no paired device found', async ({ mockedPage }) => {
     // Default mockedPage has paired: false — listPaired returns []
     await expect(mockedPage.locator('[data-testid="status-msg"]')).not.toBeVisible()
-    await expect(mockedPage.getByRole('button', { name: /connect/i })).toBeVisible()
+    await expect(mockedPage.getByTestId('connect-btn')).toBeVisible()
   })
 })
