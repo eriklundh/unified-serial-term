@@ -11,6 +11,21 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.5] — 2026-06-06
+
+### Fixed
+
+- **A manual disconnect now stays disconnected across a page reload.** The app
+  auto-reconnects to the last-authorised device on load (the browser still
+  lists it via `getPorts()` after a close), so a reload after clicking
+  Disconnect would silently re-open the port and show the red "Disconnect"
+  button again. An explicit Disconnect is now remembered (a persisted
+  suppression flag, cleared on the next explicit Connect), so a reload stays
+  disconnected. An *unexpected* device drop is deliberately not suppressed — a
+  replug/reload still auto-reconnects.
+
+---
+
 ## [1.1.4] — 2026-06-06
 
 ### Fixed
