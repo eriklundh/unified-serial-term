@@ -14,7 +14,7 @@ This repository contains five components as subdirectories:
 | Directory | What it is | Notes |
 |---|---|---|
 | [`ftdi-driver/`](ftdi-driver/) | Pure-TypeScript WebUSB driver for FTDI FT-X chips | Published as the npm package **`ftdi-webusb-driver`** (the package name is kept even though the directory is `ftdi-driver/`). |
-| [`terminal-app/`](terminal-app/) | Vue 3 + Vite browser terminal (xterm.js) | Published as **`web-serial-console`**. Depends on the driver. |
+| [`terminal-app/`](terminal-app/) | Vue 3 + Vite browser terminal (xterm.js) | Published as **`unified-serial-console`**. Depends on the driver. |
 | [`hil-preflight/`](hil-preflight/) | Hardware-in-loop preflight orchestrator (Python) | Gates `npm run test:hw`; runs the two verification suites below and fails fast on missing hardware. |
 | [`pico-cdc-test-rig/`](pico-cdc-test-rig/) | Raspberry Pi Pico CDC-loopback firmware + harness | Known-good device for validating the **Web Serial** backend. |
 | [`ftdi-loopback-verify/`](ftdi-loopback-verify/) | FTDI loopback pytest suite (pyftdi) | Validates the **WebUSB + FTDI** backend. |

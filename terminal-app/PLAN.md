@@ -1,4 +1,4 @@
-# PLAN.md — web-serial-console (the terminal app)
+# PLAN.md — unified-serial-console (the terminal app)
 
 A phased, test-first plan for building a browser terminal from scratch
 with two interchangeable serial backends: **Web Serial API** and

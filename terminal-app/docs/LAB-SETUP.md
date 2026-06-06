@@ -69,7 +69,7 @@ from the [FTDI VCP driver package](https://ftdichip.com/drivers/vcp-drivers/).
 1. Navigate to the app URL in Chrome.
 2. Select **WebUSB (FTDI)** in the backend dropdown.
 3. Click **Connect**.
-4. A browser dialog appears: "web-serial-console wants to connect to a USB
+4. A browser dialog appears: "unified-serial-console wants to connect to a USB
    device." Student selects the FT231X and clicks **Connect**.
 5. The browser remembers this permission. On the next page load the app
    auto-reconnects without prompting.

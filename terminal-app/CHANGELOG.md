@@ -11,6 +11,21 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.1.3] — 2026-06-06
+
+### Changed
+
+- **Renamed the app to "Unified Serial Console"** (npm package
+  `web-serial-console` → `unified-serial-console`; browser title and README
+  heading updated to match). The new name reflects the project's
+  `unified-serial-*` family and is more accurate — the app unifies both the
+  **Web Serial** and **WebUSB (FTDI)** backends, not just Web Serial. Upstream
+  reference links to `zaxbux/web-serial-console` are unchanged (that's a
+  different, external project). Also brought `package-lock.json`'s root
+  name/version back in sync.
+
+---
+
 ## [1.1.2] — 2026-06-06
 
 Serial stream-lifecycle hardening. Found on a Raspberry Pi 5 host with an
