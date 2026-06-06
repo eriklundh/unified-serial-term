@@ -1,4 +1,4 @@
-# Web Serial Console
+# Unified Serial Console
 
 A browser-based serial terminal that connects to USB serial devices through
 two interchangeable backends:

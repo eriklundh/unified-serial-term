@@ -13,7 +13,7 @@ them. Five components, as subdirectories:
 | Directory | Component | Stack |
 |---|---|---|
 | `ftdi-driver/` | WebUSB FTDI driver (TDD, pure-function-heavy library) | TypeScript; npm `ftdi-webusb-driver` |
-| `terminal-app/` | Vue 3 + Vite browser terminal | TypeScript; npm `web-serial-console` |
+| `terminal-app/` | Vue 3 + Vite browser terminal | TypeScript; npm `unified-serial-console` |
 | `hil-preflight/` | HIL preflight orchestrator (gates `test:hw`) | Python |
 | `pico-cdc-test-rig/` | Raspberry Pi Pico CDC-loopback firmware + harness | C/C++ (Pico SDK) + Python |
 | `ftdi-loopback-verify/` | FTDI loopback verification suite | Python (pyftdi) |

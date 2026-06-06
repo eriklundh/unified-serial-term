@@ -1,4 +1,4 @@
-# CLAUDE.md — web-serial-console (the terminal app)
+# CLAUDE.md — unified-serial-console (the terminal app)
 
 This file is Claude Code's project memory for the terminal-app repo.
 Read it at the start of every session.
