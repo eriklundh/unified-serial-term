@@ -312,6 +312,36 @@ describe('App.vue — settings panel', () => {
     expect(wrapper.find('[data-testid="disconnect-btn"]').exists()).toBe(false)
   })
 
+  it('surfaces a warning when backend.close() throws on disconnect', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+
+    factory.lastBackend!.close = async () => { throw new Error('port already closed') }
+
+    await wrapper.find('[data-testid="disconnect-btn"]').trigger('click')
+    await flushPromises()
+
+    const status = wrapper.find('[data-testid="status-msg"]')
+    expect(status.exists()).toBe(true)
+    expect(status.text()).toContain('port already closed')
+  })
+
+  it('clears any status message on a clean disconnect', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+
+    await wrapper.find('[data-testid="disconnect-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="status-msg"]').exists()).toBe(false)
+  })
+
   it('resets to disconnected when Terminal emits disconnect', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])

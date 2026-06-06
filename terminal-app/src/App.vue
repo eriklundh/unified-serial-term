@@ -487,14 +487,18 @@ async function connect() {
 
 async function disconnect() {
   if (!backend.value) return
+  let closeError: string | null = null
   try {
     await backend.value.close()
-  } catch {
-    // port already dead — proceed with cleanup
+  } catch (err) {
+    // The port is being torn down regardless, but don't hide the failure: a
+    // rejected close() can mean the OS handle wasn't released, which blocks
+    // the next reconnect. Surface it rather than swallowing it silently.
+    closeError = err instanceof Error ? err.message : String(err)
   } finally {
     backend.value = null
     isConnected.value = false
-    statusMsg.value = null
+    statusMsg.value = closeError ? `Disconnect warning: ${closeError}` : null
     terminalRef.value?.focus()
   }
 }
