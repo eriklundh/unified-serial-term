@@ -58,7 +58,37 @@ script fails.
 
 ```bash
 sudo apt-get install -y git-lfs
-sudo -u gitlab-runner git lfs install    # writes ~/.gitconfig filter entries
+
+# System-level: works for all users regardless of home-dir state
+sudo git lfs install --system
+
+# Per-user: belt-and-suspenders for older runner versions
+sudo -u gitlab-runner bash -c 'cd /tmp && git lfs install'
+```
+
+### 4a  Suppress the LFS locking-API warning
+
+GitLab CE does not implement the LFS locking API.  Without this setting,
+every `git push` (and CI jobs that push) prints a noisy warning:
+
+```
+Remote "origin" does not support the Git LFS locking API.
+```
+
+Suppress it system-wide:
+
+```bash
+sudo git config --system \
+  lfs.https://<your-gitlab-host>/<group>/<repo>.git/info/lfs.locksverify \
+  false
+```
+
+For this project:
+
+```bash
+sudo git config --system \
+  lfs.https://gitlab.compelcon.se/unified-serial-terminal/unified-serial-term.git/info/lfs.locksverify \
+  false
 ```
 
 ## 5  Install and start the service
@@ -123,12 +153,34 @@ sudo gitlab-runner verify
 
 | Path | Purpose |
 |---|---|
-| `/usr/local/bin/gitlab-runner` | Runner binary (arm64) |
+| `/usr/local/bin/gitlab-runner` | Runner binary (arm64, curl install — not apt-managed) |
 | `/etc/systemd/system/gitlab-runner.service` | Systemd unit (root daemon, `--user gitlab-runner`) |
 | `/etc/gitlab-runner/config.toml` | Runner config (owned by `gitlab-runner`) |
 | `/etc/sudoers.d/gitlab-runner` | Passwordless sudo for HIL scripts |
 | `/home/gitlab-runner/.bash_logout` | No-op (suppresses `clear_console` tty error) |
-| `/home/gitlab-runner/.gitconfig` | Written by `git lfs install` |
+| `/home/gitlab-runner/.gitconfig` | LFS filter written by `git lfs install` (per-user) |
+| `/etc/gitconfig` | LFS filter (system-wide) + `locksverify = false` |
+
+> **Runner updates:** because the binary was installed with `curl` rather than
+> `apt`, it will not be updated by `apt upgrade`.  To update: re-run the step 1
+> `curl` command with the new version URL, then `sudo systemctl restart gitlab-runner`.
+
+## Differences from the Agentlab1 apt install
+
+The Agentlab1 CI runner was installed via `apt-get install gitlab-runner` from
+the GitLab package repo.  Key behavioural differences:
+
+| | Pi5 (curl binary) | Agentlab1 (apt package) |
+|---|---|---|
+| Binary path | `/usr/local/bin/gitlab-runner` | `/usr/bin/gitlab-runner` |
+| User type | Regular user uid=1001 (`useradd --create-home`) — **skel files copied** | System user uid=999 (`adduser --system`) — **skel files NOT copied** |
+| `.bash_logout` risk | Skel copy has `clear_console` — **must be replaced with no-op** | File absent by default — **must be created as no-op** |
+| Runner updates | Manual (`curl` re-download) | `apt upgrade` |
+| Node.js | v20 from Raspberry Pi apt repo | v24 from NodeSource apt repo |
+
+The `.bash_logout` hazard affects both installs but from opposite directions:
+the Pi5 gets the dangerous file automatically; Agentlab1 gets nothing and risks
+getting it if the user is ever recreated from skel.
 
 ---
 
