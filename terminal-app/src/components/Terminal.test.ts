@@ -10,6 +10,7 @@ vi.mock('@xterm/xterm', () => {
       loadAddon: vi.fn(),
       write: vi.fn(),
       onData: vi.fn(),
+      onBell: vi.fn(),
       focus: vi.fn(),
       clear: vi.fn(),
       reset: vi.fn(),
@@ -115,6 +116,7 @@ describe('Terminal.vue', () => {
         onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
           onDataCb = cb
         }),
+        onBell: vi.fn(),
       }
     })
 
@@ -137,6 +139,7 @@ describe('Terminal.vue', () => {
         onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
           onDataCb = cb
         }),
+        onBell: vi.fn(),
       }
     })
 
@@ -167,6 +170,7 @@ describe('Terminal.vue', () => {
         onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
           onDataCb = cb
         }),
+        onBell: vi.fn(),
       }
     })
 
@@ -190,6 +194,7 @@ describe('Terminal.vue', () => {
         onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
           onDataCb = cb
         }),
+        onBell: vi.fn(),
       }
     })
 
@@ -213,6 +218,7 @@ describe('Terminal.vue', () => {
         onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
           onDataCb = cb
         }),
+        onBell: vi.fn(),
       }
     })
 
@@ -246,6 +252,16 @@ describe('Terminal.vue', () => {
 
     expect(addonInstance.serialize).toHaveBeenCalledOnce()
     expect(result).toBe('serialized content')
+  })
+
+  // ── bell ─────────────────────────────────────────────────────────────────────
+
+  it('wires terminal.onBell() on mount', async () => {
+    const { Terminal: XTerm } = await import('@xterm/xterm')
+    mount(Terminal, { attachTo: document.body })
+    const instance = (XTerm as ReturnType<typeof vi.fn>).mock.results[0]!.value
+    expect(instance.onBell).toHaveBeenCalledOnce()
+    expect(instance.onBell).toHaveBeenCalledWith(expect.any(Function))
   })
 
   // ── disconnect event ─────────────────────────────────────────────────────────

@@ -116,6 +116,8 @@
         :font-family="appearance.fontFamily"
         :font-size="appearance.fontSize"
         :theme="currentTheme.xterm"
+        :bell="bell"
+        :bell-style="bellStyle"
         @disconnect="disconnect"
       />
     </main>
@@ -196,6 +198,28 @@
               max="32"
               step="1"
             >
+          </label>
+          <label class="field field--check">
+            <input
+              v-model="bell"
+              type="checkbox"
+              data-testid="bell-enabled"
+            >
+            <span class="field__label">Bell</span>
+          </label>
+          <label class="field">
+            <span class="field__label">Bell style</span>
+            <select
+              v-model="bellStyle"
+              data-testid="bell-style"
+              :disabled="!bell"
+            >
+              <option
+                v-for="s in BELL_STYLES"
+                :key="s"
+                :value="s"
+              >{{ s }}</option>
+            </select>
           </label>
           <div class="field">
             <span class="field__label">Clear hotkey</span>
@@ -278,6 +302,7 @@ import { FACTORIES_KEY } from './backends/injectionKeys'
 import { resolveFactory, writePreference } from './settings/backendPreference'
 import { useSettings } from './settings/useSettings'
 import { useAppearance, SYSTEM_MONO } from './settings/useAppearance'
+import { useBell, BELL_STYLES } from './settings/useBell'
 import { matchesHotkey, eventToHotkey } from './settings/hotkey'
 import { exportSettings, importSettings, requestPersistentStorage } from './settings/io'
 import { isAutoReconnectSuppressed, suppressAutoReconnect, allowAutoReconnect } from './settings/reconnect'
@@ -346,6 +371,7 @@ async function refreshPaired() {
 const { settings, reset, reload: reloadSettings } = useSettings()
 
 const { appearance, reload: reloadAppearance } = useAppearance()
+const { bell, bellStyle } = useBell()
 const currentTheme = computed(() => getTheme(appearance.value.themeId))
 // Apply the theme's design tokens to the document root (chrome) immediately and
 // on change; the terminal receives the xterm theme via the <Terminal> props.
