@@ -1,12 +1,19 @@
 import type { BackendId, SerialBackend, SerialBackendFactory, SerialOptions } from './SerialBackend'
+import { deviceLabel } from './usbVendors'
 
 // ---------------------------------------------------------------------------
 // Minimal local types for the Web Serial API.
 // The browser provides these at runtime; we declare just what we use.
 // ---------------------------------------------------------------------------
+interface WsSerialInfo {
+  usbVendorId?: number
+  usbProductId?: number
+}
+
 interface WsSerialPort {
   readonly readable: ReadableStream<Uint8Array> | null
   readonly writable: WritableStream<Uint8Array> | null
+  getInfo?(): WsSerialInfo
   open(options: Record<string, unknown>): Promise<void>
   close(): Promise<void>
 }
@@ -36,7 +43,7 @@ interface WsSerial {
 
 export class WebSerialBackend implements SerialBackend {
   readonly id: BackendId = 'web-serial'
-  readonly label = 'Web Serial'
+  readonly label: string
 
   private _port: WsSerialPort
   private _isOpen = false
@@ -52,6 +59,8 @@ export class WebSerialBackend implements SerialBackend {
 
   constructor(port: WsSerialPort) {
     this._port = port
+    const info = port.getInfo?.() ?? {}
+    this.label = deviceLabel(info.usbVendorId, info.usbProductId)
     this.readable = new ReadableStream<Uint8Array>({
       start: (controller) => {
         this._readController = controller
