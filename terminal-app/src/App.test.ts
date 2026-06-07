@@ -688,3 +688,18 @@ describe('App.vue — toolbar focus return (Phase 10A)', () => {
     expect(terminalFocus).toHaveBeenCalled()
   })
 })
+
+// ---------------------------------------------------------------------------
+describe('App.vue — toolbar (Phase 10C)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('baud-rate select is in the toolbar, not the settings drawer', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('.toolbar [data-testid="baud-select"]').exists()).toBe(true)
+    expect(
+      wrapper.find('[data-testid="settings-drawer"] [data-testid="baud-select"]').exists(),
+    ).toBe(false)
+  })
+})

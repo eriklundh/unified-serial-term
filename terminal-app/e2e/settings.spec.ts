@@ -3,9 +3,21 @@ import { test, expect } from './fixtures'
 const BAUD_RATES = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
 const DEFAULT_BAUD = '115200'
 
+test.describe('toolbar controls', () => {
+  test('baud select lives in the toolbar — not inside the settings panel', async ({
+    mockedPage,
+  }) => {
+    // baud is a frequently-changed setting that should be reachable without
+    // opening the settings drawer (Phase 10C).
+    const drawerBaud = mockedPage.locator(
+      '[data-testid="settings-drawer"] [data-testid="baud-select"]',
+    )
+    await expect(drawerBaud).toHaveCount(0)
+  })
+})
+
 test.describe('settings panel', () => {
-  test('all 6 controls are visible', async ({ mockedPage }) => {
-    await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeVisible()
+  test('all 5 port-config controls are visible', async ({ mockedPage }) => {
     await expect(mockedPage.locator('[data-testid="databits-select"]')).toBeVisible()
     await expect(mockedPage.locator('[data-testid="parity-select"]')).toBeVisible()
     await expect(mockedPage.locator('[data-testid="stopbits-select"]')).toBeVisible()
