@@ -61,7 +61,9 @@ v1.1.2 serial stream-lifecycle (writer-lock teardown); v1.1.3 rename to
 
 ### Phase 10 work items (Toolbar & connection UX)
 
-- [ ] 10A — Toolbar clicks return focus to the terminal (`withTerminalFocus`).
+- [x] 10A — Toolbar clicks return focus to the terminal (`withTerminalFocus`). Unit
+      tests landed with the implementation commit; Playwright focus assertions for
+      Clear and drawer-close added retrospectively on the branch before 10C.
 - [x] 10B — Rename to **"Serial connect:"** + unified paired-device dropdown
       (Web Serial + WebUSB-FTDI + "Request…" actions). `BackendSelector` →
       `ConnectionSelect`; backends carry a VID:PID `label`; the dropdown lists
@@ -70,7 +72,9 @@ v1.1.2 serial stream-lifecycle (writer-lock teardown); v1.1.3 rename to
       picker. The Connect/Disconnect button and `connect()` flow are unchanged
       (full toolbar reflow stays in 10G). The "backend selector" unit/e2e tests
       were renamed to "connection selector" here since the rename forced it.
-- [ ] 10C — Baud rate as a toolbar dropdown (out of the settings drawer).
+- [x] 10C — Baud rate as a toolbar dropdown (out of the settings drawer). Compact
+      `.toolbar__select` in the toolbar group between ConnectionSelect and
+      Connect; removed from the drawer's Connection section.
 - [ ] 10D — **Serial Settings** dropdown (data/parity/stop/flow/echo/reset).
 - [ ] 10E — **Download** button → terminal contents as a text file.
 - [ ] 10F — **Fullscreen** button (native Fullscreen API).
