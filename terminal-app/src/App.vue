@@ -56,6 +56,15 @@
         <button
           class="btn"
           type="button"
+          data-testid="download-btn"
+          title="Download terminal contents"
+          @click="onDownload"
+        >
+          Download
+        </button>
+        <button
+          class="btn"
+          type="button"
           data-testid="serial-settings-btn"
           :aria-expanded="serialSettingsOpen"
           aria-controls="serial-settings-dialog"
@@ -370,6 +379,24 @@ function clearTerminal() {
   terminalRef.value?.clear()
 }
 const onClear = withTerminalFocus(clearTerminal)
+
+// --- Download terminal contents ----------------------------------------------
+function downloadTerminal() {
+  const text = terminalRef.value?.serialize() ?? ''
+  const blob = new Blob([text], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const stamp =
+    `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
+    `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+  a.download = `console-${stamp}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+const onDownload = withTerminalFocus(downloadTerminal)
 
 const capturingHotkey = ref(false)
 function startRebind() {

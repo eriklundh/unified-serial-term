@@ -62,7 +62,7 @@ land. Phase 11 (terminal behaviours) is a separate doc.
 | 10B — "Serial connect:" + unified device dropdown | ✅ Complete |
 | 10C — Baud dropdown in the toolbar | ✅ Complete |
 | 10D — Serial Settings popover | ✅ Complete |
-| 10E — Download button | ⬜ Pending |
+| 10E — Download button | ✅ Complete |
 | 10F — Fullscreen button | ⬜ Pending |
 | 10G — Toolbar reflow + focus integration | ⬜ Pending |
 
