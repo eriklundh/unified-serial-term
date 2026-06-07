@@ -36,7 +36,7 @@ keeps the codebase entirely covered by tests written first.
 ## Phases checklist
 
 Single source of truth for status (supersedes the former `PLAN-UPDATED.md`).
-Phases 0–9 shipped; current release **v1.1.5**, live on staging
+Phases 0–10 shipped; current release **v1.2.0**, live on staging
 (`serial-lab.test.delivery-academy.se`). Hardware smoke tests were exercised on
 the Raspberry Pi 5 + FTDI host.
 
@@ -52,7 +52,7 @@ the Raspberry Pi 5 + FTDI host.
 | 7 | E2E Playwright acceptance tests | ✅ Complete |
 | 8 | Polish, deployment, release | ✅ Complete (deploy live; CI on Agentlab1) |
 | 9 | Terminal UX & theming (v1.1.0) | ✅ Complete |
-| **10** | **Toolbar & connection UX** | 🔜 Planned — [`docs/phases/PHASE-10-toolbar-connection-ux.md`](docs/phases/PHASE-10-toolbar-connection-ux.md) |
+| **10** | **Toolbar & connection UX** | ✅ Complete (v1.2.0) — [`docs/phases/PHASE-10-toolbar-connection-ux.md`](docs/phases/PHASE-10-toolbar-connection-ux.md) |
 | **11** | **Terminal behaviours & polish** | 🔜 Planned — [`docs/phases/PHASE-11-terminal-behaviors.md`](docs/phases/PHASE-11-terminal-behaviors.md) |
 
 Post-9 point releases (bug fixes, no new phase): v1.1.1 drawer occlusion;
