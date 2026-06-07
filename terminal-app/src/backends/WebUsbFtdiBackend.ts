@@ -60,6 +60,10 @@ export class WebUsbFtdiBackend implements SerialBackend {
     await this._ftdi.close()
     this._isOpen = false
   }
+
+  async reconfigure(options: SerialOptions): Promise<void> {
+    await this._ftdi.configure(translateOptions(options))
+  }
 }
 
 // ---------------------------------------------------------------------------

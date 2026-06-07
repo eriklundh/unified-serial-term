@@ -109,6 +109,26 @@ export class WebSerialBackend implements SerialBackend {
     }
   }
 
+  async reconfigure(options: SerialOptions): Promise<void> {
+    // Stop the pump: cancel() causes the pending read() to resolve {done:true},
+    // so the pump breaks out cleanly without erroring the frontend readable.
+    if (this._portReader) {
+      await this._portReader.cancel()
+      await this._pumpDone
+      this._pumpDone = null
+    }
+    if (this._portWriter) {
+      this._portWriter.releaseLock()
+      this._portWriter = null
+    }
+    // Soft close+reopen on the same port object with new settings.
+    // The real Web Serial API provides fresh readable/writable after open().
+    await this._port.close()
+    await this._port.open(options as unknown as Record<string, unknown>)
+    this._portWriter = (this._port.writable as WritableStream<Uint8Array>).getWriter()
+    this._pumpDone = this._pump()
+  }
+
   async close(): Promise<void> {
     this._cancelledByClose = true
     if (this._portReader) {
