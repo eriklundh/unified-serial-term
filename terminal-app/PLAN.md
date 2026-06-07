@@ -33,6 +33,58 @@ keeps the codebase entirely covered by tests written first.
 
 ---
 
+## Phases checklist
+
+Single source of truth for status (supersedes the former `PLAN-UPDATED.md`).
+Phases 0–9 shipped; current release **v1.1.5**, live on staging
+(`serial-lab.test.delivery-academy.se`). Hardware smoke tests were exercised on
+the Raspberry Pi 5 + FTDI host.
+
+| Phase | Name | Status |
+|------:|------|--------|
+| 0 | Project scaffold and empty terminal shell | ✅ Complete |
+| 1 | Define the SerialBackend interface | ✅ Complete |
+| 2 | Web Serial backend and basic connection flow | ✅ Complete |
+| 3 | WebUSB + FTDI backend | ✅ Complete (HW smoke run on Pi5) |
+| 4 | Backend selector UI | ✅ Complete |
+| 5 | Settings persistence and auto-reconnect | ✅ Complete |
+| 6 | Terminal completeness | ✅ Complete |
+| 7 | E2E Playwright acceptance tests | ✅ Complete |
+| 8 | Polish, deployment, release | ✅ Complete (deploy live; CI on Agentlab1) |
+| 9 | Terminal UX & theming (v1.1.0) | ✅ Complete |
+| **10** | **Toolbar & connection UX** | 🔜 Planned — [`docs/phases/PHASE-10-toolbar-connection-ux.md`](docs/phases/PHASE-10-toolbar-connection-ux.md) |
+| **11** | **Terminal behaviours & polish** | 🔜 Planned — [`docs/phases/PHASE-11-terminal-behaviors.md`](docs/phases/PHASE-11-terminal-behaviors.md) |
+
+Post-9 point releases (bug fixes, no new phase): v1.1.1 drawer occlusion;
+v1.1.2 serial stream-lifecycle (writer-lock teardown); v1.1.3 rename to
+`unified-serial-console`; v1.1.4 drawer scroll; v1.1.5 sticky manual disconnect.
+
+### Phase 10 work items (Toolbar & connection UX)
+
+- [ ] 10A — Toolbar clicks return focus to the terminal (`withTerminalFocus`).
+- [ ] 10B — Rename to **"Serial connect:"** + unified paired-device dropdown
+      (Web Serial + WebUSB-FTDI + "Request…" actions).
+- [ ] 10C — Baud rate as a toolbar dropdown (out of the settings drawer).
+- [ ] 10D — **Serial Settings** dropdown (data/parity/stop/flow/echo/reset).
+- [ ] 10E — **Download** button → terminal contents as a text file.
+- [ ] 10F — **Fullscreen** button (native Fullscreen API).
+- [ ] 10G — Toolbar reflow + focus wired through every button.
+
+### Phase 11 work items (Terminal behaviours & polish)
+
+- [ ] 11A — Valid URLs clickable in the terminal (verified + e2e click test).
+- [ ] 11B — **Bell**: `bell` on/off + `bellStyle` none/visual/sound/both (zaxbux parity).
+- [ ] 11C — Add `@xterm/addon-search` (find) + reuse `@xterm/addon-serialize`;
+      optional `@xterm/addon-unicode11`. Decline Vuetify/Pinia/router/@vueuse/@mdi.
+- [ ] 11D — **Splash** overlay in the terminal pane; clears on first typed/received byte.
+
+> Deferred-item audit (per "integrate non-obsolete prior planning"): the former
+> `PLAN-UPDATED.md` "outstanding" list (deploy, `git push`, HW smoke) is now
+> **obsolete** — all done. No other deferred items from Phases 6–9 remain open;
+> Phase 9's only "stretch" note is captured here under Phase 11.
+
+---
+
 ## Phase 0 — Project scaffold and empty terminal shell
 
 Branch: `phase/00-scaffold`
@@ -672,3 +724,31 @@ selection, a non-modal settings drawer, modern token-driven control styling,
 and durable/portable settings (localStorage + `persist()` + Export/Import).
 
 Full plan and sub-phases (A–E, TDD): [`docs/phases/PHASE-09-ui-theming.md`](docs/phases/PHASE-09-ui-theming.md).
+
+---
+
+## Phase 10 — Toolbar & connection UX
+
+A toolbar/connection refresh informed by the live zaxbux web-serial-console
+(features only — we keep our plain-CSS, no-Vuetify/Pinia/router stack):
+toolbar clicks return focus to the terminal; the connection control becomes
+**"Serial connect:"** with a unified dropdown of paired devices (Web Serial +
+WebUSB-FTDI) plus "Request…" actions; **baud** moves to a toolbar dropdown; a
+**Serial Settings** dropdown holds the remaining port options; new **Download**
+and **Fullscreen** buttons. Adds `@xterm/addon-serialize`.
+
+Full plan and sub-phases (10A–10G, TDD):
+[`docs/phases/PHASE-10-toolbar-connection-ux.md`](docs/phases/PHASE-10-toolbar-connection-ux.md).
+
+---
+
+## Phase 11 — Terminal behaviours & polish
+
+The terminal-side half: verified **clickable URLs**; a **bell** with zaxbux's
+options (`bell` on/off + `bellStyle` none/visual/sound/both); the worthwhile
+xterm addons (`@xterm/addon-search` find, optional `@xterm/addon-unicode11`); and
+a **splash** overlay in the terminal pane that promotes the project and clears on
+the first typed or received byte.
+
+Full plan and sub-phases (11A–11D, TDD):
+[`docs/phases/PHASE-11-terminal-behaviors.md`](docs/phases/PHASE-11-terminal-behaviors.md).
