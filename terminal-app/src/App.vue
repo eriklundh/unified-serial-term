@@ -12,6 +12,21 @@
           :disabled="isConnected"
           @refresh="refreshPaired"
         />
+        <select
+          v-model.number="settings.baudRate"
+          data-testid="baud-select"
+          class="toolbar__select"
+          aria-label="Baud rate"
+          :disabled="isConnected"
+        >
+          <option
+            v-for="b in BAUD_RATES"
+            :key="b"
+            :value="b"
+          >
+            {{ b }}
+          </option>
+        </select>
         <button
           v-if="!isConnected"
           class="btn btn--primary"
@@ -103,20 +118,6 @@
           <h3 class="group__title">
             Connection
           </h3>
-          <label class="field">
-            <span class="field__label">Baud</span>
-            <select
-              v-model.number="settings.baudRate"
-              data-testid="baud-select"
-              :disabled="isConnected"
-            >
-              <option
-                v-for="b in BAUD_RATES"
-                :key="b"
-                :value="b"
-              >{{ b }}</option>
-            </select>
-          </label>
           <label class="field">
             <span class="field__label">Data bits</span>
             <select
@@ -667,6 +668,22 @@ body,
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.toolbar__select {
+  padding: 0.2rem 0.4rem;
+  background: var(--surface-2, #3c3c3c);
+  color: var(--fg, #d4d4d4);
+  border: 1px solid var(--border, #555);
+  border-radius: 2px;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.toolbar__select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .status {
