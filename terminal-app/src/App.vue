@@ -49,6 +49,17 @@
         <button
           class="btn"
           type="button"
+          data-testid="serial-settings-btn"
+          :aria-expanded="serialSettingsOpen"
+          aria-controls="serial-settings-dialog"
+          title="Serial Settings"
+          @click="serialSettingsOpen = !serialSettingsOpen"
+        >
+          Serial Settings
+        </button>
+        <button
+          class="btn"
+          type="button"
           data-testid="clear-btn"
           title="Clear terminal"
           @click="onClear"
@@ -74,17 +85,6 @@
           @click="onFullscreen"
         >
           <span aria-hidden="true">{{ isFullscreen ? '⊡' : '⛶' }}</span>
-        </button>
-        <button
-          class="btn"
-          type="button"
-          data-testid="serial-settings-btn"
-          :aria-expanded="serialSettingsOpen"
-          aria-controls="serial-settings-dialog"
-          title="Serial Settings"
-          @click="serialSettingsOpen = !serialSettingsOpen"
-        >
-          Serial Settings
         </button>
       </div>
 

@@ -8,9 +8,10 @@ import { FACTORIES_KEY } from './backends/injectionKeys'
 import { SYSTEM_MONO } from './settings/useAppearance'
 import { suppressAutoReconnect } from './settings/reconnect'
 
-const { terminalClear, terminalFocus } = vi.hoisted(() => ({
+const { terminalClear, terminalFocus, terminalSerialize } = vi.hoisted(() => ({
   terminalClear: vi.fn(),
   terminalFocus: vi.fn(),
+  terminalSerialize: vi.fn().mockReturnValue(''),
 }))
 
 vi.mock('./components/Terminal.vue', () => ({
@@ -20,7 +21,7 @@ vi.mock('./components/Terminal.vue', () => ({
     props: ['readable', 'writable', 'localEcho', 'fontFamily', 'fontSize', 'theme'],
     emits: ['disconnect'],
     setup(_props: unknown, { expose }: { expose: (e: Record<string, unknown>) => void }) {
-      expose({ clear: terminalClear, focus: terminalFocus })
+      expose({ clear: terminalClear, focus: terminalFocus, serialize: terminalSerialize })
     },
   },
 }))
@@ -667,6 +668,17 @@ describe('App.vue — toolbar focus return (Phase 10A)', () => {
     expect(terminalFocus).toHaveBeenCalled()
   })
 
+  it('clicking Download returns focus to the terminal', async () => {
+    URL.createObjectURL = vi.fn().mockReturnValue('blob:test')
+    URL.revokeObjectURL = vi.fn()
+    const wrapper = mountWithFactories([])
+    await flushPromises()
+    terminalFocus.mockClear()
+    await wrapper.find('[data-testid="download-btn"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+
   it('connecting returns focus to the terminal', async () => {
     const wrapper = mountWithFactories([new MockFactory()])
     await flushPromises()
@@ -915,5 +927,29 @@ describe('App.vue — live reconfigure while connected', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-testid="status-msg"]').text()).toContain('Reconfigure failed')
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — toolbar reflow (Phase 10G)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('Serial Settings button appears before Clear button in the toolbar', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    const serialSettingsBtn = wrapper.find('[data-testid="serial-settings-btn"]').element
+    const clearBtn = wrapper.find('[data-testid="clear-btn"]').element
+    // DOCUMENT_POSITION_FOLLOWING (4) means clearBtn follows serialSettingsBtn
+    const position = serialSettingsBtn.compareDocumentPosition(clearBtn)
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('Download button appears after Clear button in the toolbar', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    const clearBtn = wrapper.find('[data-testid="clear-btn"]').element
+    const downloadBtn = wrapper.find('[data-testid="download-btn"]').element
+    const position = clearBtn.compareDocumentPosition(downloadBtn)
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
