@@ -280,6 +280,24 @@
 
         <section class="group">
           <h3 class="group__title">
+            About
+          </h3>
+          <p class="group__hint">
+            Unified Serial Console — browser-based terminal over WebUSB and Web Serial.
+          </p>
+          <p class="group__hint">
+            <a
+              href="https://github.com/eriklundh/unified-serial-term"
+              target="_blank"
+              rel="noopener noreferrer"
+              data-testid="about-source-link"
+              class="about-link"
+            >github.com/eriklundh/unified-serial-term</a>
+          </p>
+        </section>
+
+        <section class="group">
+          <h3 class="group__title">
             Storage
           </h3>
           <p class="group__hint">
@@ -1074,5 +1092,15 @@ body,
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.about-link {
+  color: var(--accent, #3b82f6);
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+
+.about-link:hover {
+  text-decoration: underline;
 }
 </style>

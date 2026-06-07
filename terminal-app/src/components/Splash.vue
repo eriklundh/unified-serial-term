@@ -23,6 +23,14 @@
         >
         Don't show again
       </label>
+      <p class="splash__source">
+        <a
+          href="https://github.com/eriklundh/unified-serial-term"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="splash-source-link"
+        >github.com/eriklundh/unified-serial-term</a>
+      </p>
     </div>
   </div>
 </template>
@@ -85,5 +93,19 @@ const emit = defineEmits<{
   font-size: 0.8rem;
   color: var(--muted, #9a9a9a);
   cursor: pointer;
+}
+
+.splash__source {
+  font-size: 0.75rem;
+  color: var(--muted, #9a9a9a);
+}
+
+.splash__source a {
+  color: var(--accent, #3b82f6);
+  text-decoration: none;
+}
+
+.splash__source a:hover {
+  text-decoration: underline;
 }
 </style>
