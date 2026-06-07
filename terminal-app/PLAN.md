@@ -77,7 +77,7 @@ v1.1.2 serial stream-lifecycle (writer-lock teardown); v1.1.3 rename to
       Connect; removed from the drawer's Connection section.
 - [x] 10D — **Serial Settings** dropdown (data/parity/stop/flow/echo/reset).
 - [x] 10E — **Download** button → terminal contents as a text file.
-- [ ] 10F — **Fullscreen** button (native Fullscreen API).
+- [x] 10F — **Fullscreen** button (native Fullscreen API).
 - [ ] 10G — Toolbar reflow + focus wired through every button.
 
 ### Phase 11 work items (Terminal behaviours & polish)
