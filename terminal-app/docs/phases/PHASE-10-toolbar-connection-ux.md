@@ -64,7 +64,7 @@ land. Phase 11 (terminal behaviours) is a separate doc.
 | 10D — Serial Settings popover | ✅ Complete |
 | 10E — Download button | ✅ Complete |
 | 10F — Fullscreen button | ✅ Complete |
-| 10G — Toolbar reflow + focus integration | ⬜ Pending |
+| 10G — Toolbar reflow + focus integration | ✅ Complete |
 
 - **10A — Focus-return wrapper.** `withTerminalFocus` (App-level helper or
   `useTerminalFocus` composable). Replace the scattered `terminalRef.focus()`
