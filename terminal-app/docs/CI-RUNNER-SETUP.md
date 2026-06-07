@@ -34,14 +34,15 @@ The shell executor runs jobs directly on the host as the `gitlab-runner` user,
 so the toolchain must be installed system-wide (on `PATH` for that user).
 
 ```bash
-# Node 22 (NodeSource), system-wide so the gitlab-runner user sees it
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+# Node 22 LTS or later (NodeSource). Agentlab1 currently runs Node 24.
+# Use the appropriate setup script for the target LTS version.
+curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
 # python3 is used by python-suites' compile smoke (usually already present)
 sudo apt-get install -y python3
 
-node --version   # v22.x
+node --version   # v22.x or v24.x
 npm --version
 ```
 
@@ -72,14 +73,24 @@ to the service file — see the Troubleshooting section.
 
 ### 2a. Populate the runner user's home with the skel bash files
 
-The `gitlab-runner` package may or may not copy `/etc/skel` when it creates the
-user. Populate the files explicitly so the state is known and reproducible:
+The `gitlab-runner` Debian package creates the `gitlab-runner` user as a
+**system user** (`adduser --system`, uid < 1000). System users intentionally
+do not get their home directory populated from `/etc/skel` — so `.bashrc`,
+`.bash_logout`, and `.profile` are all absent after installation.
+
+By contrast, the Pi5 binary install (see `hil-preflight/rpi5-gitlab-runner-setup.md`)
+used `useradd --create-home` (a regular user), which does copy skel — but then
+inherits the dangerous `.bash_logout`. Either way, all three files need
+explicit attention.
+
+Copy the harmless skel files now so the state is known and reproducible:
 
 ```bash
-# .bashrc — standard interactive-shell config; harmless for CI, needed if
-# anyone ever debugs by logging in as gitlab-runner.
-sudo cp /etc/skel/.bashrc /home/gitlab-runner/.bashrc
-sudo chown gitlab-runner:gitlab-runner /home/gitlab-runner/.bashrc
+sudo cp /etc/skel/.bashrc  /home/gitlab-runner/.bashrc
+sudo cp /etc/skel/.profile /home/gitlab-runner/.profile
+sudo chown gitlab-runner:gitlab-runner \
+  /home/gitlab-runner/.bashrc \
+  /home/gitlab-runner/.profile
 ```
 
 ### 2b. Fix `.bash_logout`  ← CRITICAL
