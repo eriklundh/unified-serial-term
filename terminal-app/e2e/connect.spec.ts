@@ -3,30 +3,33 @@ import { installMockSerial } from './helpers/mockSerial'
 import { installMockUsb } from './helpers/mockUsb'
 
 test.describe('connect / disconnect', () => {
-  test('Web Serial — connect shows Disconnect and disables settings', async ({ mockedPage }) => {
+  test('Web Serial — connect shows Disconnect; device selector locked, port-config stays live', async ({ mockedPage }) => {
     await mockedPage.getByRole('combobox', { name: /serial connect/i }).selectOption('web-serial')
     await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.getByRole('button', { name: /disconnect/i })).toBeVisible()
-    await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()
-    // Local echo stays live — it only affects local rendering, not the port
-    // config, so it's toggleable mid-session (unlike baud/parity/etc.).
+    // Device selector is locked while connected — can't switch backend mid-session.
+    await expect(mockedPage.locator('[data-testid="connection-select"]')).toBeDisabled()
+    // Port-config controls stay live for in-session reconfigure (Phase 10F).
+    await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeEnabled()
     await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
   })
 
-  test('WebUSB — connect shows Disconnect and disables settings', async ({ mockedPage }) => {
+  test('WebUSB — connect shows Disconnect; device selector locked, port-config stays live', async ({ mockedPage }) => {
     await mockedPage.getByRole('combobox', { name: /serial connect/i }).selectOption('webusb-ftdi')
     await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.getByRole('button', { name: /disconnect/i })).toBeVisible()
-    await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()
+    await expect(mockedPage.locator('[data-testid="connection-select"]')).toBeDisabled()
+    await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeEnabled()
     await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
   })
 
-  test('Disconnect cleans up — Connect visible and settings re-enabled', async ({
+  test('Disconnect cleans up — Connect visible, device selector re-enabled', async ({
     mockedPage,
   }) => {
     await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.getByRole('button', { name: /disconnect/i }).click()
     await expect(mockedPage.getByTestId('connect-btn')).toBeVisible()
+    await expect(mockedPage.locator('[data-testid="connection-select"]')).toBeEnabled()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeEnabled()
   })
 

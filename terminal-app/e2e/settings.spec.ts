@@ -77,23 +77,25 @@ test.describe('settings panel', () => {
     await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).not.toBeChecked()
   })
 
-  test('port-config controls disabled while connected (echo stays live)', async ({ mockedPage }) => {
+  test('port-config controls stay live while connected; only Reset is disabled', async ({ mockedPage }) => {
     await mockedPage.getByTestId('connect-btn').click()
     await openSerialSettings(mockedPage)
-    await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()
-    await expect(mockedPage.locator('[data-testid="databits-select"]')).toBeDisabled()
-    await expect(mockedPage.locator('[data-testid="parity-select"]')).toBeDisabled()
-    await expect(mockedPage.locator('[data-testid="stopbits-select"]')).toBeDisabled()
-    await expect(mockedPage.locator('[data-testid="flowcontrol-select"]')).toBeDisabled()
+    // Port-config controls are live for in-session reconfigure (Phase 10F).
+    await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeEnabled()
+    await expect(mockedPage.locator('[data-testid="databits-select"]')).toBeEnabled()
+    await expect(mockedPage.locator('[data-testid="parity-select"]')).toBeEnabled()
+    await expect(mockedPage.locator('[data-testid="stopbits-select"]')).toBeEnabled()
+    await expect(mockedPage.locator('[data-testid="flowcontrol-select"]')).toBeEnabled()
+    // Reset is still disabled while connected — it would clobber the live session.
     await expect(mockedPage.locator('[data-testid="reset-btn"]')).toBeDisabled()
-    // Local echo is a live rendering toggle, not a port setting — stays enabled.
     await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
   })
 
-  test('controls re-enabled after disconnect', async ({ mockedPage }) => {
+  test('Reset button re-enabled after disconnect', async ({ mockedPage }) => {
     await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.getByRole('button', { name: /disconnect/i }).click()
     await openSerialSettings(mockedPage)
+    await expect(mockedPage.locator('[data-testid="reset-btn"]')).toBeEnabled()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeEnabled()
     await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
   })
