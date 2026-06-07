@@ -7,21 +7,33 @@ import { WebSerialFactory, WebSerialBackend } from './WebSerialBackend'
 // ---------------------------------------------------------------------------
 class FakeSerialPort {
   private _readController!: ReadableStreamDefaultController<Uint8Array>
-  readonly readable: ReadableStream<Uint8Array>
-  readonly writable: WritableStream<Uint8Array>
+  private _readable!: ReadableStream<Uint8Array>
+  private _writable!: WritableStream<Uint8Array>
   readonly written: Uint8Array[] = []
   openCalled = false
   closeCalled = false
   openOptions: SerialOptions | null = null
   onClose: (() => void) | null = null
 
+  get readable(): ReadableStream<Uint8Array> {
+    return this._readable
+  }
+
+  get writable(): WritableStream<Uint8Array> {
+    return this._writable
+  }
+
   constructor() {
-    this.readable = new ReadableStream<Uint8Array>({
+    this._makeStreams()
+  }
+
+  private _makeStreams(): void {
+    this._readable = new ReadableStream<Uint8Array>({
       start: (controller) => {
         this._readController = controller
       },
     })
-    this.writable = new WritableStream<Uint8Array>({
+    this._writable = new WritableStream<Uint8Array>({
       write: (chunk) => {
         this.written.push(chunk)
       },
@@ -31,12 +43,14 @@ class FakeSerialPort {
   async open(options: SerialOptions): Promise<void> {
     this.openCalled = true
     this.openOptions = options
+    // Real Web Serial provides fresh readable/writable after each open().
+    this._makeStreams()
   }
 
   async close(): Promise<void> {
     // Faithful to Chrome: SerialPort.close() rejects if readable or writable
     // still has an active reader/writer lock. The owner must release first.
-    if (this.readable.locked || this.writable.locked) {
+    if (this._readable.locked || this._writable.locked) {
       throw new DOMException('Cannot cancel a locked stream', 'InvalidStateError')
     }
     this.onClose?.()
@@ -264,5 +278,62 @@ describe('WebSerialBackend', () => {
 
     const { done } = await readPromise
     expect(done).toBe(true)
+  })
+
+  it('reconfigure() calls port.close then port.open with new options', async () => {
+    await backend.open({ baudRate: 9600 })
+    fakePort.closeCalled = false
+
+    await backend.reconfigure({ baudRate: 115200, parity: 'even' })
+
+    expect(fakePort.closeCalled).toBe(true)
+    expect(fakePort.openOptions).toEqual({ baudRate: 115200, parity: 'even' })
+  })
+
+  it('reconfigure() leaves isOpen true', async () => {
+    await backend.open({ baudRate: 9600 })
+    await backend.reconfigure({ baudRate: 115200 })
+    expect(backend.isOpen).toBe(true)
+  })
+
+  it('reconfigure() does not close or error backend.readable', async () => {
+    // A pending consumer read should survive a reconfigure: the data arrives
+    // after the port restarts, but done stays false (stream not closed/errored).
+    await backend.open({ baudRate: 9600 })
+
+    const reader = backend.readable.getReader()
+    const pendingRead = reader.read()
+
+    await backend.reconfigure({ baudRate: 115200 })
+    fakePort.simulateReceive(new Uint8Array([0x01]))
+
+    const { done } = await pendingRead
+    reader.releaseLock()
+
+    expect(done).toBe(false)
+  })
+
+  it('reconfigure() allows data to flow from the new port streams', async () => {
+    await backend.open({ baudRate: 9600 })
+    await backend.reconfigure({ baudRate: 115200 })
+
+    const reader = backend.readable.getReader()
+    fakePort.simulateReceive(new Uint8Array([0xDE, 0xAD]))
+    const { value } = await reader.read()
+    reader.releaseLock()
+
+    expect(value).toEqual(new Uint8Array([0xDE, 0xAD]))
+  })
+
+  it('reconfigure() allows writes to reach the new port writable', async () => {
+    await backend.open({ baudRate: 9600 })
+    fakePort.written.length = 0
+    await backend.reconfigure({ baudRate: 115200 })
+
+    const writer = backend.writable.getWriter()
+    await writer.write(new Uint8Array([0xBE, 0xEF]))
+    writer.releaseLock()
+
+    expect(fakePort.written).toContainEqual(new Uint8Array([0xBE, 0xEF]))
   })
 })

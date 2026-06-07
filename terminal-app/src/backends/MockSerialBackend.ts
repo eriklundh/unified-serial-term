@@ -10,6 +10,7 @@ export class MockSerialBackend implements SerialBackend {
   readonly writable: WritableStream<Uint8Array>
   readonly written: Uint8Array[] = []
   lastOptions: SerialOptions | null = null
+  lastReconfigureOptions: SerialOptions | null = null
 
   constructor() {
     this.readable = new ReadableStream<Uint8Array>({
@@ -36,6 +37,10 @@ export class MockSerialBackend implements SerialBackend {
 
   async close(): Promise<void> {
     this._isOpen = false
+  }
+
+  async reconfigure(options: SerialOptions): Promise<void> {
+    this.lastReconfigureOptions = options
   }
 
   simulateReceive(data: Uint8Array): void {

@@ -156,4 +156,21 @@ describe('WebUsbFtdiBackend', () => {
     await backend.close()
     expect(backend.isOpen).toBe(false)
   })
+
+  it('reconfigure() calls ftdi.configure with translated options, not ftdi.open', async () => {
+    await backend.open({ baudRate: 9600 })
+    const openSpy = vi.spyOn(ftdi, 'open')
+    const configureSpy = vi.spyOn(ftdi, 'configure')
+
+    await backend.reconfigure({ baudRate: 57600, parity: 'even' })
+
+    expect(configureSpy).toHaveBeenCalledWith(expect.objectContaining({ baud: 57600, parity: 'even' }))
+    expect(openSpy).not.toHaveBeenCalled()
+  })
+
+  it('reconfigure() leaves isOpen true', async () => {
+    await backend.open({ baudRate: 9600 })
+    await backend.reconfigure({ baudRate: 115200 })
+    expect(backend.isOpen).toBe(true)
+  })
 })

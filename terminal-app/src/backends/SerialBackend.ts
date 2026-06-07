@@ -18,6 +18,8 @@ export interface SerialBackend {
   readonly writable: WritableStream<Uint8Array>
   open(options: SerialOptions): Promise<void>
   close(): Promise<void>
+  /** Apply new settings to an already-open port without disconnecting. */
+  reconfigure(options: SerialOptions): Promise<void>
 }
 
 export interface SerialBackendFactory {
