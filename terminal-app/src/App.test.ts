@@ -786,3 +786,73 @@ describe('App.vue — SerialSettings popover (Phase 10D)', () => {
     expect(drawer.find('[data-testid="reset-btn"]').exists()).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+describe('App.vue — fullscreen button (Phase 10F)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    terminalFocus.mockClear()
+    Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, get: () => true })
+    Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => null })
+  })
+
+  it('fullscreen button is visible when fullscreenEnabled is true', () => {
+    const wrapper = mountWithFactories([])
+    expect(wrapper.find('[data-testid="fullscreen-btn"]').exists()).toBe(true)
+  })
+
+  it('fullscreen button is hidden when fullscreenEnabled is false', () => {
+    Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, get: () => false })
+    const wrapper = mountWithFactories([])
+    expect(wrapper.find('[data-testid="fullscreen-btn"]').exists()).toBe(false)
+  })
+
+  it('button title is "Enter fullscreen" when not in fullscreen', () => {
+    const wrapper = mountWithFactories([])
+    expect(wrapper.find('[data-testid="fullscreen-btn"]').attributes('title')).toBe('Enter fullscreen')
+  })
+
+  it('clicking fullscreen button calls requestFullscreen on the app root', async () => {
+    const reqFS = vi.fn().mockResolvedValue(undefined)
+    const wrapper = mountWithFactories([])
+    ;(wrapper.find('.app').element as HTMLElement).requestFullscreen = reqFS
+    await wrapper.find('[data-testid="fullscreen-btn"]').trigger('click')
+    await flushPromises()
+    expect(reqFS).toHaveBeenCalled()
+  })
+
+  it('button title changes to "Exit fullscreen" after fullscreenchange fires', async () => {
+    const wrapper = mountWithFactories([])
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => document.body,
+    })
+    document.dispatchEvent(new Event('fullscreenchange'))
+    await nextTick()
+    expect(wrapper.find('[data-testid="fullscreen-btn"]').attributes('title')).toBe('Exit fullscreen')
+  })
+
+  it('clicking in fullscreen state calls document.exitFullscreen', async () => {
+    const exitFS = vi.fn().mockResolvedValue(undefined)
+    document.exitFullscreen = exitFS
+    const wrapper = mountWithFactories([])
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => document.body,
+    })
+    document.dispatchEvent(new Event('fullscreenchange'))
+    await nextTick()
+    await wrapper.find('[data-testid="fullscreen-btn"]').trigger('click')
+    await flushPromises()
+    expect(exitFS).toHaveBeenCalled()
+  })
+
+  it('focus returns to terminal after clicking fullscreen', async () => {
+    const reqFS = vi.fn().mockResolvedValue(undefined)
+    const wrapper = mountWithFactories([])
+    ;(wrapper.find('.app').element as HTMLElement).requestFullscreen = reqFS
+    await wrapper.find('[data-testid="fullscreen-btn"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+})

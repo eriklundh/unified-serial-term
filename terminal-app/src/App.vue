@@ -1,5 +1,8 @@
 <template>
-  <div class="app">
+  <div
+    ref="appRef"
+    class="app"
+  >
     <header
       ref="toolbarRef"
       class="toolbar"
@@ -61,6 +64,17 @@
           @click="onDownload"
         >
           Download
+        </button>
+        <button
+          v-if="fullscreenEnabled"
+          class="btn btn--icon"
+          type="button"
+          data-testid="fullscreen-btn"
+          :title="isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
+          :aria-label="isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
+          @click="onFullscreen"
+        >
+          <span aria-hidden="true">{{ isFullscreen ? '⊡' : '⛶' }}</span>
         </button>
         <button
           class="btn"
@@ -284,6 +298,7 @@ const FONT_CHOICES = [
 
 const terminalRef = ref<InstanceType<typeof Terminal> | null>(null)
 const toolbarRef = ref<HTMLElement | null>(null)
+const appRef = ref<HTMLElement | null>(null)
 const factories = inject(FACTORIES_KEY, [])
 
 // The connection dropdown's value: either a backend id (a "Request…" action) or
@@ -397,6 +412,25 @@ function downloadTerminal() {
   URL.revokeObjectURL(url)
 }
 const onDownload = withTerminalFocus(downloadTerminal)
+
+// --- Fullscreen toggle -------------------------------------------------------
+const isFullscreen = ref(false)
+const fullscreenEnabled = ref(document.fullscreenEnabled)
+
+function onFullscreenChange() {
+  isFullscreen.value = document.fullscreenElement !== null
+}
+onMounted(() => document.addEventListener('fullscreenchange', onFullscreenChange))
+onUnmounted(() => document.removeEventListener('fullscreenchange', onFullscreenChange))
+
+async function toggleFullscreen() {
+  if (document.fullscreenElement) {
+    await document.exitFullscreen()
+  } else {
+    await appRef.value?.requestFullscreen()
+  }
+}
+const onFullscreen = withTerminalFocus(toggleFullscreen)
 
 const capturingHotkey = ref(false)
 function startRebind() {
