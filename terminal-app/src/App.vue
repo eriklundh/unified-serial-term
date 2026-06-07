@@ -120,12 +120,17 @@
         :bell-style="bellStyle"
         @disconnect="disconnect"
         @open-search="openSearch"
+        @first-activity="hideSplash"
       />
       <SearchBar
         v-if="searchOpen"
         @find-next="(t) => terminalRef?.findNext(t)"
         @find-prev="(t) => terminalRef?.findPrevious(t)"
         @close="closeSearch"
+      />
+      <Splash
+        v-if="splashVisible"
+        @dont-show-again="onDontShowAgain"
       />
     </main>
 
@@ -303,6 +308,7 @@
 import { ref, inject, computed, watch, onMounted, onUnmounted } from 'vue'
 import Terminal from './components/Terminal.vue'
 import SearchBar from './components/SearchBar.vue'
+import Splash from './components/Splash.vue'
 import ConnectionSelect from './components/ConnectionSelect.vue'
 import SerialSettings from './components/SerialSettings.vue'
 import type { PairedDevice } from './components/ConnectionSelect.vue'
@@ -489,6 +495,18 @@ function stopRebind() {
 }
 function hotkeyOff() {
   appearance.value.clearHotkey = ''
+}
+
+// --- Splash ------------------------------------------------------------------
+const splashVisible = ref(!localStorage.getItem('splash-dismissed'))
+
+function hideSplash() {
+  splashVisible.value = false
+}
+
+function onDontShowAgain() {
+  localStorage.setItem('splash-dismissed', 'true')
+  splashVisible.value = false
 }
 
 // --- Search ------------------------------------------------------------------
@@ -856,6 +874,7 @@ body,
   overflow: hidden;
   padding: 0.25rem;
   background: var(--bg, #1e1e1e);
+  position: relative;
 }
 
 /* --- Settings drawer ------------------------------------------------------- */

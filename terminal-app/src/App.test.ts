@@ -22,7 +22,7 @@ vi.mock('./components/Terminal.vue', () => ({
     name: 'Terminal',
     template: '<div class="mock-terminal" />',
     props: ['readable', 'writable', 'localEcho', 'fontFamily', 'fontSize', 'theme', 'bell', 'bellStyle'],
-    emits: ['disconnect', 'openSearch'],
+    emits: ['disconnect', 'openSearch', 'firstActivity'],
     setup(_props: unknown, { expose }: { expose: (e: Record<string, unknown>) => void }) {
       expose({
         clear: terminalClear,
@@ -41,6 +41,14 @@ vi.mock('./components/SearchBar.vue', () => ({
     name: 'SearchBar',
     template: '<div data-testid="search-bar" />',
     emits: ['findNext', 'findPrev', 'close'],
+  },
+}))
+
+vi.mock('./components/Splash.vue', () => ({
+  default: {
+    name: 'Splash',
+    template: '<div data-testid="splash-overlay" />',
+    emits: ['dontShowAgain'],
   },
 }))
 
@@ -1006,5 +1014,40 @@ describe('App.vue — search (Phase 11C)', () => {
     wrapper.findComponent({ name: 'Terminal' }).vm.$emit('openSearch')
     await nextTick()
     expect(wrapper.find('[data-testid="search-bar"]').exists()).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — splash (Phase 11D)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    suppressAutoReconnect()
+  })
+
+  it('splash overlay is visible on load by default', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(true)
+  })
+
+  it('splash is hidden when Terminal emits firstActivity', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(true)
+    wrapper.findComponent({ name: 'Terminal' }).vm.$emit('firstActivity')
+    await nextTick()
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(false)
+  })
+
+  it('splash is not shown when localStorage splash-dismissed is set', () => {
+    localStorage.setItem('splash-dismissed', 'true')
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(false)
+  })
+
+  it('dontShowAgain from Splash hides it and persists to localStorage', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    wrapper.findComponent({ name: 'Splash' }).vm.$emit('dontShowAgain')
+    await nextTick()
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(false)
+    expect(localStorage.getItem('splash-dismissed')).toBe('true')
   })
 })
