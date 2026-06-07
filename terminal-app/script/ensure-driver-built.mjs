@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync } from 'node:fs'
+import { existsSync, cpSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
@@ -23,7 +23,19 @@ if (!existsSync(driverDir)) {
   process.exit(0)
 }
 
+// npm ci copies file: deps at install time — before dist/ exists on a fresh
+// checkout. Always sync dist/ into the node_modules copy so Vite can resolve
+// the package even when the build ran after npm ci.
+const distSrc = resolve(driverDir, 'dist')
+const distDst = resolve(here, '..', 'node_modules', 'ftdi-webusb-driver', 'dist')
+
 if (!driverNeedsBuild(driverDir)) {
+  // Driver is up to date, but node_modules copy might still be missing dist/
+  // (e.g. fresh npm ci on a machine where the driver was already built).
+  if (existsSync(distSrc) && !existsSync(distDst)) {
+    cpSync(distSrc, distDst, { recursive: true })
+    console.log('[ensure-driver] synced existing dist/ into node_modules copy')
+  }
   process.exit(0)
 }
 
@@ -33,5 +45,10 @@ try {
 } catch (err) {
   console.error('[ensure-driver] driver build failed — terminal-app cannot build without it')
   process.exit(err.status ?? 1)
+}
+
+// Sync freshly-built dist/ into the node_modules copy.
+if (existsSync(distSrc)) {
+  cpSync(distSrc, distDst, { recursive: true })
 }
 console.log('[ensure-driver] ftdi-driver build complete')

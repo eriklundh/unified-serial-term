@@ -14,6 +14,7 @@
     "test:e2e": "playwright test",
     "pretest:hw": "bash ../hil-preflight/preflight.sh",
     "test:hw": "TERMINAL_HW_TEST=1 playwright test",
+    "test:hw-real": "playwright test --config playwright.hw-real.config.ts",
     "typecheck": "vue-tsc --noEmit",
     "lint": "eslint . --ext .ts,.vue",
     "format": "prettier --write src"

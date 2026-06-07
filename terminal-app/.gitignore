@@ -4,6 +4,7 @@ dist/
 coverage/
 test-results/
 .playwright-mcp/
+.playwright-hw-profile/
 *.local
 .DS_Store
 
