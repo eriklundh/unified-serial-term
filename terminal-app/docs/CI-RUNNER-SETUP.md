@@ -60,6 +60,37 @@ curl -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/s
 sudo apt-get install -y gitlab-runner
 ```
 
+### 2a. Fix the runner user's `.bash_logout`  ← CRITICAL
+
+The default Debian `/etc/skel/.bash_logout` calls `clear_console -q`, which
+exits 1 when there is no controlling tty. The runner's prepare-script sets
+`set -o errexit`, so if the file is ever sourced on shell exit, that non-zero
+exit propagates back as a "prepare environment" failure. Pre-empt this:
+
+```bash
+echo '# no-op for CI runner — clear_console fails without a tty' | \
+  sudo tee /home/gitlab-runner/.bash_logout
+sudo chown gitlab-runner:gitlab-runner /home/gitlab-runner/.bash_logout
+```
+
+Without this, every job may fail with:
+> Job failed: prepare environment: exit status 1
+
+(The `gitlab-runner` package installer may or may not create the user with a
+copy of `/etc/skel/.bash_logout` — create the no-op explicitly to be safe.)
+
+### 2b. Install git-lfs
+
+The runner calls `git lfs install` during prepare on some configurations. If
+`git-lfs` is missing and the runner invokes it, the prepare step fails.
+
+```bash
+sudo apt-get install -y git-lfs
+sudo -u gitlab-runner bash -c 'cd /tmp && git lfs install'
+```
+
+### 2c. Register
+
 In GitLab: **project → Settings → CI/CD → Runners → New project runner**.
 Set **Run untagged jobs = on** (the check jobs are untagged), create it, and
 copy the **runner authentication token** (`glrt-…`). Then:
@@ -76,12 +107,32 @@ sudo gitlab-runner register \
 The runner now polls the project. Because it's a shell executor, there's no
 `image:` to pull — jobs use the host toolchain from step 1.
 
+### 2d. Sudoers for the deploy job
+
+The `terminal-app:deploy:staging` job runs `sudo rsync` and `sudo chown` to
+publish the static bundle to the web root. Grant scoped passwordless sudo:
+
+```bash
+echo 'gitlab-runner ALL=(root) NOPASSWD: /usr/bin/rsync, /usr/bin/chown' | \
+  sudo tee /etc/sudoers.d/gitlab-runner-deploy
+sudo chmod 440 /etc/sudoers.d/gitlab-runner-deploy
+sudo visudo -c
+```
+
 > Optional: to also run the `@hardware` e2e tests on a USB-equipped runner, set
 > a CI/CD variable `TERMINAL_HW_TEST=1` (project → Settings → CI/CD →
 > Variables). On Agentlab1 (no USB) leave it unset — the suite then runs the
 > 38 mock tests and skips the 4 `@hardware` ones.
 
-## 3. Enable GitHub Actions
+## 3. Set CI/CD variables in GitLab
+
+**Project → Settings → CI/CD → Variables**
+
+| Variable | Value | Notes |
+|---|---|---|
+| `DEPLOY_SITE_HOST` | `serial-lab.test.delivery-academy.se` | Used by `fetch-build-deploy.sh` to verify HTTPS after publish. Without it the deploy job still succeeds but skips the final curl check. |
+
+## 4. Enable GitHub Actions
 
 The GitHub workflow's non-hardware jobs already target GitHub-hosted
 `ubuntu-latest`, so there is no runner to install:
@@ -96,7 +147,7 @@ The GitHub workflow's non-hardware jobs already target GitHub-hosted
 The `hardware` job stays `workflow_dispatch`-only on the self-hosted
 `hil-hardware` runner.
 
-## 4. Verify
+## 5. Verify
 
 Trigger a pipeline (push a no-op commit, or use **Run pipeline** in the UI):
 
@@ -110,3 +161,21 @@ Trigger a pipeline (push a no-op commit, or use **Run pipeline** in the UI):
 If a GitLab job is stuck "pending" with no runner, the runner either isn't
 registered for this project, isn't set to run untagged jobs, or is offline
 (`sudo gitlab-runner verify` / `sudo gitlab-runner status`).
+
+### Troubleshooting: "prepare environment: exit status 1"
+
+This error has two root causes on Debian/Trixie — check in order:
+
+**1. `clear_console` in `.bash_logout`** — The runner prepare-script sets
+`errexit`; if the `gitlab-runner` user's login shell sources `~/.bash_logout`
+on exit and `clear_console -q` finds no tty, it exits 1 and the failure
+propagates. Fix: step 2a above.
+
+**2. `git-lfs` not installed** — The runner calls `git lfs install` during
+prepare on some configurations; if the binary is absent, `git` exits 1. Fix:
+step 2b above.
+
+> See `hil-preflight/rpi5-gitlab-runner-setup.md` for the same issues
+> discovered while setting up the Pi5 HIL runner, with additional detail on
+> the service-file `User=` pitfall that does not apply to the Agentlab1 apt
+> install.
