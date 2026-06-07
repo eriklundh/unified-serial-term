@@ -1,7 +1,13 @@
 // Friendly names for common USB-serial vendors/devices, used to label paired
-// devices in the connection dropdown. A compact subset ported from
-// zaxbux/web-serial-console `src/utils/usb-devices.ts` (we don't need the full
-// Arduino device map — just enough to make labels human-readable).
+// devices in the connection dropdown.
+//
+// The VID/PID values below are public facts: USB vendor IDs are assigned by
+// USB-IF (https://www.usb.org) and the FTDI product IDs come straight from
+// FTDI's own datasheets / the FT_PROG default-PID list. This table was written
+// from those primary sources — it is NOT copied or adapted from any third-party
+// project. (zaxbux/web-serial-console carries no licence and is referenced only
+// for which *features* to build, never for code or data layout.) The table is
+// deliberately small: just enough to make a paired device human-readable.
 
 interface VendorEntry {
   alias: string

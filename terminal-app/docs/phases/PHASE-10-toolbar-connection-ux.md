@@ -43,8 +43,10 @@ land. Phase 11 (terminal behaviours) is a separate doc.
     `port.getInfo()` / device VID:PID;
   - `listPaired()` already returns the openable backends — selection maps an
     entry → its backend; "Request…" maps to `pickDevice()`.
-- `src/backends/usbVendors.ts` (new) — small VID→name table ported from zaxbux
-  `utils/usb-devices.ts` (FTDI etc.) for friendly labels. Pure + unit-tested.
+- `src/backends/usbVendors.ts` (new) — small VID→name table written from the
+  public USB-IF registry + FTDI datasheets (FTDI etc.) for friendly labels.
+  Pure + unit-tested. (Not copied from any third-party project — zaxbux carries
+  no licence and is a *feature* reference only.)
 - `src/App.vue` — toolbar reflow; a `withTerminalFocus(fn)` wrapper; baud
   `<select>`; a **`SerialSettings.vue`** popover (native `<dialog>`); Download +
   Fullscreen handlers. The ⚙ drawer loses the port settings, keeps Appearance +
