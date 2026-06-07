@@ -87,6 +87,8 @@ terminal-app:e2e:
     - npm ci --no-audit --no-fund
     - node script/ensure-driver-built.mjs
     - npx playwright install chromium
+    # Free port 5173 in case a previous job left a stale Vite process on the runner host.
+    - fuser -k 5173/tcp 2>/dev/null || true
     - npm run test:e2e
   artifacts:
     when: on_failure
