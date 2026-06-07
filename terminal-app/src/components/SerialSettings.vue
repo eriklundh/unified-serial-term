@@ -131,3 +131,10 @@ const localEcho = computed({
   set: (v: boolean) => emit('update:settings', { ...props.settings, localEcho: v }),
 })
 </script>
+
+<style scoped>
+/* Sit above the main settings drawer (z-index: 10) so both can be open at once. */
+dialog {
+  z-index: 15;
+}
+</style>

@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures'
+import { test, expect, openSerialSettings } from './fixtures'
 
 test.describe('local echo', () => {
   test('echo off (default) — keystroke absent until device echoes back', async ({
@@ -18,6 +18,7 @@ test.describe('local echo', () => {
 
   test('echo on — keystroke appears immediately in xterm', async ({ mockedPage }) => {
     // Enable echo before connecting
+    await openSerialSettings(mockedPage)
     await mockedPage.locator('[data-testid="echo-checkbox"]').check()
     await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.locator('.terminal-container').click()
@@ -27,6 +28,7 @@ test.describe('local echo', () => {
   })
 
   test('echo on — keystroke still sent to device', async ({ mockedPage }) => {
+    await openSerialSettings(mockedPage)
     await mockedPage.locator('[data-testid="echo-checkbox"]').check()
     await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.locator('.terminal-container').click()
