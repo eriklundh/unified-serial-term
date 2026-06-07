@@ -259,6 +259,27 @@
 
         <section class="group">
           <h3 class="group__title">
+            Connection
+          </h3>
+          <p class="group__hint">
+            Revoke browser access to all previously paired serial ports and USB
+            devices. You will need to re-select a device on the next connect.
+          </p>
+          <div class="row">
+            <button
+              class="btn btn--subtle"
+              type="button"
+              data-testid="forget-btn"
+              :disabled="forgetting"
+              @click="forgetAllPaired"
+            >
+              {{ forgetting ? 'Forgetting…' : 'Forget all paired devices' }}
+            </button>
+          </div>
+        </section>
+
+        <section class="group">
+          <h3 class="group__title">
             Storage
           </h3>
           <p class="group__hint">
@@ -495,6 +516,42 @@ function stopRebind() {
 }
 function hotkeyOff() {
   appearance.value.clearHotkey = ''
+}
+
+// --- Forget paired devices ---------------------------------------------------
+// w3c-web-usb types are incomplete (forgetDevice missing); Web Serial types
+// are not in the installed type defs at all. Use a local structural cast.
+interface _PortWithForget { forget(): Promise<void> }
+interface _SerialWithPorts { getPorts(): Promise<_PortWithForget[]> }
+interface _UsbWithForget<D> {
+  getDevices(): Promise<D[]>
+  forgetDevice(device: D): Promise<void>
+}
+type _NavForget = {
+  serial?: _SerialWithPorts
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  usb?: _UsbWithForget<any>
+}
+
+const forgetting = ref(false)
+
+async function forgetAllPaired() {
+  if (forgetting.value) return
+  forgetting.value = true
+  try {
+    const nav = navigator as unknown as _NavForget
+    if (nav.serial) {
+      const ports = await nav.serial.getPorts()
+      await Promise.all(ports.map((p) => p.forget()))
+    }
+    if (nav.usb) {
+      const devices = await nav.usb.getDevices()
+      await Promise.all(devices.map((d) => nav.usb!.forgetDevice(d)))
+    }
+    await refreshPaired()
+  } finally {
+    forgetting.value = false
+  }
 }
 
 // --- Splash ------------------------------------------------------------------

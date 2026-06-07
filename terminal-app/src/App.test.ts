@@ -1051,3 +1051,106 @@ describe('App.vue — splash (Phase 11D)', () => {
     expect(localStorage.getItem('splash-dismissed')).toBe('true')
   })
 })
+
+// ---------------------------------------------------------------------------
+describe('App.vue — forget paired devices (Phase 11E)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    suppressAutoReconnect()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('Forget button is present in the settings drawer', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await wrapper.find('[data-testid="settings-btn"]').trigger('click')
+    await nextTick()
+    expect(wrapper.find('[data-testid="forget-btn"]').exists()).toBe(true)
+  })
+
+  it('clicking Forget calls forget() on each paired Web Serial port', async () => {
+    const mockForget = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      serial: { getPorts: vi.fn().mockResolvedValue([{ forget: mockForget }]) },
+      usb: { getDevices: vi.fn().mockResolvedValue([]), forgetDevice: vi.fn() },
+    })
+
+    const wrapper = mountWithFactories([new MockFactory()])
+    await wrapper.find('[data-testid="settings-btn"]').trigger('click')
+    await nextTick()
+    await wrapper.find('[data-testid="forget-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(mockForget).toHaveBeenCalledOnce()
+  })
+
+  it('clicking Forget calls forgetDevice() on each paired WebUSB device', async () => {
+    const fakeDevice = { vendorId: 0x0403 }
+    const mockForgetDevice = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      serial: { getPorts: vi.fn().mockResolvedValue([]) },
+      usb: { getDevices: vi.fn().mockResolvedValue([fakeDevice]), forgetDevice: mockForgetDevice },
+    })
+
+    const wrapper = mountWithFactories([new MockFactory()])
+    await wrapper.find('[data-testid="settings-btn"]').trigger('click')
+    await nextTick()
+    await wrapper.find('[data-testid="forget-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(mockForgetDevice).toHaveBeenCalledOnce()
+    expect(mockForgetDevice).toHaveBeenCalledWith(fakeDevice)
+  })
+
+  it('clicking Forget refreshes the paired dropdown', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      serial: { getPorts: vi.fn().mockResolvedValue([]) },
+      usb: { getDevices: vi.fn().mockResolvedValue([]), forgetDevice: vi.fn() },
+    })
+
+    // Factory that initially reports a paired device, then returns empty.
+    let callCount = 0
+    const backend = new MockSerialBackend()
+    const factory: SerialBackendFactory = {
+      id: 'web-serial' as BackendId,
+      displayName: 'Mock',
+      isAvailable: () => true,
+      pickDevice: async () => backend,
+      listPaired: async () => (callCount++ === 0 ? [backend] : []),
+    }
+
+    const wrapper = mountWithFactories([factory])
+    // Open dropdown to trigger initial refreshPaired
+    await wrapper.find('[data-testid="connection-select"]').trigger('focus')
+    await flushPromises()
+    // The first load may not call listPaired; open settings and forget
+    await wrapper.find('[data-testid="settings-btn"]').trigger('click')
+    await nextTick()
+    await wrapper.find('[data-testid="forget-btn"]').trigger('click')
+    await flushPromises()
+
+    // After forget, refreshPaired was called and the factory now returns []
+    expect(wrapper.findAll('[data-testid^="paired-option-"]')).toHaveLength(0)
+  })
+
+  it('Forget handles gracefully when serial/usb APIs are absent', async () => {
+    // Simulate a browser where only serial is available, usb is not
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      serial: { getPorts: vi.fn().mockResolvedValue([]) },
+      usb: undefined,
+    })
+
+    const wrapper = mountWithFactories([new MockFactory()])
+    await wrapper.find('[data-testid="settings-btn"]').trigger('click')
+    await nextTick()
+    // Should not throw
+    await wrapper.find('[data-testid="forget-btn"]').trigger('click')
+    await flushPromises()
+  })
+})
