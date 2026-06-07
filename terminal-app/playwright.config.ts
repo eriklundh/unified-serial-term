@@ -4,6 +4,10 @@ const HW_TEST = !!process.env.TERMINAL_HW_TEST;
 
 export default defineConfig({
   testDir: './e2e',
+  // These specs require physical USB hardware + a display; they have their own
+  // configs (playwright.hw-real.config.ts, playwright.smoke-xvfb.config.ts)
+  // and must not run in the standard CI job on agentlab1.
+  testIgnore: ['**/hw-real.spec.ts', '**/smoke-xvfb.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
