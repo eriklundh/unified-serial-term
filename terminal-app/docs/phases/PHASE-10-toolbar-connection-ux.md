@@ -56,6 +56,16 @@ land. Phase 11 (terminal behaviours) is a separate doc.
 
 ## Sub-phases (TDD)
 
+| Sub-phase | Status |
+|-----------|--------|
+| 10A — Focus-return wrapper | ✅ Complete |
+| 10B — "Serial connect:" + unified device dropdown | ✅ Complete |
+| 10C — Baud dropdown in the toolbar | ✅ Complete |
+| 10D — Serial Settings popover | ✅ Complete |
+| 10E — Download button | ⬜ Pending |
+| 10F — Fullscreen button | ⬜ Pending |
+| 10G — Toolbar reflow + focus integration | ⬜ Pending |
+
 - **10A — Focus-return wrapper.** `withTerminalFocus` (App-level helper or
   `useTerminalFocus` composable). Replace the scattered `terminalRef.focus()`
   calls. *Tests:* clicking Clear / Download / Fullscreen / closing a drawer

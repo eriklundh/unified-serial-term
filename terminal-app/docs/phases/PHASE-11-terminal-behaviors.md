@@ -52,6 +52,13 @@ Ships as a **minor** release once 11A–11D land.
 
 ## Sub-phases (TDD)
 
+| Sub-phase | Status |
+|-----------|--------|
+| 11A — Clickable URLs | ⬜ Pending |
+| 11B — Bell | ⬜ Pending |
+| 11C — xterm addons (Search + Unicode11) | ⬜ Pending |
+| 11D — Splash screen | ⬜ Pending |
+
 - **11A — Clickable URLs (item 7).** Verify + harden link activation; open in a
   new tab with `noopener`; reject non-`http(s)` schemes. *Tests:* extend the e2e
   beyond "URL rendered" to assert a **click** opens the expected URL (intercept
