@@ -116,7 +116,21 @@
         :font-family="appearance.fontFamily"
         :font-size="appearance.fontSize"
         :theme="currentTheme.xterm"
+        :bell="bell"
+        :bell-style="bellStyle"
         @disconnect="disconnect"
+        @open-search="openSearch"
+        @first-activity="hideSplash"
+      />
+      <SearchBar
+        v-if="searchOpen"
+        @find-next="(t) => terminalRef?.findNext(t)"
+        @find-prev="(t) => terminalRef?.findPrevious(t)"
+        @close="closeSearch"
+      />
+      <Splash
+        v-if="splashVisible"
+        @dont-show-again="onDontShowAgain"
       />
     </main>
 
@@ -197,6 +211,28 @@
               step="1"
             >
           </label>
+          <label class="field field--check">
+            <input
+              v-model="bell"
+              type="checkbox"
+              data-testid="bell-enabled"
+            >
+            <span class="field__label">Bell</span>
+          </label>
+          <label class="field">
+            <span class="field__label">Bell style</span>
+            <select
+              v-model="bellStyle"
+              data-testid="bell-style"
+              :disabled="!bell"
+            >
+              <option
+                v-for="s in BELL_STYLES"
+                :key="s"
+                :value="s"
+              >{{ s }}</option>
+            </select>
+          </label>
           <div class="field">
             <span class="field__label">Clear hotkey</span>
             <div class="hotkey">
@@ -218,6 +254,27 @@
                 Off
               </button>
             </div>
+          </div>
+        </section>
+
+        <section class="group">
+          <h3 class="group__title">
+            Connection
+          </h3>
+          <p class="group__hint">
+            Revoke browser access to all previously paired serial ports and USB
+            devices. You will need to re-select a device on the next connect.
+          </p>
+          <div class="row">
+            <button
+              class="btn btn--subtle"
+              type="button"
+              data-testid="forget-btn"
+              :disabled="forgetting"
+              @click="forgetAllPaired"
+            >
+              {{ forgetting ? 'Forgetting…' : 'Forget all paired devices' }}
+            </button>
           </div>
         </section>
 
@@ -271,6 +328,8 @@
 <script setup lang="ts">
 import { ref, inject, computed, watch, onMounted, onUnmounted } from 'vue'
 import Terminal from './components/Terminal.vue'
+import SearchBar from './components/SearchBar.vue'
+import Splash from './components/Splash.vue'
 import ConnectionSelect from './components/ConnectionSelect.vue'
 import SerialSettings from './components/SerialSettings.vue'
 import type { PairedDevice } from './components/ConnectionSelect.vue'
@@ -278,6 +337,7 @@ import { FACTORIES_KEY } from './backends/injectionKeys'
 import { resolveFactory, writePreference } from './settings/backendPreference'
 import { useSettings } from './settings/useSettings'
 import { useAppearance, SYSTEM_MONO } from './settings/useAppearance'
+import { useBell, BELL_STYLES } from './settings/useBell'
 import { matchesHotkey, eventToHotkey } from './settings/hotkey'
 import { exportSettings, importSettings, requestPersistentStorage } from './settings/io'
 import { isAutoReconnectSuppressed, suppressAutoReconnect, allowAutoReconnect } from './settings/reconnect'
@@ -346,6 +406,7 @@ async function refreshPaired() {
 const { settings, reset, reload: reloadSettings } = useSettings()
 
 const { appearance, reload: reloadAppearance } = useAppearance()
+const { bell, bellStyle } = useBell()
 const currentTheme = computed(() => getTheme(appearance.value.themeId))
 // Apply the theme's design tokens to the document root (chrome) immediately and
 // on change; the terminal receives the xterm theme via the <Terminal> props.
@@ -457,10 +518,80 @@ function hotkeyOff() {
   appearance.value.clearHotkey = ''
 }
 
+// --- Forget paired devices ---------------------------------------------------
+// w3c-web-usb types are incomplete (forgetDevice missing); Web Serial types
+// are not in the installed type defs at all. Use a local structural cast.
+interface _PortWithForget { forget(): Promise<void> }
+interface _SerialWithPorts { getPorts(): Promise<_PortWithForget[]> }
+interface _UsbWithForget<D> {
+  getDevices(): Promise<D[]>
+  forgetDevice(device: D): Promise<void>
+}
+type _NavForget = {
+  serial?: _SerialWithPorts
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  usb?: _UsbWithForget<any>
+}
+
+const forgetting = ref(false)
+
+async function forgetAllPaired() {
+  if (forgetting.value) return
+  forgetting.value = true
+  try {
+    const nav = navigator as unknown as _NavForget
+    if (nav.serial) {
+      const ports = await nav.serial.getPorts()
+      await Promise.all(ports.map((p) => p.forget()))
+    }
+    if (nav.usb) {
+      const devices = await nav.usb.getDevices()
+      await Promise.all(devices.map((d) => nav.usb!.forgetDevice(d)))
+    }
+    await refreshPaired()
+  } finally {
+    forgetting.value = false
+  }
+}
+
+// --- Splash ------------------------------------------------------------------
+const splashVisible = ref(!localStorage.getItem('splash-dismissed'))
+
+function hideSplash() {
+  splashVisible.value = false
+}
+
+function onDontShowAgain() {
+  localStorage.setItem('splash-dismissed', 'true')
+  splashVisible.value = false
+}
+
+// --- Search ------------------------------------------------------------------
+const searchOpen = ref(false)
+
+function openSearch() {
+  searchOpen.value = true
+}
+
+function closeSearch() {
+  searchOpen.value = false
+  terminalRef.value?.focus()
+}
+
 // App-level shortcuts. Capture phase so we intercept before xterm's own keydown
 // handler runs (which would otherwise send the keys to the device).
 function onKeydown(e: KeyboardEvent) {
   if (capturingHotkey.value) return
+  if (e.key === 'f' && e.ctrlKey && !e.altKey && !e.metaKey) {
+    e.preventDefault()
+    e.stopPropagation()
+    openSearch()
+    return
+  }
+  if (e.key === 'Escape' && searchOpen.value) {
+    closeSearch()
+    return
+  }
   if (e.key === 'Escape' && drawerOpen.value) {
     drawerOpen.value = false
     return
@@ -800,6 +931,7 @@ body,
   overflow: hidden;
   padding: 0.25rem;
   background: var(--bg, #1e1e1e);
+  position: relative;
 }
 
 /* --- Settings drawer ------------------------------------------------------- */

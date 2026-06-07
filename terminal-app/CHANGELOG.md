@@ -11,6 +11,43 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.3.0] — 2026-06-07
+
+### Added
+
+- **Clickable URLs.** Valid `http(s)` links in terminal output open in a new
+  tab with `noopener,noreferrer`; non-http(s) schemes (e.g. `javascript:`) are
+  silently blocked. (11A)
+- **Bell.** `bell` on/off toggle and `bellStyle` (none / visual / sound / both)
+  in the Settings drawer. Visual bell flashes a yellow tint over the terminal
+  pane; sound bell plays a square-wave tone via Web Audio. Both are throttled to
+  one ring per 500 ms. (11B)
+- **In-terminal search (Ctrl+F).** Press Ctrl+F to open the find overlay;
+  Escape closes it. The overlay sits in the top-right corner of the terminal
+  pane with next (▼) / previous (▲) buttons. The keypress is intercepted
+  app-level and never forwarded to the device. (11C)
+- **Unicode 11 wide-character support.** `@xterm/addon-unicode11` loaded on
+  startup; double-width characters (CJK, emoji) now measure correctly. (11C)
+- **Splash screen.** A welcome overlay appears over the terminal pane on first
+  load and disappears on the first keystroke or first byte received from the
+  device. A "Don't show again" checkbox persists the dismissal to
+  `localStorage`. (11D)
+- **Forget all paired devices.** A new Connection section in the Settings
+  drawer contains a "Forget all paired devices" button. It calls `port.forget()`
+  on every paired Web Serial port and `usb.forgetDevice()` on every paired
+  WebUSB device, then refreshes the connection dropdown. (11E)
+
+### Fixed
+
+- `allowProposedApi: true` added to the xterm Terminal constructor so that
+  `Unicode11Addon` loads without throwing and the terminal actually attaches to
+  the DOM. (11C/bugfix)
+- `position: relative` added to `.terminal-pane` so that absolutely-positioned
+  overlays (SearchBar, Splash) position relative to the terminal pane instead
+  of the viewport. (11C/11D/bugfix)
+
+---
+
 ## [1.2.0] — 2026-06-07
 
 ### Added

@@ -8,21 +8,47 @@ import { FACTORIES_KEY } from './backends/injectionKeys'
 import { SYSTEM_MONO } from './settings/useAppearance'
 import { suppressAutoReconnect } from './settings/reconnect'
 
-const { terminalClear, terminalFocus, terminalSerialize } = vi.hoisted(() => ({
+const { terminalClear, terminalFocus, terminalSerialize, terminalFindNext, terminalFindPrev, terminalClearSearch } = vi.hoisted(() => ({
   terminalClear: vi.fn(),
   terminalFocus: vi.fn(),
   terminalSerialize: vi.fn().mockReturnValue(''),
+  terminalFindNext: vi.fn().mockReturnValue(true),
+  terminalFindPrev: vi.fn().mockReturnValue(true),
+  terminalClearSearch: vi.fn(),
 }))
 
 vi.mock('./components/Terminal.vue', () => ({
   default: {
     name: 'Terminal',
     template: '<div class="mock-terminal" />',
-    props: ['readable', 'writable', 'localEcho', 'fontFamily', 'fontSize', 'theme'],
-    emits: ['disconnect'],
+    props: ['readable', 'writable', 'localEcho', 'fontFamily', 'fontSize', 'theme', 'bell', 'bellStyle'],
+    emits: ['disconnect', 'openSearch', 'firstActivity'],
     setup(_props: unknown, { expose }: { expose: (e: Record<string, unknown>) => void }) {
-      expose({ clear: terminalClear, focus: terminalFocus, serialize: terminalSerialize })
+      expose({
+        clear: terminalClear,
+        focus: terminalFocus,
+        serialize: terminalSerialize,
+        findNext: terminalFindNext,
+        findPrevious: terminalFindPrev,
+        clearSearch: terminalClearSearch,
+      })
     },
+  },
+}))
+
+vi.mock('./components/SearchBar.vue', () => ({
+  default: {
+    name: 'SearchBar',
+    template: '<div data-testid="search-bar" />',
+    emits: ['findNext', 'findPrev', 'close'],
+  },
+}))
+
+vi.mock('./components/Splash.vue', () => ({
+  default: {
+    name: 'Splash',
+    template: '<div data-testid="splash-overlay" />',
+    emits: ['dontShowAgain'],
   },
 }))
 
@@ -951,5 +977,180 @@ describe('App.vue — toolbar reflow (Phase 10G)', () => {
     const downloadBtn = wrapper.find('[data-testid="download-btn"]').element
     const position = clearBtn.compareDocumentPosition(downloadBtn)
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — search (Phase 11C)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    suppressAutoReconnect()
+  })
+
+  it('search bar is not shown by default', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="search-bar"]').exists()).toBe(false)
+  })
+
+  it('Ctrl+F shows the search bar', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true, cancelable: true }))
+    await nextTick()
+    expect(wrapper.find('[data-testid="search-bar"]').exists()).toBe(true)
+  })
+
+  it('search bar close event hides the search bar', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true, cancelable: true }))
+    await nextTick()
+    expect(wrapper.find('[data-testid="search-bar"]').exists()).toBe(true)
+    wrapper.findComponent({ name: 'SearchBar' }).vm.$emit('close')
+    await nextTick()
+    expect(wrapper.find('[data-testid="search-bar"]').exists()).toBe(false)
+  })
+
+  it('openSearch event from terminal shows the search bar', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    wrapper.findComponent({ name: 'Terminal' }).vm.$emit('openSearch')
+    await nextTick()
+    expect(wrapper.find('[data-testid="search-bar"]').exists()).toBe(true)
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — splash (Phase 11D)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    suppressAutoReconnect()
+  })
+
+  it('splash overlay is visible on load by default', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(true)
+  })
+
+  it('splash is hidden when Terminal emits firstActivity', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(true)
+    wrapper.findComponent({ name: 'Terminal' }).vm.$emit('firstActivity')
+    await nextTick()
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(false)
+  })
+
+  it('splash is not shown when localStorage splash-dismissed is set', () => {
+    localStorage.setItem('splash-dismissed', 'true')
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(false)
+  })
+
+  it('dontShowAgain from Splash hides it and persists to localStorage', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    wrapper.findComponent({ name: 'Splash' }).vm.$emit('dontShowAgain')
+    await nextTick()
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(false)
+    expect(localStorage.getItem('splash-dismissed')).toBe('true')
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — forget paired devices (Phase 11E)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    suppressAutoReconnect()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('Forget button is present in the settings drawer', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await wrapper.find('[data-testid="settings-btn"]').trigger('click')
+    await nextTick()
+    expect(wrapper.find('[data-testid="forget-btn"]').exists()).toBe(true)
+  })
+
+  it('clicking Forget calls forget() on each paired Web Serial port', async () => {
+    const mockForget = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      serial: { getPorts: vi.fn().mockResolvedValue([{ forget: mockForget }]) },
+      usb: { getDevices: vi.fn().mockResolvedValue([]), forgetDevice: vi.fn() },
+    })
+
+    const wrapper = mountWithFactories([new MockFactory()])
+    await wrapper.find('[data-testid="settings-btn"]').trigger('click')
+    await nextTick()
+    await wrapper.find('[data-testid="forget-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(mockForget).toHaveBeenCalledOnce()
+  })
+
+  it('clicking Forget calls forgetDevice() on each paired WebUSB device', async () => {
+    const fakeDevice = { vendorId: 0x0403 }
+    const mockForgetDevice = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      serial: { getPorts: vi.fn().mockResolvedValue([]) },
+      usb: { getDevices: vi.fn().mockResolvedValue([fakeDevice]), forgetDevice: mockForgetDevice },
+    })
+
+    const wrapper = mountWithFactories([new MockFactory()])
+    await wrapper.find('[data-testid="settings-btn"]').trigger('click')
+    await nextTick()
+    await wrapper.find('[data-testid="forget-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(mockForgetDevice).toHaveBeenCalledOnce()
+    expect(mockForgetDevice).toHaveBeenCalledWith(fakeDevice)
+  })
+
+  it('clicking Forget refreshes the paired dropdown', async () => {
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      serial: { getPorts: vi.fn().mockResolvedValue([]) },
+      usb: { getDevices: vi.fn().mockResolvedValue([]), forgetDevice: vi.fn() },
+    })
+
+    // Factory that initially reports a paired device, then returns empty.
+    let callCount = 0
+    const backend = new MockSerialBackend()
+    const factory: SerialBackendFactory = {
+      id: 'web-serial' as BackendId,
+      displayName: 'Mock',
+      isAvailable: () => true,
+      pickDevice: async () => backend,
+      listPaired: async () => (callCount++ === 0 ? [backend] : []),
+    }
+
+    const wrapper = mountWithFactories([factory])
+    // Open dropdown to trigger initial refreshPaired
+    await wrapper.find('[data-testid="connection-select"]').trigger('focus')
+    await flushPromises()
+    // The first load may not call listPaired; open settings and forget
+    await wrapper.find('[data-testid="settings-btn"]').trigger('click')
+    await nextTick()
+    await wrapper.find('[data-testid="forget-btn"]').trigger('click')
+    await flushPromises()
+
+    // After forget, refreshPaired was called and the factory now returns []
+    expect(wrapper.findAll('[data-testid^="paired-option-"]')).toHaveLength(0)
+  })
+
+  it('Forget handles gracefully when serial/usb APIs are absent', async () => {
+    // Simulate a browser where only serial is available, usb is not
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      serial: { getPorts: vi.fn().mockResolvedValue([]) },
+      usb: undefined,
+    })
+
+    const wrapper = mountWithFactories([new MockFactory()])
+    await wrapper.find('[data-testid="settings-btn"]').trigger('click')
+    await nextTick()
+    // Should not throw
+    await wrapper.find('[data-testid="forget-btn"]').trigger('click')
+    await flushPromises()
   })
 })
