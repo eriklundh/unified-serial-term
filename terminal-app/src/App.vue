@@ -565,9 +565,10 @@ async function connect() {
   if (isConnecting.value) return
   isConnecting.value = true
   statusMsg.value = null
+  // Hoisted so the catch block can call forget() on a stale backend.
+  let b: SerialBackend | undefined
   try {
     // A paired entry opens that exact device; a Request action pops the picker.
-    let b: SerialBackend
     if (connectionTarget.value.startsWith('paired:')) {
       const found = pairedBackends.get(connectionTarget.value.slice('paired:'.length))
       if (!found) return
@@ -586,6 +587,12 @@ async function connect() {
     const lower = msg.toLowerCase()
     if (lower.includes('cancel') || lower.includes('no device selected') || lower.includes('no port selected')) {
       // user dismissed the picker — silent
+    } else if (lower.includes('claiminterface') || lower.includes('unable to claim')) {
+      // Stale USB device handle (e.g. device re-enumerated after a bind/unbind
+      // cycle). Forget the grant so the entry disappears from the dropdown.
+      await b?.forget?.()
+      await refreshPaired()
+      statusMsg.value = 'Stale device removed. Select it again from the dropdown or use Request…'
     } else if (lower.includes('access denied') || lower.includes('access to the device')) {
       statusMsg.value = 'Access denied — device is claimed by the OS FTDI driver. Use Zadig (Windows) or unbind ftdi_sio (Linux). See Lab Setup guide.'
     } else {

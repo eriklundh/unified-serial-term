@@ -337,3 +337,20 @@ describe('WebSerialBackend', () => {
     expect(fakePort.written).toContainEqual(new Uint8Array([0xBE, 0xEF]))
   })
 })
+
+describe('WebSerialBackend.forget()', () => {
+  it('calls port.forget() when available', async () => {
+    const forgotPort = new FakeSerialPort() as unknown as FakeSerialPort & { forgetCalled: boolean; forget(): Promise<void> }
+    forgotPort.forgetCalled = false
+    forgotPort.forget = async () => { forgotPort.forgetCalled = true }
+
+    const b = new WebSerialBackend(forgotPort as unknown as SerialPort)
+    await b.forget()
+    expect(forgotPort.forgetCalled).toBe(true)
+  })
+
+  it('forget() is a no-op when port has no forget method', async () => {
+    const b = new WebSerialBackend(new FakeSerialPort() as unknown as SerialPort)
+    await expect(b.forget()).resolves.toBeUndefined()
+  })
+})

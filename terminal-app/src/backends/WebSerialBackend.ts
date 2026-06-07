@@ -16,6 +16,7 @@ interface WsSerialPort {
   getInfo?(): WsSerialInfo
   open(options: Record<string, unknown>): Promise<void>
   close(): Promise<void>
+  forget?(): Promise<void>
 }
 
 interface WsSerial {
@@ -127,6 +128,10 @@ export class WebSerialBackend implements SerialBackend {
     await this._port.open(options as unknown as Record<string, unknown>)
     this._portWriter = (this._port.writable as WritableStream<Uint8Array>).getWriter()
     this._pumpDone = this._pump()
+  }
+
+  async forget(): Promise<void> {
+    await this._port.forget?.()
   }
 
   async close(): Promise<void> {

@@ -20,6 +20,8 @@ export interface SerialBackend {
   close(): Promise<void>
   /** Apply new settings to an already-open port without disconnecting. */
   reconfigure(options: SerialOptions): Promise<void>
+  /** Remove the browser's permission grant for this device/port. */
+  forget?(): Promise<void>
 }
 
 export interface SerialBackendFactory {

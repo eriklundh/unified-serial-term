@@ -31,6 +31,7 @@ export class WebUsbFtdiBackend implements SerialBackend {
   readonly label: string
 
   private _ftdi: FtdiUart
+  private _device: WsUsbDevice
   private _isOpen = false
 
   get readable(): ReadableStream<Uint8Array> {
@@ -41,13 +42,19 @@ export class WebUsbFtdiBackend implements SerialBackend {
     return this._ftdi.writable
   }
 
-  constructor(ftdi: FtdiUart, productId: number = FTDI_PID) {
+  constructor(ftdi: FtdiUart, device: WsUsbDevice = { vendorId: FTDI_VID, productId: FTDI_PID }, productId: number = FTDI_PID) {
     this._ftdi = ftdi
+    this._device = device
     this.label = deviceLabel(FTDI_VID, productId)
   }
 
   get isOpen(): boolean {
     return this._isOpen
+  }
+
+  async forget(): Promise<void> {
+    const usb = (navigator as Navigator & { usb: WsUsb }).usb
+    await usb.forgetDevice(this._device)
   }
 
   async open(options: SerialOptions): Promise<void> {
@@ -82,6 +89,7 @@ interface WsUsbDevice {
 interface WsUsb {
   requestDevice(opts: { filters: WsUsbDeviceFilter[] }): Promise<WsUsbDevice>
   getDevices(): Promise<WsUsbDevice[]>
+  forgetDevice(device: WsUsbDevice): Promise<void>
 }
 
 // ---------------------------------------------------------------------------
@@ -102,7 +110,7 @@ export class WebUsbFtdiFactory implements SerialBackendFactory {
       filters: [{ vendorId: FTDI_VID, productId: FTDI_PID }],
     })
     const transport = new WebUsbTransport(device as unknown as USBDevice)
-    return new WebUsbFtdiBackend(new FtdiUart(transport), device.productId)
+    return new WebUsbFtdiBackend(new FtdiUart(transport), device, device.productId)
   }
 
   async listPaired(): Promise<SerialBackend[]> {
@@ -112,7 +120,7 @@ export class WebUsbFtdiFactory implements SerialBackendFactory {
       .filter((d) => d.vendorId === FTDI_VID)
       .map((device) => {
         const transport = new WebUsbTransport(device as unknown as USBDevice)
-        return new WebUsbFtdiBackend(new FtdiUart(transport), device.productId)
+        return new WebUsbFtdiBackend(new FtdiUart(transport), device, device.productId)
       })
   }
 }

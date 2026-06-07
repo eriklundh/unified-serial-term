@@ -174,3 +174,24 @@ describe('WebUsbFtdiBackend', () => {
     expect(backend.isOpen).toBe(true)
   })
 })
+
+describe('WebUsbFtdiBackend.forget()', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('calls usb.forgetDevice with the stored device', async () => {
+    const fakeDevice = { vendorId: FTDI_VID, productId: FTDI_PID }
+    const forgetDevice = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      usb: { requestDevice: vi.fn(), getDevices: vi.fn(), forgetDevice },
+    })
+
+    const transport = new MockUsbTransport()
+    const b = new WebUsbFtdiBackend(new FtdiUart(transport), fakeDevice)
+    await b.forget()
+
+    expect(forgetDevice).toHaveBeenCalledWith(fakeDevice)
+  })
+})
