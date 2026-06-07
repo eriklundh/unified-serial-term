@@ -58,6 +58,7 @@ Ships as a **minor** release once 11A–11D land.
 | 11B — Bell | ⬜ Pending |
 | 11C — xterm addons (Search + Unicode11) | ⬜ Pending |
 | 11D — Splash screen | ⬜ Pending |
+| 11E — Forget paired devices | ⬜ Pending |
 
 - **11A — Clickable URLs (item 7).** Verify + harden link activation; open in a
   new tab with `noopener`; reject non-`http(s)` schemes. *Tests:* extend the e2e
@@ -87,6 +88,15 @@ Ships as a **minor** release once 11A–11D land.
    Ctrl+F searches the buffer; the splash shows on load and clears on first
    activity.
 3. Merged to `main` with `--no-ff`; CHANGELOG + version bumped.
+
+- **11E — Forget paired devices.** A "Forget all paired devices" button in the
+  Settings drawer (Connection section) that calls `port.forget()` on every port
+  returned by `navigator.serial.getPorts()` and `usb.forgetDevice()` on every
+  device returned by `navigator.usb.getDevices()`, then calls `refreshPaired()`
+  so the dropdown clears immediately. Mirrors the equivalent clear function in
+  zaxbux. *Tests:* mock `getPorts()`/`getDevices()` returning one entry each;
+  click Forget; assert `forget()`/`forgetDevice()` called and paired dropdown
+  empties.
 
 ## Out of scope (this phase)
 
