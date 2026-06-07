@@ -119,6 +119,13 @@
         :bell="bell"
         :bell-style="bellStyle"
         @disconnect="disconnect"
+        @open-search="openSearch"
+      />
+      <SearchBar
+        v-if="searchOpen"
+        @find-next="(t) => terminalRef?.findNext(t)"
+        @find-prev="(t) => terminalRef?.findPrevious(t)"
+        @close="closeSearch"
       />
     </main>
 
@@ -295,6 +302,7 @@
 <script setup lang="ts">
 import { ref, inject, computed, watch, onMounted, onUnmounted } from 'vue'
 import Terminal from './components/Terminal.vue'
+import SearchBar from './components/SearchBar.vue'
 import ConnectionSelect from './components/ConnectionSelect.vue'
 import SerialSettings from './components/SerialSettings.vue'
 import type { PairedDevice } from './components/ConnectionSelect.vue'
@@ -483,10 +491,32 @@ function hotkeyOff() {
   appearance.value.clearHotkey = ''
 }
 
+// --- Search ------------------------------------------------------------------
+const searchOpen = ref(false)
+
+function openSearch() {
+  searchOpen.value = true
+}
+
+function closeSearch() {
+  searchOpen.value = false
+  terminalRef.value?.focus()
+}
+
 // App-level shortcuts. Capture phase so we intercept before xterm's own keydown
 // handler runs (which would otherwise send the keys to the device).
 function onKeydown(e: KeyboardEvent) {
   if (capturingHotkey.value) return
+  if (e.key === 'f' && e.ctrlKey && !e.altKey && !e.metaKey) {
+    e.preventDefault()
+    e.stopPropagation()
+    openSearch()
+    return
+  }
+  if (e.key === 'Escape' && searchOpen.value) {
+    closeSearch()
+    return
+  }
   if (e.key === 'Escape' && drawerOpen.value) {
     drawerOpen.value = false
     return

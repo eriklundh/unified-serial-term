@@ -8,21 +8,39 @@ import { FACTORIES_KEY } from './backends/injectionKeys'
 import { SYSTEM_MONO } from './settings/useAppearance'
 import { suppressAutoReconnect } from './settings/reconnect'
 
-const { terminalClear, terminalFocus, terminalSerialize } = vi.hoisted(() => ({
+const { terminalClear, terminalFocus, terminalSerialize, terminalFindNext, terminalFindPrev, terminalClearSearch } = vi.hoisted(() => ({
   terminalClear: vi.fn(),
   terminalFocus: vi.fn(),
   terminalSerialize: vi.fn().mockReturnValue(''),
+  terminalFindNext: vi.fn().mockReturnValue(true),
+  terminalFindPrev: vi.fn().mockReturnValue(true),
+  terminalClearSearch: vi.fn(),
 }))
 
 vi.mock('./components/Terminal.vue', () => ({
   default: {
     name: 'Terminal',
     template: '<div class="mock-terminal" />',
-    props: ['readable', 'writable', 'localEcho', 'fontFamily', 'fontSize', 'theme'],
-    emits: ['disconnect'],
+    props: ['readable', 'writable', 'localEcho', 'fontFamily', 'fontSize', 'theme', 'bell', 'bellStyle'],
+    emits: ['disconnect', 'openSearch'],
     setup(_props: unknown, { expose }: { expose: (e: Record<string, unknown>) => void }) {
-      expose({ clear: terminalClear, focus: terminalFocus, serialize: terminalSerialize })
+      expose({
+        clear: terminalClear,
+        focus: terminalFocus,
+        serialize: terminalSerialize,
+        findNext: terminalFindNext,
+        findPrevious: terminalFindPrev,
+        clearSearch: terminalClearSearch,
+      })
     },
+  },
+}))
+
+vi.mock('./components/SearchBar.vue', () => ({
+  default: {
+    name: 'SearchBar',
+    template: '<div data-testid="search-bar" />',
+    emits: ['findNext', 'findPrev', 'close'],
   },
 }))
 
@@ -951,5 +969,42 @@ describe('App.vue — toolbar reflow (Phase 10G)', () => {
     const downloadBtn = wrapper.find('[data-testid="download-btn"]').element
     const position = clearBtn.compareDocumentPosition(downloadBtn)
     expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — search (Phase 11C)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    suppressAutoReconnect()
+  })
+
+  it('search bar is not shown by default', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="search-bar"]').exists()).toBe(false)
+  })
+
+  it('Ctrl+F shows the search bar', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true, cancelable: true }))
+    await nextTick()
+    expect(wrapper.find('[data-testid="search-bar"]').exists()).toBe(true)
+  })
+
+  it('search bar close event hides the search bar', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true, cancelable: true }))
+    await nextTick()
+    expect(wrapper.find('[data-testid="search-bar"]').exists()).toBe(true)
+    wrapper.findComponent({ name: 'SearchBar' }).vm.$emit('close')
+    await nextTick()
+    expect(wrapper.find('[data-testid="search-bar"]').exists()).toBe(false)
+  })
+
+  it('openSearch event from terminal shows the search bar', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    wrapper.findComponent({ name: 'Terminal' }).vm.$emit('openSearch')
+    await nextTick()
+    expect(wrapper.find('[data-testid="search-bar"]').exists()).toBe(true)
   })
 })
