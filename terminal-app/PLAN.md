@@ -86,7 +86,7 @@ v1.1.2 serial stream-lifecycle (writer-lock teardown); v1.1.3 rename to
 - [x] 11B — **Bell**: `bell` on/off + `bellStyle` none/visual/sound/both (zaxbux parity).
 - [x] 11C — Add `@xterm/addon-search` (find) + reuse `@xterm/addon-serialize`;
       optional `@xterm/addon-unicode11`. Decline Vuetify/Pinia/router/@vueuse/@mdi.
-- [ ] 11D — **Splash** overlay in the terminal pane; clears on first typed/received byte.
+- [x] 11D — **Splash** overlay in the terminal pane; clears on first typed/received byte.
 - [ ] 11E — **Forget paired devices** button in Settings drawer: `port.forget()` + `usb.forgetDevice()` for all saved entries, then refreshes the dropdown.
 
 > Deferred-item audit (per "integrate non-obsolete prior planning"): the former
