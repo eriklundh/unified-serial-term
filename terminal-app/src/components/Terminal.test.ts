@@ -14,6 +14,8 @@ vi.mock('@xterm/xterm', () => {
       focus: vi.fn(),
       clear: vi.fn(),
       reset: vi.fn(),
+      attachCustomKeyEventHandler: vi.fn(),
+      unicode: { activeVersion: '6' },
     }
   })
   return { Terminal }
@@ -37,6 +39,22 @@ vi.mock('@xterm/addon-serialize', () => ({
   }),
 }))
 
+vi.mock('@xterm/addon-search', () => ({
+  SearchAddon: vi.fn().mockImplementation(function () {
+    return {
+      findNext: vi.fn().mockReturnValue(true),
+      findPrevious: vi.fn().mockReturnValue(true),
+      clearDecorations: vi.fn(),
+    }
+  }),
+}))
+
+vi.mock('@xterm/addon-unicode11', () => ({
+  Unicode11Addon: vi.fn().mockImplementation(function () {
+    return {}
+  }),
+}))
+
 // ResizeObserver is not available in jsdom — stub it for all tests.
 // Tests that specifically verify ResizeObserver behaviour override this stub.
 beforeEach(() => {
@@ -52,6 +70,23 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
 })
+
+function makeXtermInstance(overrides: Record<string, unknown> = {}) {
+  return {
+    open: vi.fn(),
+    dispose: vi.fn(),
+    loadAddon: vi.fn(),
+    write: vi.fn(),
+    onData: vi.fn(),
+    onBell: vi.fn(),
+    focus: vi.fn(),
+    clear: vi.fn(),
+    reset: vi.fn(),
+    attachCustomKeyEventHandler: vi.fn(),
+    unicode: { activeVersion: '6' },
+    ...overrides,
+  }
+}
 
 describe('Terminal.vue', () => {
   it('creates an xterm Terminal instance on mount', async () => {
@@ -108,16 +143,9 @@ describe('Terminal.vue', () => {
 
     let onDataCb: ((data: string) => void) | undefined
     ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
-      return {
-        open: vi.fn(),
-        dispose: vi.fn(),
-        loadAddon: vi.fn(),
-        write: vi.fn(),
-        onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
-          onDataCb = cb
-        }),
-        onBell: vi.fn(),
-      }
+      return makeXtermInstance({
+        onData: vi.fn().mockImplementation((cb: (data: string) => void) => { onDataCb = cb }),
+      })
     })
 
     const wrapper = mount(Terminal, { attachTo: document.body })
@@ -131,16 +159,9 @@ describe('Terminal.vue', () => {
 
     let onDataCb: ((data: string) => void) | undefined
     ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
-      return {
-        open: vi.fn(),
-        dispose: vi.fn(),
-        loadAddon: vi.fn(),
-        write: vi.fn(),
-        onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
-          onDataCb = cb
-        }),
-        onBell: vi.fn(),
-      }
+      return makeXtermInstance({
+        onData: vi.fn().mockImplementation((cb: (data: string) => void) => { onDataCb = cb }),
+      })
     })
 
     const written: Uint8Array[] = []
@@ -162,16 +183,9 @@ describe('Terminal.vue', () => {
 
     let onDataCb: ((data: string) => void) | undefined
     ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
-      return {
-        open: vi.fn(),
-        dispose: vi.fn(),
-        loadAddon: vi.fn(),
-        write: vi.fn(),
-        onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
-          onDataCb = cb
-        }),
-        onBell: vi.fn(),
-      }
+      return makeXtermInstance({
+        onData: vi.fn().mockImplementation((cb: (data: string) => void) => { onDataCb = cb }),
+      })
     })
 
     mount(Terminal, { props: { localEcho: true }, attachTo: document.body })
@@ -186,16 +200,9 @@ describe('Terminal.vue', () => {
 
     let onDataCb: ((data: string) => void) | undefined
     ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
-      return {
-        open: vi.fn(),
-        dispose: vi.fn(),
-        loadAddon: vi.fn(),
-        write: vi.fn(),
-        onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
-          onDataCb = cb
-        }),
-        onBell: vi.fn(),
-      }
+      return makeXtermInstance({
+        onData: vi.fn().mockImplementation((cb: (data: string) => void) => { onDataCb = cb }),
+      })
     })
 
     mount(Terminal, { props: { localEcho: false }, attachTo: document.body })
@@ -210,16 +217,9 @@ describe('Terminal.vue', () => {
 
     let onDataCb: ((data: string) => void) | undefined
     ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
-      return {
-        open: vi.fn(),
-        dispose: vi.fn(),
-        loadAddon: vi.fn(),
-        write: vi.fn(),
-        onData: vi.fn().mockImplementation((cb: (data: string) => void) => {
-          onDataCb = cb
-        }),
-        onBell: vi.fn(),
-      }
+      return makeXtermInstance({
+        onData: vi.fn().mockImplementation((cb: (data: string) => void) => { onDataCb = cb }),
+      })
     })
 
     mount(Terminal, { attachTo: document.body }) // no localEcho prop
@@ -345,5 +345,69 @@ describe('Terminal.vue', () => {
     wrapper.unmount()
 
     expect(mockDisconnect).toHaveBeenCalledOnce()
+  })
+
+  // ── SearchAddon ──────────────────────────────────────────────────────────────
+
+  it('loads SearchAddon on mount', async () => {
+    const { SearchAddon } = await import('@xterm/addon-search')
+    const { Terminal: XTerm } = await import('@xterm/xterm')
+    mount(Terminal, { attachTo: document.body })
+    const xtermInstance = (XTerm as ReturnType<typeof vi.fn>).mock.results[0]!.value
+    expect(SearchAddon).toHaveBeenCalledOnce()
+    expect(xtermInstance.loadAddon).toHaveBeenCalledWith(
+      expect.objectContaining({ findNext: expect.any(Function) }),
+    )
+  })
+
+  it('exposes findNext() which delegates to SearchAddon.findNext()', async () => {
+    const { SearchAddon } = await import('@xterm/addon-search')
+    const wrapper = mount(Terminal, { attachTo: document.body })
+    const addonInstance = (SearchAddon as ReturnType<typeof vi.fn>).mock.results[0]!.value
+
+    ;(wrapper.vm as unknown as { findNext: (t: string) => boolean }).findNext('hello')
+
+    expect(addonInstance.findNext).toHaveBeenCalledWith('hello', expect.any(Object))
+  })
+
+  it('exposes findPrevious() which delegates to SearchAddon.findPrevious()', async () => {
+    const { SearchAddon } = await import('@xterm/addon-search')
+    const wrapper = mount(Terminal, { attachTo: document.body })
+    const addonInstance = (SearchAddon as ReturnType<typeof vi.fn>).mock.results[0]!.value
+
+    ;(wrapper.vm as unknown as { findPrevious: (t: string) => boolean }).findPrevious('world')
+
+    expect(addonInstance.findPrevious).toHaveBeenCalledWith('world', expect.any(Object))
+  })
+
+  it('exposes clearSearch() which delegates to SearchAddon.clearDecorations()', async () => {
+    const { SearchAddon } = await import('@xterm/addon-search')
+    const wrapper = mount(Terminal, { attachTo: document.body })
+    const addonInstance = (SearchAddon as ReturnType<typeof vi.fn>).mock.results[0]!.value
+
+    ;(wrapper.vm as unknown as { clearSearch: () => void }).clearSearch()
+
+    expect(addonInstance.clearDecorations).toHaveBeenCalledOnce()
+  })
+
+  it('emits openSearch when Ctrl+F is pressed in the terminal', async () => {
+    const { Terminal: XTerm } = await import('@xterm/xterm')
+
+    let customKeyHandler: ((e: KeyboardEvent) => boolean) | undefined
+    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
+      return makeXtermInstance({
+        attachCustomKeyEventHandler: vi.fn().mockImplementation(
+          (fn: (e: KeyboardEvent) => boolean) => { customKeyHandler = fn },
+        ),
+      })
+    })
+
+    const wrapper = mount(Terminal, { attachTo: document.body })
+
+    const fakeEvent = new KeyboardEvent('keydown', { key: 'f', ctrlKey: true })
+    const result = customKeyHandler!(fakeEvent)
+
+    expect(result).toBe(false) // tells xterm not to process it
+    expect(wrapper.emitted('openSearch')).toBeTruthy()
   })
 })

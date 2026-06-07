@@ -11,6 +11,8 @@ import { Terminal, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { SerializeAddon } from '@xterm/addon-serialize'
+import { SearchAddon } from '@xterm/addon-search'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
 import { openLink } from '../utils/links'
 import { createBellHandler } from '../utils/bell'
 import type { BellStyle } from '../settings/useBell'
@@ -30,6 +32,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   data: [value: string]
   disconnect: []
+  openSearch: []
 }>()
 
 const container = ref<HTMLElement | null>(null)
@@ -39,6 +42,7 @@ let writer: WritableStreamDefaultWriter<Uint8Array> | null = null
 let resizeObserver: ResizeObserver | null = null
 let fitAddon: FitAddon | null = null
 let serializeAddon: SerializeAddon | null = null
+let searchAddon: SearchAddon | null = null
 
 onMounted(() => {
   terminal = new Terminal({
@@ -49,9 +53,20 @@ onMounted(() => {
   })
   fitAddon = new FitAddon()
   serializeAddon = new SerializeAddon()
+  searchAddon = new SearchAddon()
   terminal.loadAddon(fitAddon)
   terminal.loadAddon(serializeAddon)
+  terminal.loadAddon(searchAddon)
+  terminal.loadAddon(new Unicode11Addon())
+  terminal.unicode.activeVersion = '11'
   terminal.loadAddon(new WebLinksAddon(openLink))
+  terminal.attachCustomKeyEventHandler((e) => {
+    if (e.key === 'f' && e.ctrlKey && !e.altKey && !e.metaKey) {
+      emit('openSearch')
+      return false
+    }
+    return true
+  })
   const flash = () => {
     const el = container.value
     if (!el) return
@@ -150,12 +165,17 @@ onUnmounted(() => {
   writer?.releaseLock()
 })
 
+const SEARCH_OPTIONS = { incremental: false, caseSensitive: false, wholeWord: false, regex: false }
+
 defineExpose({
   focus: () => terminal?.focus(),
   // reset() does a full RIS: wipes scrollback and homes the cursor to the
   // top-left. clear() keeps the prompt line and leaves the cursor in place.
   clear: () => terminal?.reset(),
   serialize: () => serializeAddon?.serialize() ?? '',
+  findNext: (term: string) => searchAddon?.findNext(term, SEARCH_OPTIONS) ?? false,
+  findPrevious: (term: string) => searchAddon?.findPrevious(term, SEARCH_OPTIONS) ?? false,
+  clearSearch: () => searchAddon?.clearDecorations(),
 })
 </script>
 
