@@ -410,4 +410,55 @@ describe('Terminal.vue', () => {
     expect(result).toBe(false) // tells xterm not to process it
     expect(wrapper.emitted('openSearch')).toBeTruthy()
   })
+
+  // ── firstActivity ─────────────────────────────────────────────────────────
+
+  it('emits firstActivity when the user types for the first time', async () => {
+    const { Terminal: XTerm } = await import('@xterm/xterm')
+
+    let onDataCb: ((data: string) => void) | undefined
+    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
+      return makeXtermInstance({
+        onData: vi.fn().mockImplementation((cb: (data: string) => void) => { onDataCb = cb }),
+      })
+    })
+
+    const wrapper = mount(Terminal, { attachTo: document.body })
+    onDataCb!('a')
+
+    expect(wrapper.emitted('firstActivity')).toBeTruthy()
+  })
+
+  it('emits firstActivity when the first byte arrives from the device', async () => {
+    let controller!: ReadableStreamDefaultController<Uint8Array>
+    const readable = new ReadableStream<Uint8Array>({
+      start: (c) => { controller = c },
+    })
+
+    const wrapper = mount(Terminal, { props: { readable }, attachTo: document.body })
+    await new Promise((r) => setTimeout(r, 0))
+
+    controller.enqueue(new Uint8Array([0x41]))
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(wrapper.emitted('firstActivity')).toBeTruthy()
+  })
+
+  it('emits firstActivity only once across multiple keystrokes', async () => {
+    const { Terminal: XTerm } = await import('@xterm/xterm')
+
+    let onDataCb: ((data: string) => void) | undefined
+    ;(XTerm as ReturnType<typeof vi.fn>).mockImplementationOnce(function () {
+      return makeXtermInstance({
+        onData: vi.fn().mockImplementation((cb: (data: string) => void) => { onDataCb = cb }),
+      })
+    })
+
+    const wrapper = mount(Terminal, { attachTo: document.body })
+    onDataCb!('a')
+    onDataCb!('b')
+    onDataCb!('c')
+
+    expect(wrapper.emitted('firstActivity')).toHaveLength(1)
+  })
 })
