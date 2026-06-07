@@ -54,8 +54,8 @@ Ships as a **minor** release once 11A–11D land.
 
 | Sub-phase | Status |
 |-----------|--------|
-| 11A — Clickable URLs | ⬜ Pending |
-| 11B — Bell | ⬜ Pending |
+| 11A — Clickable URLs | ✅ Complete |
+| 11B — Bell | ✅ Complete |
 | 11C — xterm addons (Search + Unicode11) | ⬜ Pending |
 | 11D — Splash screen | ⬜ Pending |
 | 11E — Forget paired devices | ⬜ Pending |
