@@ -22,6 +22,7 @@ export async function openSerialSettings(page: Page): Promise<void> {
 
 export const test = base.extend<Fixtures>({
   mockedPage: async ({ page }, use) => {
+    await page.addInitScript(() => localStorage.setItem('splash-dismissed', 'true'))
     await installMockSerial(page)
     await installMockUsb(page)
     await page.goto('/')
@@ -30,6 +31,7 @@ export const test = base.extend<Fixtures>({
   },
 
   pairedPage: async ({ page }, use) => {
+    await page.addInitScript(() => localStorage.setItem('splash-dismissed', 'true'))
     await installMockSerial(page, { paired: true })
     await installMockUsb(page, { paired: true })
     await page.goto('/')
