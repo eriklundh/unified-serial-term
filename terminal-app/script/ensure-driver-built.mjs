@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, cpSync } from 'node:fs'
+import { existsSync, cpSync, realpathSync } from 'node:fs'
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { dirname, resolve } from 'node:path'
@@ -23,17 +23,29 @@ if (!existsSync(driverDir)) {
   process.exit(0)
 }
 
-// npm ci copies file: deps at install time — before dist/ exists on a fresh
-// checkout. Always sync dist/ into the node_modules copy so Vite can resolve
-// the package even when the build ran after npm ci.
+// npm ci behaviour differs by platform:
+//   - Some npm versions (copy mode): file: dep is copied into node_modules.
+//     The copy misses dist/ if it didn't exist at install time, so we sync it.
+//   - Other npm versions (symlink mode, e.g. Node 24 / npm 11 on agentlab1):
+//     node_modules/ftdi-webusb-driver IS a symlink → ../ftdi-driver, so src
+//     and dst resolve to the same real path. cpSync rejects that — skip it.
 const distSrc = resolve(driverDir, 'dist')
 const distDst = resolve(here, '..', 'node_modules', 'ftdi-webusb-driver', 'dist')
+
+function isSamePath(a, b) {
+  try { return realpathSync(a) === realpathSync(b) } catch { return false }
+}
+
+function syncDist() {
+  if (!existsSync(distSrc) || isSamePath(distSrc, distDst)) return
+  cpSync(distSrc, distDst, { recursive: true })
+}
 
 if (!driverNeedsBuild(driverDir)) {
   // Driver is up to date, but node_modules copy might still be missing dist/
   // (e.g. fresh npm ci on a machine where the driver was already built).
   if (existsSync(distSrc) && !existsSync(distDst)) {
-    cpSync(distSrc, distDst, { recursive: true })
+    syncDist()
     console.log('[ensure-driver] synced existing dist/ into node_modules copy')
   }
   process.exit(0)
@@ -47,8 +59,6 @@ try {
   process.exit(err.status ?? 1)
 }
 
-// Sync freshly-built dist/ into the node_modules copy.
-if (existsSync(distSrc)) {
-  cpSync(distSrc, distDst, { recursive: true })
-}
+// Sync freshly-built dist/ into the node_modules copy (no-op when symlinked).
+syncDist()
 console.log('[ensure-driver] ftdi-driver build complete')
