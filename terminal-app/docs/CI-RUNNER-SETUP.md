@@ -123,6 +123,15 @@ sudo -u gitlab-runner bash -c 'cd /tmp && git lfs version'
 # → git-lfs/3.x.y (...)
 ```
 
+GitLab CE does not support the LFS locking API. Suppress the warning that
+appears on every `git push` (affects all users on the host):
+
+```bash
+sudo git config --system \
+  lfs.https://gitlab.compelcon.se/unified-serial-terminal/unified-serial-term.git/info/lfs.locksverify \
+  false
+```
+
 ### 2d. Register with GitLab
 
 In GitLab: **project → Settings → CI/CD → Runners → New project runner**.
