@@ -96,3 +96,17 @@ test.describe('connect / disconnect', () => {
     await expect(mockedPage.getByRole('button', { name: /disconnect/i })).toBeVisible()
   })
 })
+
+test.describe('focus return after toolbar actions', () => {
+  test('Clear returns focus to the terminal', async ({ mockedPage }) => {
+    await mockedPage.getByTestId('clear-btn').click()
+    await expect(mockedPage.locator('textarea.xterm-helper-textarea')).toBeFocused()
+  })
+
+  test('closing the settings drawer returns focus to the terminal', async ({ mockedPage }) => {
+    // mockedPage fixture opens the settings drawer — close it and verify focus lands
+    // on the terminal, not on whatever drawer control had it last.
+    await mockedPage.getByTestId('drawer-close').click()
+    await expect(mockedPage.locator('textarea.xterm-helper-textarea')).toBeFocused()
+  })
+})
