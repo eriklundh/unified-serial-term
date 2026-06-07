@@ -11,6 +11,7 @@ import { Terminal, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import { SerializeAddon } from '@xterm/addon-serialize'
+import { openLink } from '../utils/links'
 import '@xterm/xterm/css/xterm.css'
 
 const props = defineProps<{
@@ -46,8 +47,12 @@ onMounted(() => {
   serializeAddon = new SerializeAddon()
   terminal.loadAddon(fitAddon)
   terminal.loadAddon(serializeAddon)
-  terminal.loadAddon(new WebLinksAddon())
+  terminal.loadAddon(new WebLinksAddon(openLink))
   terminal.open(container.value!)
+  // Expose handler for e2e tests (dev/test builds only).
+  if (import.meta.env.DEV) {
+    ;(window as Window & { __testOpenLink?: typeof openLink }).__testOpenLink = openLink
+  }
   fitAddon.fit()
   resizeObserver = new ResizeObserver(() => fitAddon?.fit())
   resizeObserver.observe(container.value!)
