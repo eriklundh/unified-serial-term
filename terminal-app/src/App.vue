@@ -20,7 +20,6 @@
           data-testid="baud-select"
           class="toolbar__select"
           aria-label="Baud rate"
-          :disabled="isConnected"
         >
           <option
             v-for="b in BAUD_RATES"
@@ -545,6 +544,22 @@ const canConnect = computed(() => {
 })
 const activeReadable = computed(() => backend.value?.readable ?? null)
 const activeWritable = computed(() => backend.value?.writable ?? null)
+
+// When port-config settings change while a connection is open, push them to
+// the device immediately so the user doesn't need to disconnect to apply them.
+watch(
+  settings,
+  async (s) => {
+    if (isConnected.value && backend.value) {
+      try {
+        await backend.value.reconfigure(s)
+      } catch (err) {
+        statusMsg.value = `Reconfigure failed: ${err instanceof Error ? err.message : String(err)}`
+      }
+    }
+  },
+  { deep: true },
+)
 
 async function connect() {
   if (isConnecting.value) return

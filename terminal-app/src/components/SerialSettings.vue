@@ -28,7 +28,6 @@
           <select
             v-model.number="dataBits"
             data-testid="databits-select"
-            :disabled="isConnected"
           >
             <option :value="8">8</option>
             <option :value="7">7</option>
@@ -39,7 +38,6 @@
           <select
             v-model="parity"
             data-testid="parity-select"
-            :disabled="isConnected"
           >
             <option value="none">None</option>
             <option value="even">Even</option>
@@ -51,7 +49,6 @@
           <select
             v-model.number="stopBits"
             data-testid="stopbits-select"
-            :disabled="isConnected"
           >
             <option :value="1">1</option>
             <option :value="2">2</option>
@@ -62,7 +59,6 @@
           <select
             v-model="flowControl"
             data-testid="flowcontrol-select"
-            :disabled="isConnected"
           >
             <option value="none">None</option>
             <option value="hardware">RTS/CTS</option>
