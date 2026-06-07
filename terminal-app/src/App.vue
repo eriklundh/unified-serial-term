@@ -15,7 +15,7 @@
           class="btn btn--primary"
           data-testid="connect-btn"
           :disabled="!canConnect || isConnecting"
-          @click="connect"
+          @click="onConnect"
         >
           {{ isConnecting ? 'Connecting…' : 'Connect' }}
         </button>
@@ -23,7 +23,7 @@
           v-if="isConnected"
           class="btn btn--danger"
           data-testid="disconnect-btn"
-          @click="disconnectByUser"
+          @click="onDisconnect"
         >
           Disconnect
         </button>
@@ -32,7 +32,7 @@
           type="button"
           data-testid="clear-btn"
           title="Clear terminal"
-          @click="clearTerminal"
+          @click="onClear"
         >
           Clear
         </button>
@@ -345,13 +345,31 @@ watch(drawerOpen, (open) => {
   if (!open) terminalRef.value?.focus()
 })
 
+// --- Toolbar focus return ----------------------------------------------------
+// A momentary toolbar button parks focus on itself when clicked. Wrap such
+// handlers so focus returns to the terminal — the canonical focus owner — once
+// the action settles, so typing resumes immediately. (Toggle controls like the
+// settings gear are NOT wrapped; the drawer manages its own focus via the
+// drawerOpen watch above.)
+function withTerminalFocus<A extends unknown[]>(fn: (...args: A) => unknown) {
+  return (...args: A): void => {
+    let result: unknown
+    try {
+      result = fn(...args)
+    } finally {
+      Promise.resolve(result).then(
+        () => terminalRef.value?.focus(),
+        () => terminalRef.value?.focus(),
+      )
+    }
+  }
+}
+
 // --- Clear terminal + hotkey -------------------------------------------------
 function clearTerminal() {
   terminalRef.value?.clear()
-  // Clicking the Clear button (or any toolbar control) parks focus on that
-  // button; hand it back to the terminal so the user can keep typing.
-  terminalRef.value?.focus()
 }
+const onClear = withTerminalFocus(clearTerminal)
 
 const capturingHotkey = ref(false)
 function startRebind() {
@@ -472,7 +490,6 @@ async function connect() {
     isConnected.value = true
     // Explicit connect — a later reload should auto-reconnect again.
     allowAutoReconnect()
-    terminalRef.value?.focus()
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     const lower = msg.toLowerCase()
@@ -510,9 +527,10 @@ async function disconnect() {
     backend.value = null
     isConnected.value = false
     statusMsg.value = closeError ? `Disconnect warning: ${closeError}` : null
-    terminalRef.value?.focus()
   }
 }
+const onConnect = withTerminalFocus(connect)
+const onDisconnect = withTerminalFocus(disconnectByUser)
 
 onMounted(async () => {
   if (!selectedFactory.value) return

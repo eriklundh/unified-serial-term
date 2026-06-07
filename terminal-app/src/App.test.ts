@@ -7,7 +7,10 @@ import { MockSerialBackend } from './backends/MockSerialBackend'
 import { FACTORIES_KEY } from './backends/injectionKeys'
 import { SYSTEM_MONO } from './settings/useAppearance'
 
-const { terminalClear } = vi.hoisted(() => ({ terminalClear: vi.fn() }))
+const { terminalClear, terminalFocus } = vi.hoisted(() => ({
+  terminalClear: vi.fn(),
+  terminalFocus: vi.fn(),
+}))
 
 vi.mock('./components/Terminal.vue', () => ({
   default: {
@@ -16,7 +19,7 @@ vi.mock('./components/Terminal.vue', () => ({
     props: ['readable', 'writable', 'localEcho', 'fontFamily', 'fontSize', 'theme'],
     emits: ['disconnect'],
     setup(_props: unknown, { expose }: { expose: (e: Record<string, unknown>) => void }) {
-      expose({ clear: terminalClear, focus: () => {} })
+      expose({ clear: terminalClear, focus: terminalFocus })
     },
   },
 }))
@@ -606,5 +609,55 @@ describe('App.vue — settings drawer & appearance', () => {
     await wrapper.get('[data-testid="font-select"]').setValue(stack)
     await nextTick()
     expect(localStorage.getItem('appearance.fontFamily')).toBe(stack)
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — toolbar focus return (Phase 10A)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    terminalFocus.mockClear()
+  })
+
+  it('clicking Clear returns focus to the terminal', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await flushPromises()
+    terminalFocus.mockClear()
+    await wrapper.find('[data-testid="clear-btn"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+
+  it('connecting returns focus to the terminal', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await flushPromises()
+    terminalFocus.mockClear()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+
+  it('a cancelled connect still returns focus to the terminal', async () => {
+    const factory = new MockFactory()
+    factory.pickDevice = async () => {
+      throw new DOMException('No port selected by the user.', 'NotFoundError')
+    }
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    terminalFocus.mockClear()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+
+  it('disconnecting returns focus to the terminal', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    terminalFocus.mockClear()
+    await wrapper.find('[data-testid="disconnect-btn"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
   })
 })
