@@ -36,6 +36,30 @@ The script adds the GitLab Runner apt source to
 `/etc/apt/sources.list.d/` and imports the signing key.  After this,
 `sudo apt upgrade` will update the runner alongside everything else.
 
+### 1a  Migrating from a manually-downloaded binary
+
+If `gitlab-runner` was previously installed by downloading the binary directly
+to `/usr/local/bin/gitlab-runner`, the apt package will install a **second**
+copy at `/usr/bin/gitlab-runner` but the existing systemd service file will
+still reference the old path.  After installing via apt, regenerate the service
+file and restart:
+
+```bash
+sudo apt-get install -y gitlab-runner
+sudo gitlab-runner install \
+  --user=gitlab-runner \
+  --working-directory=/home/gitlab-runner
+sudo systemctl daemon-reload
+sudo systemctl restart gitlab-runner
+sudo gitlab-runner status
+
+# Optional: remove the old manual binary
+sudo rm -f /usr/local/bin/gitlab-runner
+```
+
+`apt list --installed 2>/dev/null | grep gitlab-runner` will now show the
+package as managed.
+
 ## 2  Create the runner user
 
 ```bash
