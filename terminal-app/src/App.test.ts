@@ -305,14 +305,26 @@ describe('App.vue — settings panel', () => {
     expect(wrapper.find('[data-testid="reset-btn"]').exists()).toBe(true)
   })
 
-  it('settings controls are disabled while connected', async () => {
+  it('reset button is disabled while connected', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
     await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
-    expect(wrapper.find('[data-testid="baud-select"]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('[data-testid="reset-btn"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('port-config controls are enabled while connected', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="baud-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="databits-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="parity-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="stopbits-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="flowcontrol-select"]').attributes('disabled')).toBeUndefined()
   })
 
   it('echo checkbox remains enabled while connected', async () => {
@@ -745,16 +757,16 @@ describe('App.vue — SerialSettings popover (Phase 10D)', () => {
     expect(dialog.find('[data-testid="reset-btn"]').exists()).toBe(true)
   })
 
-  it('port-config controls in serial settings are disabled while connected', async () => {
+  it('port-config controls in serial settings are enabled while connected', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
     await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
-    expect(wrapper.find('[data-testid="databits-select"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[data-testid="parity-select"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[data-testid="stopbits-select"]').attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[data-testid="flowcontrol-select"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="databits-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="parity-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="stopbits-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="flowcontrol-select"]').attributes('disabled')).toBeUndefined()
     expect(wrapper.find('[data-testid="reset-btn"]').attributes('disabled')).toBeDefined()
   })
 
@@ -854,5 +866,54 @@ describe('App.vue — fullscreen button (Phase 10F)', () => {
     await wrapper.find('[data-testid="fullscreen-btn"]').trigger('click')
     await flushPromises()
     expect(terminalFocus).toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — live reconfigure while connected', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    suppressAutoReconnect()
+  })
+
+  it('changing baud rate while connected calls reconfigure on the backend', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+
+    const spy = vi.spyOn(factory.lastBackend!, 'reconfigure')
+    await wrapper.find('[data-testid="baud-select"]').setValue('9600')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ baudRate: 9600 }))
+  })
+
+  it('changing a setting while NOT connected does not call reconfigure', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+
+    const mockBackend = new MockSerialBackend()
+    const spy = vi.spyOn(mockBackend, 'reconfigure')
+    await wrapper.find('[data-testid="baud-select"]').setValue('9600')
+    await flushPromises()
+
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('reconfigure failure shows a status message', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+
+    factory.lastBackend!.reconfigure = async () => { throw new Error('port busy') }
+    await wrapper.find('[data-testid="baud-select"]').setValue('9600')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="status-msg"]').text()).toContain('Reconfigure failed')
   })
 })
