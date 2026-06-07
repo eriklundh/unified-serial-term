@@ -18,14 +18,23 @@ connected FTDI hardware without SSH.
 
 ---
 
-## 1  Install the gitlab-runner binary
+## 1  Install gitlab-runner via the official apt repository
+
+Use the apt repository so that `apt upgrade` keeps the runner current.
+Do **not** download the binary manually — a manually-placed binary at
+`/usr/local/bin/gitlab-runner` is invisible to `apt` and will never be
+updated.
 
 ```bash
-sudo curl -L --output /usr/local/bin/gitlab-runner \
-  "https://gitlab-runner-downloads.s3.amazonaws.com/latest/binaries/gitlab-runner-linux-arm64"
-sudo chmod +x /usr/local/bin/gitlab-runner
-gitlab-runner --version          # confirm arm64, version ≥ 19.x
+curl -L "https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.deb.sh" | sudo bash
+sudo apt-get install -y gitlab-runner
+apt list --installed 2>/dev/null | grep gitlab-runner   # confirm package is registered
+gitlab-runner --version                                  # confirm arm64, version ≥ 19.x
 ```
+
+The script adds the GitLab Runner apt source to
+`/etc/apt/sources.list.d/` and imports the signing key.  After this,
+`sudo apt upgrade` will update the runner alongside everything else.
 
 ## 2  Create the runner user
 
@@ -153,7 +162,7 @@ sudo gitlab-runner verify
 
 | Path | Purpose |
 |---|---|
-| `/usr/local/bin/gitlab-runner` | Runner binary (arm64, curl install — not apt-managed) |
+| `/usr/bin/gitlab-runner` | Runner binary, managed by apt |
 | `/etc/systemd/system/gitlab-runner.service` | Systemd unit (root daemon, `--user gitlab-runner`) |
 | `/etc/gitlab-runner/config.toml` | Runner config (owned by `gitlab-runner`) |
 | `/etc/sudoers.d/gitlab-runner` | Passwordless sudo for HIL scripts |
@@ -161,25 +170,19 @@ sudo gitlab-runner verify
 | `/home/gitlab-runner/.gitconfig` | LFS filter written by `git lfs install` (per-user) |
 | `/etc/gitconfig` | LFS filter (system-wide) + `locksverify = false` |
 
-> **Runner updates:** because the binary was installed with `curl` rather than
-> `apt`, it will not be updated by `apt upgrade`.  To update: re-run the step 1
-> `curl` command with the new version URL, then `sudo systemctl restart gitlab-runner`.
+## Differences from the Agentlab1 runner
 
-## Differences from the Agentlab1 apt install
+Both runners are now installed from the same GitLab apt repository.  The
+remaining differences are due to how the `gitlab-runner` OS user was created:
 
-The Agentlab1 CI runner was installed via `apt-get install gitlab-runner` from
-the GitLab package repo.  Key behavioural differences:
-
-| | Pi5 (curl binary) | Agentlab1 (apt package) |
+| | Pi5 | Agentlab1 |
 |---|---|---|
-| Binary path | `/usr/local/bin/gitlab-runner` | `/usr/bin/gitlab-runner` |
 | User type | Regular user uid=1001 (`useradd --create-home`) — **skel files copied** | System user uid=999 (`adduser --system`) — **skel files NOT copied** |
-| `.bash_logout` risk | Skel copy has `clear_console` — **must be replaced with no-op** | File absent by default — **must be created as no-op** |
-| Runner updates | Manual (`curl` re-download) | `apt upgrade` |
+| `.bash_logout` on fresh install | Skel copy has `clear_console` — **must be replaced with no-op** | File absent — **must be created as no-op if user is recreated** |
 | Node.js | v20 from Raspberry Pi apt repo | v24 from NodeSource apt repo |
 
 The `.bash_logout` hazard affects both installs but from opposite directions:
-the Pi5 gets the dangerous file automatically; Agentlab1 gets nothing and risks
+the Pi5 gets the dangerous file automatically; Agentlab1 gets nothing but risks
 getting it if the user is ever recreated from skel.
 
 ---
