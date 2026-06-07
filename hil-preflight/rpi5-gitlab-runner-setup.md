@@ -34,12 +34,14 @@ sudo useradd --comment 'GitLab Runner' --create-home gitlab-runner --shell /bin/
 sudo usermod -aG dialout gitlab-runner   # USB serial port access
 ```
 
-## 3  Fix .bash_logout  ← CRITICAL
+## 3  Fix the gitlab-runner user's .bash_logout  ← CRITICAL
 
-The default Debian `.bash_logout` calls `clear_console -q`, which exits 1
-when there is no tty.  The runner prepare-script sets `set -o errexit`, so
-the login-shell teardown propagates that exit-1 back to the runner as a
-"prepare environment" failure.
+The default Debian `~/.bash_logout` (in `/home/gitlab-runner/`) calls
+`clear_console -q`, which exits 1 when there is no tty.  The runner
+prepare-script sets `set -o errexit`, so when the login shell for the
+`gitlab-runner` user exits it sources that file, `clear_console` fails, and
+the non-zero exit propagates back to the runner as a "prepare environment"
+failure.
 
 ```bash
 echo '# no-op for CI runner — clear_console fails without a tty' | \
@@ -136,14 +138,14 @@ sudo gitlab-runner verify
 
 This error has three distinct root causes on Debian/Trixie; check in order:
 
-**1. `clear_console` in `.bash_logout` (most likely)**
+**1. `clear_console` in the `gitlab-runner` user's `.bash_logout` (most likely)**
 
-The runner prepare-script sets `set -o errexit`.  When the login shell
-exits it sources `~/.bash_logout`, which runs `clear_console -q`.  With no
-controlling tty that command exits 1, and `errexit` propagates that code back
-as the job exit code.
+The runner prepare-script sets `set -o errexit`.  When the login shell for
+the `gitlab-runner` user exits, bash sources `/home/gitlab-runner/.bash_logout`,
+which runs `clear_console -q`.  With no controlling tty that command exits 1,
+and `errexit` propagates that code back as the job exit code.
 
-Fix: replace `.bash_logout` with a no-op (Step 3 above).
+Fix: replace `/home/gitlab-runner/.bash_logout` with a no-op (Step 3 above).
 
 **2. `git-lfs` not installed**
 
