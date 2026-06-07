@@ -53,6 +53,17 @@
         >
           Clear
         </button>
+        <button
+          class="btn"
+          type="button"
+          data-testid="serial-settings-btn"
+          :aria-expanded="serialSettingsOpen"
+          aria-controls="serial-settings-dialog"
+          title="Serial Settings"
+          @click="serialSettingsOpen = !serialSettingsOpen"
+        >
+          Serial Settings
+        </button>
       </div>
 
       <span
@@ -87,6 +98,15 @@
       />
     </main>
 
+    <SerialSettings
+      :settings="settings"
+      :is-connected="isConnected"
+      :open="serialSettingsOpen"
+      @update:settings="s => { settings = s }"
+      @close="serialSettingsOpen = false"
+      @reset="reset"
+    />
+
     <dialog
       id="settings-drawer"
       class="drawer"
@@ -113,74 +133,6 @@
             ✕
           </button>
         </div>
-
-        <section class="group">
-          <h3 class="group__title">
-            Connection
-          </h3>
-          <label class="field">
-            <span class="field__label">Data bits</span>
-            <select
-              v-model.number="settings.dataBits"
-              data-testid="databits-select"
-              :disabled="isConnected"
-            >
-              <option :value="8">8</option>
-              <option :value="7">7</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">Parity</span>
-            <select
-              v-model="settings.parity"
-              data-testid="parity-select"
-              :disabled="isConnected"
-            >
-              <option value="none">None</option>
-              <option value="even">Even</option>
-              <option value="odd">Odd</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">Stop bits</span>
-            <select
-              v-model.number="settings.stopBits"
-              data-testid="stopbits-select"
-              :disabled="isConnected"
-            >
-              <option :value="1">1</option>
-              <option :value="2">2</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">Flow control</span>
-            <select
-              v-model="settings.flowControl"
-              data-testid="flowcontrol-select"
-              :disabled="isConnected"
-            >
-              <option value="none">None</option>
-              <option value="hardware">RTS/CTS</option>
-            </select>
-          </label>
-          <label class="field field--check">
-            <input
-              v-model="settings.localEcho"
-              data-testid="echo-checkbox"
-              type="checkbox"
-              @change="terminalRef?.focus()"
-            >
-            <span class="field__label">Local echo</span>
-          </label>
-          <button
-            class="btn btn--subtle"
-            data-testid="reset-btn"
-            :disabled="isConnected"
-            @click="reset"
-          >
-            Reset connection defaults
-          </button>
-        </section>
 
         <section class="group">
           <h3 class="group__title">
@@ -298,6 +250,7 @@
 import { ref, inject, computed, watch, onMounted, onUnmounted } from 'vue'
 import Terminal from './components/Terminal.vue'
 import ConnectionSelect from './components/ConnectionSelect.vue'
+import SerialSettings from './components/SerialSettings.vue'
 import type { PairedDevice } from './components/ConnectionSelect.vue'
 import { FACTORIES_KEY } from './backends/injectionKeys'
 import { resolveFactory, writePreference } from './settings/backendPreference'
@@ -382,6 +335,13 @@ const drawerOpen = ref(false)
 // resumes immediately instead of staying trapped on whatever control was last
 // clicked inside the panel.
 watch(drawerOpen, (open) => {
+  if (!open) terminalRef.value?.focus()
+})
+
+// --- Serial Settings popover -------------------------------------------------
+const serialSettingsOpen = ref(false)
+
+watch(serialSettingsOpen, (open) => {
   if (!open) terminalRef.value?.focus()
 })
 

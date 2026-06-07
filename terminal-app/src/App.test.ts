@@ -703,3 +703,86 @@ describe('App.vue — toolbar (Phase 10C)', () => {
     ).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+describe('App.vue — SerialSettings popover (Phase 10D)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    terminalFocus.mockClear()
+  })
+
+  it('renders a Serial Settings button in the toolbar', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('.toolbar [data-testid="serial-settings-btn"]').exists()).toBe(true)
+  })
+
+  it('serial settings dialog is closed by default', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="serial-settings-dialog"]').attributes('open')).toBeUndefined()
+  })
+
+  it('clicking Serial Settings button opens the dialog', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await wrapper.find('[data-testid="serial-settings-btn"]').trigger('click')
+    expect(wrapper.find('[data-testid="serial-settings-dialog"]').attributes('open')).toBeDefined()
+  })
+
+  it('clicking close in serial settings closes the dialog', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await wrapper.find('[data-testid="serial-settings-btn"]').trigger('click')
+    await wrapper.find('[data-testid="serial-settings-close"]').trigger('click')
+    expect(wrapper.find('[data-testid="serial-settings-dialog"]').attributes('open')).toBeUndefined()
+  })
+
+  it('serial settings dialog contains all port-config controls', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    const dialog = wrapper.find('[data-testid="serial-settings-dialog"]')
+    expect(dialog.find('[data-testid="databits-select"]').exists()).toBe(true)
+    expect(dialog.find('[data-testid="parity-select"]').exists()).toBe(true)
+    expect(dialog.find('[data-testid="stopbits-select"]').exists()).toBe(true)
+    expect(dialog.find('[data-testid="flowcontrol-select"]').exists()).toBe(true)
+    expect(dialog.find('[data-testid="echo-checkbox"]').exists()).toBe(true)
+    expect(dialog.find('[data-testid="reset-btn"]').exists()).toBe(true)
+  })
+
+  it('port-config controls in serial settings are disabled while connected', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="databits-select"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="parity-select"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="stopbits-select"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="flowcontrol-select"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="reset-btn"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('echo remains enabled in serial settings while connected', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="echo-checkbox"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('closing serial settings returns focus to the terminal', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await flushPromises()
+    terminalFocus.mockClear()
+    await wrapper.find('[data-testid="serial-settings-btn"]').trigger('click')
+    await nextTick()
+    await wrapper.find('[data-testid="serial-settings-close"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+
+  it('port-config controls are NOT in the settings drawer', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    const drawer = wrapper.find('[data-testid="settings-drawer"]')
+    expect(drawer.find('[data-testid="databits-select"]').exists()).toBe(false)
+    expect(drawer.find('[data-testid="parity-select"]').exists()).toBe(false)
+    expect(drawer.find('[data-testid="reset-btn"]').exists()).toBe(false)
+  })
+})

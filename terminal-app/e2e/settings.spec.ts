@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures'
+import { openSerialSettings } from './fixtures'
 
 const BAUD_RATES = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
 const DEFAULT_BAUD = '115200'
@@ -17,7 +18,8 @@ test.describe('toolbar controls', () => {
 })
 
 test.describe('settings panel', () => {
-  test('all 5 port-config controls are visible', async ({ mockedPage }) => {
+  test('all 5 port-config controls are visible in serial settings', async ({ mockedPage }) => {
+    await openSerialSettings(mockedPage)
     await expect(mockedPage.locator('[data-testid="databits-select"]')).toBeVisible()
     await expect(mockedPage.locator('[data-testid="parity-select"]')).toBeVisible()
     await expect(mockedPage.locator('[data-testid="stopbits-select"]')).toBeVisible()
@@ -39,25 +41,32 @@ test.describe('settings panel', () => {
   })
 
   test('parity change persists across reload', async ({ mockedPage }) => {
+    await openSerialSettings(mockedPage)
     await mockedPage.locator('[data-testid="parity-select"]').selectOption('odd')
     await mockedPage.reload()
+    await openSerialSettings(mockedPage)
     await expect(mockedPage.locator('[data-testid="parity-select"]')).toHaveValue('odd')
   })
 
   test('flow control change persists across reload', async ({ mockedPage }) => {
+    await openSerialSettings(mockedPage)
     await mockedPage.locator('[data-testid="flowcontrol-select"]').selectOption('hardware')
     await mockedPage.reload()
+    await openSerialSettings(mockedPage)
     await expect(mockedPage.locator('[data-testid="flowcontrol-select"]')).toHaveValue('hardware')
   })
 
   test('echo toggle persists across reload', async ({ mockedPage }) => {
+    await openSerialSettings(mockedPage)
     await mockedPage.locator('[data-testid="echo-checkbox"]').check()
     await mockedPage.reload()
+    await openSerialSettings(mockedPage)
     await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeChecked()
   })
 
   test('Reset button restores all defaults', async ({ mockedPage }) => {
     await mockedPage.locator('[data-testid="baud-select"]').selectOption('9600')
+    await openSerialSettings(mockedPage)
     await mockedPage.locator('[data-testid="parity-select"]').selectOption('odd')
     await mockedPage.locator('[data-testid="flowcontrol-select"]').selectOption('hardware')
     await mockedPage.locator('[data-testid="echo-checkbox"]').check()
@@ -70,6 +79,7 @@ test.describe('settings panel', () => {
 
   test('port-config controls disabled while connected (echo stays live)', async ({ mockedPage }) => {
     await mockedPage.getByTestId('connect-btn').click()
+    await openSerialSettings(mockedPage)
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="databits-select"]')).toBeDisabled()
     await expect(mockedPage.locator('[data-testid="parity-select"]')).toBeDisabled()
@@ -83,12 +93,13 @@ test.describe('settings panel', () => {
   test('controls re-enabled after disconnect', async ({ mockedPage }) => {
     await mockedPage.getByTestId('connect-btn').click()
     await mockedPage.getByRole('button', { name: /disconnect/i }).click()
+    await openSerialSettings(mockedPage)
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeEnabled()
     await expect(mockedPage.locator('[data-testid="echo-checkbox"]')).toBeEnabled()
   })
 
   test('drawer scrolls when content exceeds a short viewport', async ({ mockedPage }) => {
-    // Short viewport so Connection + Appearance + Storage overflow the drawer.
+    // Short viewport so Appearance + Storage overflow the drawer.
     await mockedPage.setViewportSize({ width: 520, height: 360 })
     const drawer = mockedPage.locator('[data-testid="settings-drawer"]')
     await expect(drawer).toBeVisible()

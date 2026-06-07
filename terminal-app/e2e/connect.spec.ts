@@ -109,4 +109,10 @@ test.describe('focus return after toolbar actions', () => {
     await mockedPage.getByTestId('drawer-close').click()
     await expect(mockedPage.locator('textarea.xterm-helper-textarea')).toBeFocused()
   })
+
+  test('closing the serial settings popover returns focus to the terminal (Phase 10D)', async ({ mockedPage }) => {
+    await mockedPage.getByTestId('serial-settings-btn').click()
+    await mockedPage.getByTestId('serial-settings-close').click()
+    await expect(mockedPage.locator('textarea.xterm-helper-textarea')).toBeFocused()
+  })
 })
