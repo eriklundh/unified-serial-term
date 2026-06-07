@@ -82,9 +82,9 @@ v1.1.2 serial stream-lifecycle (writer-lock teardown); v1.1.3 rename to
 
 ### Phase 11 work items (Terminal behaviours & polish)
 
-- [ ] 11A — Valid URLs clickable in the terminal (verified + e2e click test).
-- [ ] 11B — **Bell**: `bell` on/off + `bellStyle` none/visual/sound/both (zaxbux parity).
-- [ ] 11C — Add `@xterm/addon-search` (find) + reuse `@xterm/addon-serialize`;
+- [x] 11A — Valid URLs clickable in the terminal (verified + e2e click test).
+- [x] 11B — **Bell**: `bell` on/off + `bellStyle` none/visual/sound/both (zaxbux parity).
+- [x] 11C — Add `@xterm/addon-search` (find) + reuse `@xterm/addon-serialize`;
       optional `@xterm/addon-unicode11`. Decline Vuetify/Pinia/router/@vueuse/@mdi.
 - [ ] 11D — **Splash** overlay in the terminal pane; clears on first typed/received byte.
 - [ ] 11E — **Forget paired devices** button in Settings drawer: `port.forget()` + `usb.forgetDevice()` for all saved entries, then refreshes the dropdown.

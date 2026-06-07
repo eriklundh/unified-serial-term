@@ -56,7 +56,7 @@ Ships as a **minor** release once 11A–11D land.
 |-----------|--------|
 | 11A — Clickable URLs | ✅ Complete |
 | 11B — Bell | ✅ Complete |
-| 11C — xterm addons (Search + Unicode11) | ⬜ Pending |
+| 11C — xterm addons (Search + Unicode11) | ✅ Complete |
 | 11D — Splash screen | ⬜ Pending |
 | 11E — Forget paired devices | ⬜ Pending |
 
