@@ -33,6 +33,7 @@ const emit = defineEmits<{
   data: [value: string]
   disconnect: []
   openSearch: []
+  firstActivity: []
 }>()
 
 const container = ref<HTMLElement | null>(null)
@@ -43,6 +44,7 @@ let resizeObserver: ResizeObserver | null = null
 let fitAddon: FitAddon | null = null
 let serializeAddon: SerializeAddon | null = null
 let searchAddon: SearchAddon | null = null
+let activityFired = false
 
 onMounted(() => {
   terminal = new Terminal({
@@ -50,6 +52,7 @@ onMounted(() => {
     fontSize: props.fontSize ?? 14,
     fontFamily: props.fontFamily ?? 'monospace',
     theme: props.theme,
+    allowProposedApi: true,
   })
   fitAddon = new FitAddon()
   serializeAddon = new SerializeAddon()
@@ -90,6 +93,10 @@ onMounted(() => {
   resizeObserver.observe(container.value!)
 
   terminal.onData((data) => {
+    if (!activityFired) {
+      activityFired = true
+      emit('firstActivity')
+    }
     emit('data', data)
     if (props.localEcho) {
       terminal!.write(new TextEncoder().encode(data))
@@ -143,6 +150,10 @@ async function readLoop(r: ReadableStreamDefaultReader<Uint8Array>): Promise<voi
     while (true) {
       const { value, done } = await r.read()
       if (done) break
+      if (!activityFired) {
+        activityFired = true
+        emit('firstActivity')
+      }
       terminal?.write(value)
     }
   } catch {
