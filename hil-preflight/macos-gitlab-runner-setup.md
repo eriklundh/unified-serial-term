@@ -18,8 +18,47 @@ jobs from the `hw` stage.
 - USB ports for the Pico and the FTDI loopback plug
 - Xcode Command Line Tools (`xcode-select --install`)
 - Homebrew (<https://brew.sh>)
+- The `ftdi-unbind` companion repo cloned as a sibling of `unified-serial-term`
+  (see Step 0)
 - A GitLab runner authentication token (`glrt-…`) with the `hil-hardware` tag
   already set in GitLab (see Step 6)
+
+---
+
+## 0  Clone the ftdi-unbind companion repo
+
+`pyftdi` needs the Apple FTDI kext unloaded before it can claim the device.
+The `ftdi-unbind` script handles this (and the corresponding `ftdi-bind` to
+restore it).  It lives in a sibling repository that must be checked out
+alongside `unified-serial-term`.
+
+```bash
+# From the parent directory that contains unified-serial-term/:
+cd "$(dirname "$(git -C . rev-parse --show-toplevel)")"   # up one level
+git clone git@gitlab.compelcon.se:unified-serial-terminal/ftdi-unbind.git
+```
+
+After cloning, the layout should be:
+
+```
+<parent>/
+├── ftdi-unbind/
+│   └── macos-linux/
+│       ├── ftdi-unbind    ← driver-release script
+│       └── ftdi-bind      ← driver-restore script
+└── unified-serial-term/
+    └── hil-preflight/     ← (this doc)
+```
+
+From any component subdirectory (e.g. `hil-preflight/`), the scripts are at
+`../../ftdi-unbind/macos-linux/ftdi-unbind`.
+
+Make the scripts executable (needed once after cloning):
+
+```bash
+chmod +x ../../ftdi-unbind/macos-linux/ftdi-unbind
+chmod +x ../../ftdi-unbind/macos-linux/ftdi-bind
+```
 
 ---
 
@@ -211,32 +250,41 @@ ls /dev/cu.usbmodem*
 
 ### FTDI loopback plug
 
-On macOS `pyftdi` accesses the FTDI chip via libusb without any driver
-substitution.  The OS FTDI VCP driver may claim the device first.  If
-`pyftdi` raises "USB Error: Access denied (insufficient permissions)" or
-"No backend available", unload the Apple FTDI kext:
+`pyftdi` accesses the FTDI chip via libusb directly, bypassing the OS driver.
+The Apple FTDI kext (`com.apple.driver.AppleUSBFTDI`) claims the device on
+plug-in and must be unloaded first.  Use the `ftdi-unbind` script from the
+companion repo (Step 0):
 
 ```bash
-# Unload the Apple VCP kext so pyftdi can claim the device:
-sudo kextunload -b com.apple.driver.AppleUSBFTDI 2>/dev/null || true
+# Release the device for pyftdi:
+../../ftdi-unbind/macos-linux/ftdi-unbind 0403:6015
+# → auto-escalates to sudo; unloads AppleUSBFTDI (and FTDIUSBSerialDriver if present)
 
-# Verify pyftdi can see the device:
-python3 -c "
-import usb.core
-dev = usb.core.find(idVendor=0x0403, idProduct=0x6015)
-print('found' if dev else 'not found')
-"
+# Verify pyftdi can see it:
+../../ftdi-unbind/macos-linux/ftdi-unbind --list
+# → VID:PID column for 0403:6015 should show driver "(none)"
+
+# Restore the kext (e.g. for Web Serial browser use), or just unplug/replug:
+../../ftdi-unbind/macos-linux/ftdi-bind 0403:6015
 ```
 
-The kext reload happens automatically on reboot, or manually:
+> **macOS kext unload is global** — all attached FTDI devices are released
+> at once, not just the one specified.  On a single-device rig this is fine.
+
+> **SIP note (macOS 11+):** System Integrity Protection may prevent unloading
+> the Apple-supplied `AppleUSBFTDI` kext on some macOS versions.  The script
+> prints a specific hint if this happens, including the Recovery OS workaround.
+> On macOS 12 Monterey (Intel) this has not been a problem in practice.
+
+For the CI hw test jobs to work without manual intervention, the runner's
+login user needs passwordless sudo for the `ftdi-unbind` script:
 
 ```bash
-sudo kextload -b com.apple.driver.AppleUSBFTDI
+SCRIPT="$(realpath ../../ftdi-unbind/macos-linux/ftdi-unbind)"
+echo "$(whoami) ALL=(root) NOPASSWD: $SCRIPT" | sudo tee /etc/sudoers.d/ftdi-unbind
+sudo chmod 440 /etc/sudoers.d/ftdi-unbind
+sudo visudo -c   # syntax check
 ```
-
-> On macOS 12+ the FTDI kext is `com.apple.driver.AppleUSBFTDI`.  On older
-> systems it may be `com.FTDI.driver.FTDIUSBSerialDriver` (from a third-party
-> install).  `kextstat | grep -i ftdi` shows what is loaded.
 
 ### USB access permissions (macOS 12 Monterey)
 
@@ -286,7 +334,7 @@ debugging session with the USB devices held by another process.
 | Service manager | systemd | launchd |
 | Runner runs as | `gitlab-runner` user (created by package) | your login user |
 | libusb | `apt install git-lfs` | `brew install libusb` |
-| FTDI kext clash | Not applicable (Linux udev) | Must unload `AppleUSBFTDI` kext |
+| FTDI kext clash | Not applicable (Linux udev) | `ftdi-unbind 0403:6015` (companion repo) |
 | Pico port pattern | `/dev/ttyACM0` | `/dev/cu.usbmodem*` |
 | `.bash_logout` hazard | Yes (must replace with no-op) | Not applicable (macOS) |
 | Expected speed | Faster | Slower (2014 Intel Core i5) |
@@ -321,11 +369,14 @@ fresh token.
 
 ### `pyftdi` raises `USBError: Access denied`
 
-The Apple FTDI kext is loaded and has claimed the device.  Unload it:
+The Apple FTDI kext is loaded.  Run:
 
 ```bash
-sudo kextunload -b com.apple.driver.AppleUSBFTDI
+../../ftdi-unbind/macos-linux/ftdi-unbind 0403:6015
 ```
+
+It auto-escalates to sudo.  If it reports a SIP restriction, see the hint it
+prints — the Recovery OS workaround is described there.
 
 ### `pyusb` raises `NoBackendError`
 

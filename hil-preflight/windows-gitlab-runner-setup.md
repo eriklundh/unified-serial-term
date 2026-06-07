@@ -18,6 +18,8 @@ covered in the [Runner control](#runner-control) section.
 
 - Windows 11 (64-bit)
 - USB ports available for the Pico and the FTDI loopback plug
+- The `ftdi-unbind` companion repo cloned as a sibling of `unified-serial-term`
+  (contains `windows\ftdi-unbind.exe` and `windows\ftdi-bind.exe`)
 - A GitLab runner authentication token (`glrt-…`) with the `hil-hardware` tag
   already set in GitLab (see Step 7)
 - Administrator access
@@ -230,24 +232,38 @@ to pass it explicitly, set a CI/CD variable or edit the npm script:
 ### FTDI loopback plug
 
 `pyftdi` uses `libusb` to talk to the FTDI chip directly (bypassing the OS
-serial driver).  This requires binding the loopback plug to the **WinUSB**
-driver via **Zadig**:
+serial driver).  This requires switching the loopback plug to the **WinUSB**
+driver.
 
-1. Download Zadig from <https://zadig.akeo.ie/>
+**For runtime use in CI — `ftdi-unbind.exe` (preferred):**
+
+The `ftdi-unbind` companion repo (same sibling-repo layout as on macOS/Linux)
+ships a `windows\ftdi-unbind.exe` that switches the driver programmatically
+with the same flags as the bash script:
+
+```powershell
+# From the ftdi-unbind repo's windows\ directory (or add it to PATH):
+.\ftdi-unbind.exe 0403:6015     # switch to WinUSB for pyftdi
+.\ftdi-bind.exe   0403:6015     # switch back to VCP for Web Serial
+.\ftdi-unbind.exe --list        # show all USB devices and current drivers
+```
+
+**For one-time initial setup — Zadig (fallback):**
+
+If `ftdi-unbind.exe` is not yet compiled, use **Zadig** to bind WinUSB
+manually:
+
+1. Download from <https://zadig.akeo.ie/>
 2. Plug in the FTDI loopback plug
-3. Open Zadig → Options → List All Devices
-4. Select your FTDI device (VID `0403`, PID `6015` for FT231X)
-5. Set the driver to **WinUSB** and click **Replace Driver**
-
-The device is now inaccessible from device-manager serial ports (no `COMx`)
-but accessible to `pyftdi` / `pyusb`.  When binding back for Web Serial
-browser use, Zadig again and select the original **FTDI** or **VCP** driver —
-or just plug into a different port.
+3. Options → List All Devices
+4. Select your FTDI device (VID `0403`, PID `6015`)
+5. Set driver to **WinUSB** → **Replace Driver**
 
 > **Loopback plug vs browser app:** both the browser's WebUSB backend and
 > `pyftdi` need WinUSB binding.  The Web Serial backend needs the VCP driver.
-> For this runner (hw tests only), WinUSB is the right state.  For manual
-> browser testing from this machine, you can swap drivers ad-hoc with Zadig.
+> For this runner (hw tests only), WinUSB is the right persistent state.
+> Use `ftdi-bind.exe` (or Zadig) to switch back if you need Web Serial from
+> this machine.
 
 ---
 
@@ -336,8 +352,8 @@ The `libusb-1.0.dll` is not on the DLL search path.  Either install
 
 ### FTDI device not found by pyftdi
 
-The loopback plug is still bound to the FTDI VCP driver.  Open Zadig and
-rebind to WinUSB (Step 8).
+The loopback plug is still bound to the FTDI VCP driver.  Run
+`ftdi-unbind.exe 0403:6015` (or open Zadig and rebind to WinUSB — Step 8).
 
 ### "prepare environment" failures
 
