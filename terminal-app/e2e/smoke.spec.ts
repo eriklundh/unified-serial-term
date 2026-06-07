@@ -7,8 +7,8 @@ test('app loads with terminal and controls visible', async ({ page }) => {
 
   await expect(page).toHaveTitle(/serial/i)
 
-  // Backend selector and Connect button are present
-  await expect(page.getByRole('combobox', { name: /backend/i })).toBeVisible()
+  // Connection selector and Connect button are present
+  await expect(page.getByRole('combobox', { name: /serial connect/i })).toBeVisible()
   await expect(page.getByTestId('connect-btn')).toBeVisible()
 
   // Both Web Serial and WebUSB are present in headless Chromium on localhost

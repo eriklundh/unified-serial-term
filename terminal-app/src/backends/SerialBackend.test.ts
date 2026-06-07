@@ -53,4 +53,9 @@ describe('SerialBackend contract (via MockSerialBackend)', () => {
     expect(typeof backend.id).toBe('string')
     expect(typeof backend.label).toBe('string')
   })
+
+  it('reconfigure() does not throw when called on an open backend', async () => {
+    await backend.open({ baudRate: 9600 })
+    await expect(backend.reconfigure({ baudRate: 115200 })).resolves.toBeUndefined()
+  })
 })

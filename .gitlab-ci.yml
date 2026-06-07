@@ -23,6 +23,7 @@
 
 stages:
   - check
+  - deploy
   - hw
 
 # ──────────────────────────────────────────────────────────────────────────
@@ -86,6 +87,8 @@ terminal-app:e2e:
     - npm ci --no-audit --no-fund
     - node script/ensure-driver-built.mjs
     - npx playwright install chromium
+    # Free port 5173 in case a previous job left a stale Vite process on the runner host.
+    - fuser -k 5173/tcp 2>/dev/null || true
     - npm run test:e2e
   artifacts:
     when: on_failure
@@ -110,6 +113,38 @@ python-suites:
   script:
     - find hil-preflight ftdi-loopback-verify pico-cdc-test-rig -name '*.py' -print0 | xargs -0 -r python3 -m py_compile
     - bash -n hil-preflight/preflight.sh
+
+# ──────────────────────────────────────────────────────────────────────────
+# terminal-app:deploy:staging — publish to the staging URL after all checks pass.
+#
+# Runs automatically on every push to main that touches terminal-app or
+# ftdi-driver. Uses CI_MODE=1 so fetch-build-deploy.sh skips the mirror guard
+# and git-reset (the runner already has the right checkout); it still runs npm ci
+# + npm run build and then sudo rsync the bundle to /var/www/serial-terminal.
+#
+# Prerequisites (one-time host setup on Agentlab1):
+#   - /etc/sudoers.d/gitlab-runner-deploy grants gitlab-runner NOPASSWD for
+#     /usr/bin/rsync and /usr/bin/chown (already in place).
+#   - DEPLOY_SITE_HOST CI/CD variable is set at project level in GitLab so the
+#     post-deploy HTTPS verify step knows the public hostname. The webroot
+#     defaults to /var/www/serial-terminal (matches the nginx config).
+# ──────────────────────────────────────────────────────────────────────────
+terminal-app:deploy:staging:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - terminal-app/**/*
+        - ftdi-driver/**/*
+  variables:
+    CI_MODE: "1"
+    DEPLOY_WEBROOT: /var/www/serial-terminal
+  script:
+    - cd terminal-app
+    - bash script/fetch-build-deploy.sh serial-lab
+  environment:
+    name: staging
+    url: https://serial-lab.test.delivery-academy.se/
 
 # ──────────────────────────────────────────────────────────────────────────
 # Hardware-in-loop — runs ONLY on a runner tagged `hil-hardware` (a self-managed

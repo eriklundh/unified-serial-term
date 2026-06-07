@@ -11,6 +11,51 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.2.0] — 2026-06-07
+
+### Added
+
+- **Unified "Serial connect:" dropdown.** The old backend selector is now a
+  single control that lists already-paired devices from both backends (Web
+  Serial + WebUSB-FTDI), refreshed on focus, alongside per-backend "Request…"
+  actions. Picking a paired device and clicking Connect opens that exact
+  device; a Request action pops the browser picker. (10B)
+- Paired devices are labelled by VID:PID via a `usbVendors` table covering
+  FTDI, Prolific, Silicon Labs, CH34x, and Arduino. (10B)
+- **Baud rate dropdown in the toolbar.** A compact `<select>` with all 12
+  standard rates sits next to the connection control; removed from the Settings
+  drawer. (10C)
+- **Serial Settings popover.** A native `<dialog>` popover (⚙ Serial Settings
+  button) exposes data bits, parity, stop bits, flow control, local echo, and
+  Reset — moved out of the drawer. (10D)
+- **Download button.** Saves the current terminal buffer as
+  `console-YYYYMMDD-HHMMSS.txt` via `@xterm/addon-serialize`. (10E)
+- **Fullscreen button.** Toggles the native Fullscreen API on the app root;
+  icon reflects state; hidden when `document.fullscreenEnabled` is false. (10F)
+- **Focus returns to the terminal after every toolbar action.** A
+  `withTerminalFocus` wrapper restores keyboard focus to the xterm.js canvas
+  after any button click or popover close, so typing immediately goes to the
+  terminal without a manual click. (10A)
+
+### Changed
+
+- **Toolbar order** is now: `[Serial connect:] [Baud] [Connect/Disconnect]
+  [Serial Settings] · [Clear] [Download] [Fullscreen] … [⚙ Settings]`. (10G)
+- **Port-config controls stay enabled while connected** (baud, data bits,
+  parity, stop bits, flow control). Changes apply immediately via
+  `backend.reconfigure()` without disconnecting. Only the device selector and
+  Reset button are locked during a session. (10F)
+
+### Internal
+
+- GitLab CI deploy job (`terminal-app:deploy:staging`) publishes to staging
+  automatically on every push to `main` via `fetch-build-deploy.sh` with
+  `CI_MODE=1`.
+- CI e2e job now frees port 5173 before launching Playwright to prevent
+  failures from stale Vite processes on the shell runner host.
+
+---
+
 ## [1.1.5] — 2026-06-06
 
 ### Fixed

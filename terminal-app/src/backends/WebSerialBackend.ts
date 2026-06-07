@@ -1,12 +1,19 @@
 import type { BackendId, SerialBackend, SerialBackendFactory, SerialOptions } from './SerialBackend'
+import { deviceLabel } from './usbVendors'
 
 // ---------------------------------------------------------------------------
 // Minimal local types for the Web Serial API.
 // The browser provides these at runtime; we declare just what we use.
 // ---------------------------------------------------------------------------
+interface WsSerialInfo {
+  usbVendorId?: number
+  usbProductId?: number
+}
+
 interface WsSerialPort {
   readonly readable: ReadableStream<Uint8Array> | null
   readonly writable: WritableStream<Uint8Array> | null
+  getInfo?(): WsSerialInfo
   open(options: Record<string, unknown>): Promise<void>
   close(): Promise<void>
 }
@@ -36,7 +43,7 @@ interface WsSerial {
 
 export class WebSerialBackend implements SerialBackend {
   readonly id: BackendId = 'web-serial'
-  readonly label = 'Web Serial'
+  readonly label: string
 
   private _port: WsSerialPort
   private _isOpen = false
@@ -52,6 +59,8 @@ export class WebSerialBackend implements SerialBackend {
 
   constructor(port: WsSerialPort) {
     this._port = port
+    const info = port.getInfo?.() ?? {}
+    this.label = deviceLabel(info.usbVendorId, info.usbProductId)
     this.readable = new ReadableStream<Uint8Array>({
       start: (controller) => {
         this._readController = controller
@@ -98,6 +107,26 @@ export class WebSerialBackend implements SerialBackend {
       this._portReader.releaseLock()
       this._portReader = null
     }
+  }
+
+  async reconfigure(options: SerialOptions): Promise<void> {
+    // Stop the pump: cancel() causes the pending read() to resolve {done:true},
+    // so the pump breaks out cleanly without erroring the frontend readable.
+    if (this._portReader) {
+      await this._portReader.cancel()
+      await this._pumpDone
+      this._pumpDone = null
+    }
+    if (this._portWriter) {
+      this._portWriter.releaseLock()
+      this._portWriter = null
+    }
+    // Soft close+reopen on the same port object with new settings.
+    // The real Web Serial API provides fresh readable/writable after open().
+    await this._port.close()
+    await this._port.open(options as unknown as Record<string, unknown>)
+    this._portWriter = (this._port.writable as WritableStream<Uint8Array>).getWriter()
+    this._pumpDone = this._pump()
   }
 
   async close(): Promise<void> {

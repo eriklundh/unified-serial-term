@@ -10,9 +10,14 @@ type Fixtures = {
   pairedPage: Page
 }
 
-/** Open the settings drawer (serial + appearance controls live there). */
+/** Open the settings drawer (appearance + storage controls live there). */
 export async function openSettings(page: Page): Promise<void> {
   await page.locator('[data-testid="settings-btn"]').click()
+}
+
+/** Open the Serial Settings popover (port-config controls live there). */
+export async function openSerialSettings(page: Page): Promise<void> {
+  await page.locator('[data-testid="serial-settings-btn"]').click()
 }
 
 export const test = base.extend<Fixtures>({

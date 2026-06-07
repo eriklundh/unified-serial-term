@@ -69,11 +69,18 @@ SCRIPT_DIR="$(dirname "$SELF")"
 # shellcheck source=/dev/null
 [ -f "$SCRIPT_DIR/deploy.env" ] && . "$SCRIPT_DIR/deploy.env"
 
+# CI mode: when CI_MODE=1 (set by GitLab CI) the checkout is already at the
+# right commit and managed by the runner — skip the mirror guard, the git
+# fetch/reset, and the re-exec guard. DEPLOY_SITE_HOST and other knobs come
+# from CI/CD variables instead of the gitignored deploy.env.
+CI_MODE="${CI_MODE:-}"
+
 # Publish-only mirror guard. Step 1 hard-resets this checkout to origin, which
 # would wipe in-progress work in a development checkout. So the script runs ONLY
 # in the dedicated deploy-mirror checkout (~/deploy-unified-serial-term), whose
 # gitignored script/deploy.env sets DEPLOY_MIRROR=1.
-[ "${DEPLOY_MIRROR:-}" = "1" ] || { \
+# CI_MODE=1 bypasses this — the runner's checkout IS the right state.
+[ "${DEPLOY_MIRROR:-}" = "1" ] || [ "$CI_MODE" = "1" ] || { \
   printf '\n\033[1;31mERROR: not a deploy mirror.\033[0m Run this only in the deploy-mirror checkout\n  (~/deploy-unified-serial-term); its script/deploy.env must set DEPLOY_MIRROR=1.\n' >&2; \
   exit 1; }
 
@@ -124,37 +131,44 @@ git -C "$REPO_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1 \
   || die "no git checkout at $REPO_DIR (set TERMINAL_APP_DIR?)"
 cd "$REPO_DIR"
 
-log "Deploying $TARGET from ref: $REF"
-before_self="$(sha1sum "$SELF" | cut -d' ' -f1)"
-git fetch --prune --tags origin
-# Resolve the ref to a concrete commit now (fails clearly if a tag is missing).
-TARGET_SHA="$(git rev-parse --verify "${REF}^{commit}" 2>/dev/null)" \
-  || die "ref '$REF' not found — fetch/push the tag first, or check the name."
-# Safety: even on a mirror, never silently destroy local work. Abort if the
-# working tree has tracked modifications, or if this checkout has commits that
-# exist on no origin branch (i.e. unpushed local work). FBD_FORCE=1 overrides.
-if [ "${FBD_FORCE:-}" != "1" ]; then
-  [ -z "$(git status --porcelain --untracked-files=no)" ] \
-    || die "uncommitted tracked changes in $REPO_DIR — refusing to hard-reset (FBD_FORCE=1 to override)."
-  local_only="$(git rev-list --count HEAD --not --remotes=origin 2>/dev/null || echo 0)"
-  [ "$local_only" = 0 ] \
-    || die "$REPO_DIR has $local_only commit(s) on no origin branch — push them first (FBD_FORCE=1 to override)."
-fi
-# Hard-reset to the chosen ref. We deliberately do NOT `git clean`:
-# untracked build artefacts (node_modules/, dist/) must survive the reset.
-git reset --hard "$TARGET_SHA"
-after_self="$(sha1sum "$SELF" | cut -d' ' -f1)"
+if [ "$CI_MODE" = "1" ]; then
+  # CI: the runner already checked out the right commit; nothing to fetch or reset.
+  log "CI mode — skipping fetch and reset (using runner checkout)"
+else
+  log "Deploying $TARGET from ref: $REF"
+  before_self="$(sha1sum "$SELF" | cut -d' ' -f1)"
+  git fetch --prune --tags origin
+  # Resolve the ref to a concrete commit now (fails clearly if a tag is missing).
+  TARGET_SHA="$(git rev-parse --verify "${REF}^{commit}" 2>/dev/null)" \
+    || die "ref '$REF' not found — fetch/push the tag first, or check the name."
+  # Safety: even on a mirror, never silently destroy local work. Abort if the
+  # working tree has tracked modifications, or if this checkout has commits that
+  # exist on no origin branch (i.e. unpushed local work). FBD_FORCE=1 overrides.
+  if [ "${FBD_FORCE:-}" != "1" ]; then
+    [ -z "$(git status --porcelain --untracked-files=no)" ] \
+      || die "uncommitted tracked changes in $REPO_DIR — refusing to hard-reset (FBD_FORCE=1 to override)."
+    local_only="$(git rev-list --count HEAD --not --remotes=origin 2>/dev/null || echo 0)"
+    [ "$local_only" = 0 ] \
+      || die "$REPO_DIR has $local_only commit(s) on no origin branch — push them first (FBD_FORCE=1 to override)."
+  fi
+  # Hard-reset to the chosen ref. We deliberately do NOT `git clean`:
+  # untracked build artefacts (node_modules/, dist/) must survive the reset.
+  git reset --hard "$TARGET_SHA"
+  after_self="$(sha1sum "$SELF" | cut -d' ' -f1)"
 
-# --- 2. Re-exec guard --------------------------------------------------------
-# If the pull changed this script, re-run the updated copy exactly once so the
-# new logic governs the rest of this deploy. FBD_REEXEC prevents a loop.
-if [ "${FBD_REEXEC:-}" != "1" ] && [ "$before_self" != "$after_self" ]; then
-  log "Deploy script changed in pull — re-exec'ing updated version"
-  exec env FBD_REEXEC=1 bash "$SELF" "$TARGET" "$REF"
+  # --- 2. Re-exec guard --------------------------------------------------------
+  # If the pull changed this script, re-run the updated copy exactly once so the
+  # new logic governs the rest of this deploy. FBD_REEXEC prevents a loop.
+  if [ "${FBD_REEXEC:-}" != "1" ] && [ "$before_self" != "$after_self" ]; then
+    log "Deploy script changed in pull — re-exec'ing updated version"
+    exec env FBD_REEXEC=1 bash "$SELF" "$TARGET" "$REF"
+  fi
 fi
 
-DEPLOYED_SHA="$(git rev-parse --short HEAD)"
-DEPLOY_SUBJECT="$(git log -1 --pretty=%s)"
+# CI env vars are the authoritative source when available; fall back to git for
+# mirror-mode or local runs where those variables are not set.
+DEPLOYED_SHA="${CI_COMMIT_SHORT_SHA:-$(git rev-parse --short HEAD)}"
+DEPLOY_SUBJECT="${CI_COMMIT_TITLE:-$(git log -1 --pretty=%s)}"
 
 # --- 3. Build ----------------------------------------------------------------
 # Produces a purely static dist/ (HTML/JS/CSS). Node runs only here, on the

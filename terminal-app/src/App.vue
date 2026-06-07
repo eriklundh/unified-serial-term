@@ -1,21 +1,40 @@
 <template>
-  <div class="app">
+  <div
+    ref="appRef"
+    class="app"
+  >
     <header
       ref="toolbarRef"
       class="toolbar"
     >
       <div class="toolbar__group">
-        <BackendSelector
-          v-model="selectedId"
+        <ConnectionSelect
+          v-model="connectionTarget"
           :factories="factories"
+          :paired="pairedDevices"
           :disabled="isConnected"
+          @refresh="refreshPaired"
         />
+        <select
+          v-model.number="settings.baudRate"
+          data-testid="baud-select"
+          class="toolbar__select"
+          aria-label="Baud rate"
+        >
+          <option
+            v-for="b in BAUD_RATES"
+            :key="b"
+            :value="b"
+          >
+            {{ b }}
+          </option>
+        </select>
         <button
           v-if="!isConnected"
           class="btn btn--primary"
           data-testid="connect-btn"
           :disabled="!canConnect || isConnecting"
-          @click="connect"
+          @click="onConnect"
         >
           {{ isConnecting ? 'Connecting…' : 'Connect' }}
         </button>
@@ -23,18 +42,49 @@
           v-if="isConnected"
           class="btn btn--danger"
           data-testid="disconnect-btn"
-          @click="disconnectByUser"
+          @click="onDisconnect"
         >
           Disconnect
         </button>
         <button
           class="btn"
           type="button"
+          data-testid="serial-settings-btn"
+          :aria-expanded="serialSettingsOpen"
+          aria-controls="serial-settings-dialog"
+          title="Serial Settings"
+          @click="serialSettingsOpen = !serialSettingsOpen"
+        >
+          Serial Settings
+        </button>
+        <button
+          class="btn"
+          type="button"
           data-testid="clear-btn"
           title="Clear terminal"
-          @click="clearTerminal"
+          @click="onClear"
         >
           Clear
+        </button>
+        <button
+          class="btn"
+          type="button"
+          data-testid="download-btn"
+          title="Download terminal contents"
+          @click="onDownload"
+        >
+          Download
+        </button>
+        <button
+          v-if="fullscreenEnabled"
+          class="btn btn--icon"
+          type="button"
+          data-testid="fullscreen-btn"
+          :title="isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
+          :aria-label="isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
+          @click="onFullscreen"
+        >
+          <span aria-hidden="true">{{ isFullscreen ? '⊡' : '⛶' }}</span>
         </button>
       </div>
 
@@ -70,6 +120,15 @@
       />
     </main>
 
+    <SerialSettings
+      :settings="settings"
+      :is-connected="isConnected"
+      :open="serialSettingsOpen"
+      @update:settings="s => { settings = s }"
+      @close="serialSettingsOpen = false"
+      @reset="reset"
+    />
+
     <dialog
       id="settings-drawer"
       class="drawer"
@@ -96,88 +155,6 @@
             ✕
           </button>
         </div>
-
-        <section class="group">
-          <h3 class="group__title">
-            Connection
-          </h3>
-          <label class="field">
-            <span class="field__label">Baud</span>
-            <select
-              v-model.number="settings.baudRate"
-              data-testid="baud-select"
-              :disabled="isConnected"
-            >
-              <option
-                v-for="b in BAUD_RATES"
-                :key="b"
-                :value="b"
-              >{{ b }}</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">Data bits</span>
-            <select
-              v-model.number="settings.dataBits"
-              data-testid="databits-select"
-              :disabled="isConnected"
-            >
-              <option :value="8">8</option>
-              <option :value="7">7</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">Parity</span>
-            <select
-              v-model="settings.parity"
-              data-testid="parity-select"
-              :disabled="isConnected"
-            >
-              <option value="none">None</option>
-              <option value="even">Even</option>
-              <option value="odd">Odd</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">Stop bits</span>
-            <select
-              v-model.number="settings.stopBits"
-              data-testid="stopbits-select"
-              :disabled="isConnected"
-            >
-              <option :value="1">1</option>
-              <option :value="2">2</option>
-            </select>
-          </label>
-          <label class="field">
-            <span class="field__label">Flow control</span>
-            <select
-              v-model="settings.flowControl"
-              data-testid="flowcontrol-select"
-              :disabled="isConnected"
-            >
-              <option value="none">None</option>
-              <option value="hardware">RTS/CTS</option>
-            </select>
-          </label>
-          <label class="field field--check">
-            <input
-              v-model="settings.localEcho"
-              data-testid="echo-checkbox"
-              type="checkbox"
-              @change="terminalRef?.focus()"
-            >
-            <span class="field__label">Local echo</span>
-          </label>
-          <button
-            class="btn btn--subtle"
-            data-testid="reset-btn"
-            :disabled="isConnected"
-            @click="reset"
-          >
-            Reset connection defaults
-          </button>
-        </section>
 
         <section class="group">
           <h3 class="group__title">
@@ -294,7 +271,9 @@
 <script setup lang="ts">
 import { ref, inject, computed, watch, onMounted, onUnmounted } from 'vue'
 import Terminal from './components/Terminal.vue'
-import BackendSelector from './components/BackendSelector.vue'
+import ConnectionSelect from './components/ConnectionSelect.vue'
+import SerialSettings from './components/SerialSettings.vue'
+import type { PairedDevice } from './components/ConnectionSelect.vue'
 import { FACTORIES_KEY } from './backends/injectionKeys'
 import { resolveFactory, writePreference } from './settings/backendPreference'
 import { useSettings } from './settings/useSettings'
@@ -318,14 +297,51 @@ const FONT_CHOICES = [
 
 const terminalRef = ref<InstanceType<typeof Terminal> | null>(null)
 const toolbarRef = ref<HTMLElement | null>(null)
+const appRef = ref<HTMLElement | null>(null)
 const factories = inject(FACTORIES_KEY, [])
-const selectedId = ref<BackendId | null>(resolveFactory(factories)?.id ?? null)
 
-watch(selectedId, (id) => {
-  if (id) writePreference(id)
+// The connection dropdown's value: either a backend id (a "Request…" action) or
+// `paired:<key>` for an already-paired device. Default to the preferred backend.
+const connectionTarget = ref<string>(resolveFactory(factories)?.id ?? '')
+
+// Persist the chosen *backend* (a Request action) so a reload defaults back to
+// it. A transient paired-device pick (`paired:<key>`) is not a preference.
+watch(connectionTarget, (t) => {
+  if (t && !t.startsWith('paired:')) writePreference(t as BackendId)
 })
 
-const selectedFactory = computed(() => factories.find((f) => f.id === selectedId.value) ?? null)
+// The factory behind a "Request…" target (null while a paired device is chosen).
+const selectedFactory = computed(() =>
+  connectionTarget.value.startsWith('paired:')
+    ? null
+    : (factories.find((f) => f.id === connectionTarget.value) ?? null),
+)
+
+// Already-paired devices across both backends, shown in the dropdown. Refreshed
+// when the dropdown is focused so a newly-plugged device appears on open. The
+// listed backend instances are kept so Connect can open the exact one chosen.
+const pairedDevices = ref<PairedDevice[]>([])
+const pairedBackends = new Map<string, SerialBackend>()
+
+async function refreshPaired() {
+  const next: PairedDevice[] = []
+  pairedBackends.clear()
+  for (const factory of factories) {
+    if (!factory.isAvailable()) continue
+    let list: SerialBackend[]
+    try {
+      list = await factory.listPaired()
+    } catch {
+      continue // a backend that can't enumerate just contributes nothing
+    }
+    list.forEach((b, i) => {
+      const key = `${factory.id}#${i}`
+      pairedBackends.set(key, b)
+      next.push({ key, label: b.label })
+    })
+  }
+  pairedDevices.value = next
+}
 
 const { settings, reset, reload: reloadSettings } = useSettings()
 
@@ -345,13 +361,75 @@ watch(drawerOpen, (open) => {
   if (!open) terminalRef.value?.focus()
 })
 
+// --- Serial Settings popover -------------------------------------------------
+const serialSettingsOpen = ref(false)
+
+watch(serialSettingsOpen, (open) => {
+  if (!open) terminalRef.value?.focus()
+})
+
+// --- Toolbar focus return ----------------------------------------------------
+// A momentary toolbar button parks focus on itself when clicked. Wrap such
+// handlers so focus returns to the terminal — the canonical focus owner — once
+// the action settles, so typing resumes immediately. (Toggle controls like the
+// settings gear are NOT wrapped; the drawer manages its own focus via the
+// drawerOpen watch above.)
+function withTerminalFocus<A extends unknown[]>(fn: (...args: A) => unknown) {
+  return (...args: A): void => {
+    let result: unknown
+    try {
+      result = fn(...args)
+    } finally {
+      Promise.resolve(result).then(
+        () => terminalRef.value?.focus(),
+        () => terminalRef.value?.focus(),
+      )
+    }
+  }
+}
+
 // --- Clear terminal + hotkey -------------------------------------------------
 function clearTerminal() {
   terminalRef.value?.clear()
-  // Clicking the Clear button (or any toolbar control) parks focus on that
-  // button; hand it back to the terminal so the user can keep typing.
-  terminalRef.value?.focus()
 }
+const onClear = withTerminalFocus(clearTerminal)
+
+// --- Download terminal contents ----------------------------------------------
+function downloadTerminal() {
+  const text = terminalRef.value?.serialize() ?? ''
+  const blob = new Blob([text], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  const now = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const stamp =
+    `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}` +
+    `-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+  a.download = `console-${stamp}.txt`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+const onDownload = withTerminalFocus(downloadTerminal)
+
+// --- Fullscreen toggle -------------------------------------------------------
+const isFullscreen = ref(false)
+const fullscreenEnabled = ref(document.fullscreenEnabled)
+
+function onFullscreenChange() {
+  isFullscreen.value = document.fullscreenElement !== null
+}
+onMounted(() => document.addEventListener('fullscreenchange', onFullscreenChange))
+onUnmounted(() => document.removeEventListener('fullscreenchange', onFullscreenChange))
+
+async function toggleFullscreen() {
+  if (document.fullscreenElement) {
+    await document.exitFullscreen()
+  } else {
+    await appRef.value?.requestFullscreen()
+  }
+}
+const onFullscreen = withTerminalFocus(toggleFullscreen)
 
 const capturingHotkey = ref(false)
 function startRebind() {
@@ -457,22 +535,52 @@ const backend = ref<SerialBackend | null>(null)
 const isConnected = ref(false)
 const isConnecting = ref(false)
 const statusMsg = ref<string | null>(null)
-const canConnect = computed(() => !!selectedFactory.value && !isConnected.value && !isConnecting.value)
+const canConnect = computed(() => {
+  if (isConnected.value || isConnecting.value) return false
+  if (connectionTarget.value.startsWith('paired:')) {
+    return pairedBackends.has(connectionTarget.value.slice('paired:'.length))
+  }
+  return !!selectedFactory.value
+})
 const activeReadable = computed(() => backend.value?.readable ?? null)
 const activeWritable = computed(() => backend.value?.writable ?? null)
 
+// When port-config settings change while a connection is open, push them to
+// the device immediately so the user doesn't need to disconnect to apply them.
+watch(
+  settings,
+  async (s) => {
+    if (isConnected.value && backend.value) {
+      try {
+        await backend.value.reconfigure(s)
+      } catch (err) {
+        statusMsg.value = `Reconfigure failed: ${err instanceof Error ? err.message : String(err)}`
+      }
+    }
+  },
+  { deep: true },
+)
+
 async function connect() {
-  if (!selectedFactory.value || isConnecting.value) return
+  if (isConnecting.value) return
   isConnecting.value = true
   statusMsg.value = null
   try {
-    const b = await selectedFactory.value.pickDevice()
+    // A paired entry opens that exact device; a Request action pops the picker.
+    let b: SerialBackend
+    if (connectionTarget.value.startsWith('paired:')) {
+      const found = pairedBackends.get(connectionTarget.value.slice('paired:'.length))
+      if (!found) return
+      b = found
+    } else {
+      if (!selectedFactory.value) return
+      b = await selectedFactory.value.pickDevice()
+    }
     await b.open(settings.value)
     backend.value = b
     isConnected.value = true
     // Explicit connect — a later reload should auto-reconnect again.
     allowAutoReconnect()
-    terminalRef.value?.focus()
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     const lower = msg.toLowerCase()
@@ -510,18 +618,20 @@ async function disconnect() {
     backend.value = null
     isConnected.value = false
     statusMsg.value = closeError ? `Disconnect warning: ${closeError}` : null
-    terminalRef.value?.focus()
   }
 }
+const onConnect = withTerminalFocus(connect)
+const onDisconnect = withTerminalFocus(disconnectByUser)
 
 onMounted(async () => {
-  if (!selectedFactory.value) return
+  const factory = resolveFactory(factories)
+  if (!factory) return
   // Honour a previous explicit Disconnect — don't silently reconnect to the
   // still-paired device just because the page was reloaded.
   if (isAutoReconnectSuppressed()) return
   isConnecting.value = true
   try {
-    const paired = await selectedFactory.value.listPaired()
+    const paired = await factory.listPaired()
     const device = paired[0]
     if (!device) return
     try {
@@ -594,6 +704,22 @@ body,
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.toolbar__select {
+  padding: 0.2rem 0.4rem;
+  background: var(--surface-2, #3c3c3c);
+  color: var(--fg, #d4d4d4);
+  border: 1px solid var(--border, #555);
+  border-radius: 2px;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.toolbar__select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .status {

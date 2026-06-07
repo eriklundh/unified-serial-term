@@ -30,6 +30,12 @@ vi.mock('@xterm/addon-web-links', () => ({
   }),
 }))
 
+vi.mock('@xterm/addon-serialize', () => ({
+  SerializeAddon: vi.fn().mockImplementation(function () {
+    return { serialize: vi.fn().mockReturnValue('serialized content') }
+  }),
+}))
+
 // ResizeObserver is not available in jsdom — stub it for all tests.
 // Tests that specifically verify ResizeObserver behaviour override this stub.
 beforeEach(() => {
@@ -227,6 +233,19 @@ describe('Terminal.vue', () => {
     wrapper.vm.focus()
 
     expect(instance.focus).toHaveBeenCalledOnce()
+  })
+
+  // ── serialize() ──────────────────────────────────────────────────────────────
+
+  it('exposes serialize() which delegates to SerializeAddon.serialize()', async () => {
+    const { SerializeAddon } = await import('@xterm/addon-serialize')
+    const wrapper = mount(Terminal, { attachTo: document.body })
+    const addonInstance = (SerializeAddon as ReturnType<typeof vi.fn>).mock.results[0]!.value
+
+    const result = (wrapper.vm as unknown as { serialize: () => string }).serialize()
+
+    expect(addonInstance.serialize).toHaveBeenCalledOnce()
+    expect(result).toBe('serialized content')
   })
 
   // ── disconnect event ─────────────────────────────────────────────────────────

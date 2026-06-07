@@ -1,6 +1,7 @@
 import { FtdiUart, WebUsbTransport } from 'ftdi-webusb-driver'
 import type { SerialOptions as FtdiSerialOptions } from 'ftdi-webusb-driver'
 import type { BackendId, SerialBackend, SerialBackendFactory, SerialOptions } from './SerialBackend'
+import { deviceLabel } from './usbVendors'
 
 const FTDI_VID = 0x0403
 const FTDI_PID = 0x6015 // FT231X / FT-X series
@@ -27,7 +28,7 @@ function translateOptions(opts: SerialOptions): FtdiSerialOptions {
 
 export class WebUsbFtdiBackend implements SerialBackend {
   readonly id: BackendId = 'webusb-ftdi'
-  readonly label = 'WebUSB (FTDI)'
+  readonly label: string
 
   private _ftdi: FtdiUart
   private _isOpen = false
@@ -40,8 +41,9 @@ export class WebUsbFtdiBackend implements SerialBackend {
     return this._ftdi.writable
   }
 
-  constructor(ftdi: FtdiUart) {
+  constructor(ftdi: FtdiUart, productId: number = FTDI_PID) {
     this._ftdi = ftdi
+    this.label = deviceLabel(FTDI_VID, productId)
   }
 
   get isOpen(): boolean {
@@ -57,6 +59,10 @@ export class WebUsbFtdiBackend implements SerialBackend {
   async close(): Promise<void> {
     await this._ftdi.close()
     this._isOpen = false
+  }
+
+  async reconfigure(options: SerialOptions): Promise<void> {
+    await this._ftdi.configure(translateOptions(options))
   }
 }
 
@@ -96,7 +102,7 @@ export class WebUsbFtdiFactory implements SerialBackendFactory {
       filters: [{ vendorId: FTDI_VID, productId: FTDI_PID }],
     })
     const transport = new WebUsbTransport(device as unknown as USBDevice)
-    return new WebUsbFtdiBackend(new FtdiUart(transport))
+    return new WebUsbFtdiBackend(new FtdiUart(transport), device.productId)
   }
 
   async listPaired(): Promise<SerialBackend[]> {
@@ -106,7 +112,7 @@ export class WebUsbFtdiFactory implements SerialBackendFactory {
       .filter((d) => d.vendorId === FTDI_VID)
       .map((device) => {
         const transport = new WebUsbTransport(device as unknown as USBDevice)
-        return new WebUsbFtdiBackend(new FtdiUart(transport))
+        return new WebUsbFtdiBackend(new FtdiUart(transport), device.productId)
       })
   }
 }

@@ -10,6 +10,7 @@ import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { Terminal, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
+import { SerializeAddon } from '@xterm/addon-serialize'
 import '@xterm/xterm/css/xterm.css'
 
 const props = defineProps<{
@@ -32,6 +33,7 @@ let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
 let writer: WritableStreamDefaultWriter<Uint8Array> | null = null
 let resizeObserver: ResizeObserver | null = null
 let fitAddon: FitAddon | null = null
+let serializeAddon: SerializeAddon | null = null
 
 onMounted(() => {
   terminal = new Terminal({
@@ -41,7 +43,9 @@ onMounted(() => {
     theme: props.theme,
   })
   fitAddon = new FitAddon()
+  serializeAddon = new SerializeAddon()
   terminal.loadAddon(fitAddon)
+  terminal.loadAddon(serializeAddon)
   terminal.loadAddon(new WebLinksAddon())
   terminal.open(container.value!)
   fitAddon.fit()
@@ -129,6 +133,7 @@ defineExpose({
   // reset() does a full RIS: wipes scrollback and homes the cursor to the
   // top-left. clear() keeps the prompt line and leaves the cursor in place.
   clear: () => terminal?.reset(),
+  serialize: () => serializeAddon?.serialize() ?? '',
 })
 </script>
 

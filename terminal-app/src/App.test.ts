@@ -6,8 +6,13 @@ import type { BackendId, SerialBackend, SerialBackendFactory } from './backends/
 import { MockSerialBackend } from './backends/MockSerialBackend'
 import { FACTORIES_KEY } from './backends/injectionKeys'
 import { SYSTEM_MONO } from './settings/useAppearance'
+import { suppressAutoReconnect } from './settings/reconnect'
 
-const { terminalClear } = vi.hoisted(() => ({ terminalClear: vi.fn() }))
+const { terminalClear, terminalFocus, terminalSerialize } = vi.hoisted(() => ({
+  terminalClear: vi.fn(),
+  terminalFocus: vi.fn(),
+  terminalSerialize: vi.fn().mockReturnValue(''),
+}))
 
 vi.mock('./components/Terminal.vue', () => ({
   default: {
@@ -16,7 +21,7 @@ vi.mock('./components/Terminal.vue', () => ({
     props: ['readable', 'writable', 'localEcho', 'fontFamily', 'fontSize', 'theme'],
     emits: ['disconnect'],
     setup(_props: unknown, { expose }: { expose: (e: Record<string, unknown>) => void }) {
-      expose({ clear: terminalClear, focus: () => {} })
+      expose({ clear: terminalClear, focus: terminalFocus, serialize: terminalSerialize })
     },
   },
 }))
@@ -108,9 +113,9 @@ describe('App.vue', () => {
     expect(v).toMatch(/px$/)
   })
 
-  it('renders the BackendSelector', () => {
+  it('renders the ConnectionSelect', () => {
     const wrapper = mountWithFactories([new MockFactory()])
-    expect(wrapper.find('.backend-selector').exists()).toBe(true)
+    expect(wrapper.find('.connection-select').exists()).toBe(true)
   })
 })
 
@@ -232,6 +237,32 @@ describe('App.vue — connection flow', () => {
     expect(usb.pickDeviceCalled).toBe(true)
     expect(ws.pickDeviceCalled).toBe(false)
   })
+
+  it('lists paired devices in the dropdown and opens the chosen one directly', async () => {
+    // Stay disconnected on mount so we can drive the dropdown ourselves.
+    suppressAutoReconnect()
+    const factory = new AutoReconnectMockFactory() // listPaired → [autoBackend]
+    const pickSpy = vi.spyOn(factory, 'pickDevice')
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    expect(wrapper.find('[data-testid="connect-btn"]').exists()).toBe(true)
+
+    // Focusing the dropdown refreshes the paired list from both backends.
+    const select = wrapper.find('[data-testid="connection-select"]')
+    await select.trigger('focus')
+    await flushPromises()
+    const pairedOption = wrapper
+      .findAll('option')
+      .find((o) => (o.element as HTMLOptionElement).value === 'paired:web-serial#0')
+    expect(pairedOption?.text()).toBe('Mock Serial')
+
+    // Selecting it and connecting opens THAT backend — no picker.
+    await select.setValue('paired:web-serial#0')
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(factory.autoBackend.isOpen).toBe(true)
+    expect(pickSpy).not.toHaveBeenCalled()
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -275,14 +306,26 @@ describe('App.vue — settings panel', () => {
     expect(wrapper.find('[data-testid="reset-btn"]').exists()).toBe(true)
   })
 
-  it('settings controls are disabled while connected', async () => {
+  it('reset button is disabled while connected', async () => {
     const factory = new MockFactory()
     const wrapper = mountWithFactories([factory])
     await flushPromises()
     await wrapper.find('[data-testid="connect-btn"]').trigger('click')
     await flushPromises()
-    expect(wrapper.find('[data-testid="baud-select"]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('[data-testid="reset-btn"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('port-config controls are enabled while connected', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="baud-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="databits-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="parity-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="stopbits-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="flowcontrol-select"]').attributes('disabled')).toBeUndefined()
   })
 
   it('echo checkbox remains enabled while connected', async () => {
@@ -606,5 +649,307 @@ describe('App.vue — settings drawer & appearance', () => {
     await wrapper.get('[data-testid="font-select"]').setValue(stack)
     await nextTick()
     expect(localStorage.getItem('appearance.fontFamily')).toBe(stack)
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — toolbar focus return (Phase 10A)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    terminalFocus.mockClear()
+  })
+
+  it('clicking Clear returns focus to the terminal', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await flushPromises()
+    terminalFocus.mockClear()
+    await wrapper.find('[data-testid="clear-btn"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+
+  it('clicking Download returns focus to the terminal', async () => {
+    URL.createObjectURL = vi.fn().mockReturnValue('blob:test')
+    URL.revokeObjectURL = vi.fn()
+    const wrapper = mountWithFactories([])
+    await flushPromises()
+    terminalFocus.mockClear()
+    await wrapper.find('[data-testid="download-btn"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+
+  it('connecting returns focus to the terminal', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await flushPromises()
+    terminalFocus.mockClear()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+
+  it('a cancelled connect still returns focus to the terminal', async () => {
+    const factory = new MockFactory()
+    factory.pickDevice = async () => {
+      throw new DOMException('No port selected by the user.', 'NotFoundError')
+    }
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    terminalFocus.mockClear()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+
+  it('disconnecting returns focus to the terminal', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    terminalFocus.mockClear()
+    await wrapper.find('[data-testid="disconnect-btn"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — toolbar (Phase 10C)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('baud-rate select is in the toolbar, not the settings drawer', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('.toolbar [data-testid="baud-select"]').exists()).toBe(true)
+    expect(
+      wrapper.find('[data-testid="settings-drawer"] [data-testid="baud-select"]').exists(),
+    ).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — SerialSettings popover (Phase 10D)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    terminalFocus.mockClear()
+  })
+
+  it('renders a Serial Settings button in the toolbar', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('.toolbar [data-testid="serial-settings-btn"]').exists()).toBe(true)
+  })
+
+  it('serial settings dialog is closed by default', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="serial-settings-dialog"]').attributes('open')).toBeUndefined()
+  })
+
+  it('clicking Serial Settings button opens the dialog', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await wrapper.find('[data-testid="serial-settings-btn"]').trigger('click')
+    expect(wrapper.find('[data-testid="serial-settings-dialog"]').attributes('open')).toBeDefined()
+  })
+
+  it('clicking close in serial settings closes the dialog', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await wrapper.find('[data-testid="serial-settings-btn"]').trigger('click')
+    await wrapper.find('[data-testid="serial-settings-close"]').trigger('click')
+    expect(wrapper.find('[data-testid="serial-settings-dialog"]').attributes('open')).toBeUndefined()
+  })
+
+  it('serial settings dialog contains all port-config controls', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    const dialog = wrapper.find('[data-testid="serial-settings-dialog"]')
+    expect(dialog.find('[data-testid="databits-select"]').exists()).toBe(true)
+    expect(dialog.find('[data-testid="parity-select"]').exists()).toBe(true)
+    expect(dialog.find('[data-testid="stopbits-select"]').exists()).toBe(true)
+    expect(dialog.find('[data-testid="flowcontrol-select"]').exists()).toBe(true)
+    expect(dialog.find('[data-testid="echo-checkbox"]').exists()).toBe(true)
+    expect(dialog.find('[data-testid="reset-btn"]').exists()).toBe(true)
+  })
+
+  it('port-config controls in serial settings are enabled while connected', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="databits-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="parity-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="stopbits-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="flowcontrol-select"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="reset-btn"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('echo remains enabled in serial settings while connected', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="echo-checkbox"]').attributes('disabled')).toBeUndefined()
+  })
+
+  it('closing serial settings returns focus to the terminal', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    await flushPromises()
+    terminalFocus.mockClear()
+    await wrapper.find('[data-testid="serial-settings-btn"]').trigger('click')
+    await nextTick()
+    await wrapper.find('[data-testid="serial-settings-close"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+
+  it('port-config controls are NOT in the settings drawer', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    const drawer = wrapper.find('[data-testid="settings-drawer"]')
+    expect(drawer.find('[data-testid="databits-select"]').exists()).toBe(false)
+    expect(drawer.find('[data-testid="parity-select"]').exists()).toBe(false)
+    expect(drawer.find('[data-testid="reset-btn"]').exists()).toBe(false)
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — fullscreen button (Phase 10F)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    terminalFocus.mockClear()
+    Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, get: () => true })
+    Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => null })
+  })
+
+  it('fullscreen button is visible when fullscreenEnabled is true', () => {
+    const wrapper = mountWithFactories([])
+    expect(wrapper.find('[data-testid="fullscreen-btn"]').exists()).toBe(true)
+  })
+
+  it('fullscreen button is hidden when fullscreenEnabled is false', () => {
+    Object.defineProperty(document, 'fullscreenEnabled', { configurable: true, get: () => false })
+    const wrapper = mountWithFactories([])
+    expect(wrapper.find('[data-testid="fullscreen-btn"]').exists()).toBe(false)
+  })
+
+  it('button title is "Enter fullscreen" when not in fullscreen', () => {
+    const wrapper = mountWithFactories([])
+    expect(wrapper.find('[data-testid="fullscreen-btn"]').attributes('title')).toBe('Enter fullscreen')
+  })
+
+  it('clicking fullscreen button calls requestFullscreen on the app root', async () => {
+    const reqFS = vi.fn().mockResolvedValue(undefined)
+    const wrapper = mountWithFactories([])
+    ;(wrapper.find('.app').element as HTMLElement).requestFullscreen = reqFS
+    await wrapper.find('[data-testid="fullscreen-btn"]').trigger('click')
+    await flushPromises()
+    expect(reqFS).toHaveBeenCalled()
+  })
+
+  it('button title changes to "Exit fullscreen" after fullscreenchange fires', async () => {
+    const wrapper = mountWithFactories([])
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => document.body,
+    })
+    document.dispatchEvent(new Event('fullscreenchange'))
+    await nextTick()
+    expect(wrapper.find('[data-testid="fullscreen-btn"]').attributes('title')).toBe('Exit fullscreen')
+  })
+
+  it('clicking in fullscreen state calls document.exitFullscreen', async () => {
+    const exitFS = vi.fn().mockResolvedValue(undefined)
+    document.exitFullscreen = exitFS
+    const wrapper = mountWithFactories([])
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => document.body,
+    })
+    document.dispatchEvent(new Event('fullscreenchange'))
+    await nextTick()
+    await wrapper.find('[data-testid="fullscreen-btn"]').trigger('click')
+    await flushPromises()
+    expect(exitFS).toHaveBeenCalled()
+  })
+
+  it('focus returns to terminal after clicking fullscreen', async () => {
+    const reqFS = vi.fn().mockResolvedValue(undefined)
+    const wrapper = mountWithFactories([])
+    ;(wrapper.find('.app').element as HTMLElement).requestFullscreen = reqFS
+    await wrapper.find('[data-testid="fullscreen-btn"]').trigger('click')
+    await flushPromises()
+    expect(terminalFocus).toHaveBeenCalled()
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — live reconfigure while connected', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    suppressAutoReconnect()
+  })
+
+  it('changing baud rate while connected calls reconfigure on the backend', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+
+    const spy = vi.spyOn(factory.lastBackend!, 'reconfigure')
+    await wrapper.find('[data-testid="baud-select"]').setValue('9600')
+    await flushPromises()
+
+    expect(spy).toHaveBeenCalledWith(expect.objectContaining({ baudRate: 9600 }))
+  })
+
+  it('changing a setting while NOT connected does not call reconfigure', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+
+    const mockBackend = new MockSerialBackend()
+    const spy = vi.spyOn(mockBackend, 'reconfigure')
+    await wrapper.find('[data-testid="baud-select"]').setValue('9600')
+    await flushPromises()
+
+    expect(spy).not.toHaveBeenCalled()
+  })
+
+  it('reconfigure failure shows a status message', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+
+    factory.lastBackend!.reconfigure = async () => { throw new Error('port busy') }
+    await wrapper.find('[data-testid="baud-select"]').setValue('9600')
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="status-msg"]').text()).toContain('Reconfigure failed')
+  })
+})
+
+// ---------------------------------------------------------------------------
+describe('App.vue — toolbar reflow (Phase 10G)', () => {
+  beforeEach(() => {
+    localStorage.clear()
+  })
+
+  it('Serial Settings button appears before Clear button in the toolbar', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    const serialSettingsBtn = wrapper.find('[data-testid="serial-settings-btn"]').element
+    const clearBtn = wrapper.find('[data-testid="clear-btn"]').element
+    // DOCUMENT_POSITION_FOLLOWING (4) means clearBtn follows serialSettingsBtn
+    const position = serialSettingsBtn.compareDocumentPosition(clearBtn)
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('Download button appears after Clear button in the toolbar', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    const clearBtn = wrapper.find('[data-testid="clear-btn"]').element
+    const downloadBtn = wrapper.find('[data-testid="download-btn"]').element
+    const position = clearBtn.compareDocumentPosition(downloadBtn)
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 })
