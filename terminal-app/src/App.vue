@@ -5,10 +5,12 @@
       class="toolbar"
     >
       <div class="toolbar__group">
-        <BackendSelector
-          v-model="selectedId"
+        <ConnectionSelect
+          v-model="connectionTarget"
           :factories="factories"
+          :paired="pairedDevices"
           :disabled="isConnected"
+          @refresh="refreshPaired"
         />
         <button
           v-if="!isConnected"
@@ -294,7 +296,8 @@
 <script setup lang="ts">
 import { ref, inject, computed, watch, onMounted, onUnmounted } from 'vue'
 import Terminal from './components/Terminal.vue'
-import BackendSelector from './components/BackendSelector.vue'
+import ConnectionSelect from './components/ConnectionSelect.vue'
+import type { PairedDevice } from './components/ConnectionSelect.vue'
 import { FACTORIES_KEY } from './backends/injectionKeys'
 import { resolveFactory, writePreference } from './settings/backendPreference'
 import { useSettings } from './settings/useSettings'
@@ -319,13 +322,49 @@ const FONT_CHOICES = [
 const terminalRef = ref<InstanceType<typeof Terminal> | null>(null)
 const toolbarRef = ref<HTMLElement | null>(null)
 const factories = inject(FACTORIES_KEY, [])
-const selectedId = ref<BackendId | null>(resolveFactory(factories)?.id ?? null)
 
-watch(selectedId, (id) => {
-  if (id) writePreference(id)
+// The connection dropdown's value: either a backend id (a "Request…" action) or
+// `paired:<key>` for an already-paired device. Default to the preferred backend.
+const connectionTarget = ref<string>(resolveFactory(factories)?.id ?? '')
+
+// Persist the chosen *backend* (a Request action) so a reload defaults back to
+// it. A transient paired-device pick (`paired:<key>`) is not a preference.
+watch(connectionTarget, (t) => {
+  if (t && !t.startsWith('paired:')) writePreference(t as BackendId)
 })
 
-const selectedFactory = computed(() => factories.find((f) => f.id === selectedId.value) ?? null)
+// The factory behind a "Request…" target (null while a paired device is chosen).
+const selectedFactory = computed(() =>
+  connectionTarget.value.startsWith('paired:')
+    ? null
+    : (factories.find((f) => f.id === connectionTarget.value) ?? null),
+)
+
+// Already-paired devices across both backends, shown in the dropdown. Refreshed
+// when the dropdown is focused so a newly-plugged device appears on open. The
+// listed backend instances are kept so Connect can open the exact one chosen.
+const pairedDevices = ref<PairedDevice[]>([])
+const pairedBackends = new Map<string, SerialBackend>()
+
+async function refreshPaired() {
+  const next: PairedDevice[] = []
+  pairedBackends.clear()
+  for (const factory of factories) {
+    if (!factory.isAvailable()) continue
+    let list: SerialBackend[]
+    try {
+      list = await factory.listPaired()
+    } catch {
+      continue // a backend that can't enumerate just contributes nothing
+    }
+    list.forEach((b, i) => {
+      const key = `${factory.id}#${i}`
+      pairedBackends.set(key, b)
+      next.push({ key, label: b.label })
+    })
+  }
+  pairedDevices.value = next
+}
 
 const { settings, reset, reload: reloadSettings } = useSettings()
 
@@ -475,16 +514,31 @@ const backend = ref<SerialBackend | null>(null)
 const isConnected = ref(false)
 const isConnecting = ref(false)
 const statusMsg = ref<string | null>(null)
-const canConnect = computed(() => !!selectedFactory.value && !isConnected.value && !isConnecting.value)
+const canConnect = computed(() => {
+  if (isConnected.value || isConnecting.value) return false
+  if (connectionTarget.value.startsWith('paired:')) {
+    return pairedBackends.has(connectionTarget.value.slice('paired:'.length))
+  }
+  return !!selectedFactory.value
+})
 const activeReadable = computed(() => backend.value?.readable ?? null)
 const activeWritable = computed(() => backend.value?.writable ?? null)
 
 async function connect() {
-  if (!selectedFactory.value || isConnecting.value) return
+  if (isConnecting.value) return
   isConnecting.value = true
   statusMsg.value = null
   try {
-    const b = await selectedFactory.value.pickDevice()
+    // A paired entry opens that exact device; a Request action pops the picker.
+    let b: SerialBackend
+    if (connectionTarget.value.startsWith('paired:')) {
+      const found = pairedBackends.get(connectionTarget.value.slice('paired:'.length))
+      if (!found) return
+      b = found
+    } else {
+      if (!selectedFactory.value) return
+      b = await selectedFactory.value.pickDevice()
+    }
     await b.open(settings.value)
     backend.value = b
     isConnected.value = true
@@ -533,13 +587,14 @@ const onConnect = withTerminalFocus(connect)
 const onDisconnect = withTerminalFocus(disconnectByUser)
 
 onMounted(async () => {
-  if (!selectedFactory.value) return
+  const factory = resolveFactory(factories)
+  if (!factory) return
   // Honour a previous explicit Disconnect — don't silently reconnect to the
   // still-paired device just because the page was reloaded.
   if (isAutoReconnectSuppressed()) return
   isConnecting.value = true
   try {
-    const paired = await selectedFactory.value.listPaired()
+    const paired = await factory.listPaired()
     const device = paired[0]
     if (!device) return
     try {

@@ -62,8 +62,14 @@ v1.1.2 serial stream-lifecycle (writer-lock teardown); v1.1.3 rename to
 ### Phase 10 work items (Toolbar & connection UX)
 
 - [ ] 10A — Toolbar clicks return focus to the terminal (`withTerminalFocus`).
-- [ ] 10B — Rename to **"Serial connect:"** + unified paired-device dropdown
-      (Web Serial + WebUSB-FTDI + "Request…" actions).
+- [x] 10B — Rename to **"Serial connect:"** + unified paired-device dropdown
+      (Web Serial + WebUSB-FTDI + "Request…" actions). `BackendSelector` →
+      `ConnectionSelect`; backends carry a VID:PID `label`; the dropdown lists
+      already-paired devices (refreshed on focus) plus per-backend Request
+      actions, and Connect opens the chosen paired device directly or pops the
+      picker. The Connect/Disconnect button and `connect()` flow are unchanged
+      (full toolbar reflow stays in 10G). The "backend selector" unit/e2e tests
+      were renamed to "connection selector" here since the rename forced it.
 - [ ] 10C — Baud rate as a toolbar dropdown (out of the settings drawer).
 - [ ] 10D — **Serial Settings** dropdown (data/parity/stop/flow/echo/reset).
 - [ ] 10E — **Download** button → terminal contents as a text file.

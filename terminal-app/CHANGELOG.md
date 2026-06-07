@@ -9,6 +9,21 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+_Phase 10 (Toolbar & connection UX) in progress — ships as a minor release once
+all sub-phases land._
+
+### Added
+
+- **Unified "Serial connect:" dropdown.** The old "Backend" selector is now a
+  single connection control that lists already-paired devices from *both*
+  backends (Web Serial + WebUSB-FTDI), refreshed when the dropdown is focused,
+  alongside per-backend "Request…" actions. Picking a paired device and
+  clicking Connect opens that exact device; a Request action pops the browser
+  picker. (10B)
+- Paired devices are labelled by VID:PID via a small `usbVendors` table written
+  from the public USB-IF registry and FTDI datasheets (FTDI, Prolific, Silicon
+  Labs, CH34x, Arduino). (10B)
+
 ---
 
 ## [1.1.5] — 2026-06-06

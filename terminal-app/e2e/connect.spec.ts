@@ -4,7 +4,7 @@ import { installMockUsb } from './helpers/mockUsb'
 
 test.describe('connect / disconnect', () => {
   test('Web Serial — connect shows Disconnect and disables settings', async ({ mockedPage }) => {
-    await mockedPage.getByRole('combobox', { name: /backend/i }).selectOption('web-serial')
+    await mockedPage.getByRole('combobox', { name: /serial connect/i }).selectOption('web-serial')
     await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.getByRole('button', { name: /disconnect/i })).toBeVisible()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()
@@ -14,7 +14,7 @@ test.describe('connect / disconnect', () => {
   })
 
   test('WebUSB — connect shows Disconnect and disables settings', async ({ mockedPage }) => {
-    await mockedPage.getByRole('combobox', { name: /backend/i }).selectOption('webusb-ftdi')
+    await mockedPage.getByRole('combobox', { name: /serial connect/i }).selectOption('webusb-ftdi')
     await mockedPage.getByTestId('connect-btn').click()
     await expect(mockedPage.getByRole('button', { name: /disconnect/i })).toBeVisible()
     await expect(mockedPage.locator('[data-testid="baud-select"]')).toBeDisabled()

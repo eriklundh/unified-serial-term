@@ -6,6 +6,7 @@ import type { BackendId, SerialBackend, SerialBackendFactory } from './backends/
 import { MockSerialBackend } from './backends/MockSerialBackend'
 import { FACTORIES_KEY } from './backends/injectionKeys'
 import { SYSTEM_MONO } from './settings/useAppearance'
+import { suppressAutoReconnect } from './settings/reconnect'
 
 const { terminalClear, terminalFocus } = vi.hoisted(() => ({
   terminalClear: vi.fn(),
@@ -111,9 +112,9 @@ describe('App.vue', () => {
     expect(v).toMatch(/px$/)
   })
 
-  it('renders the BackendSelector', () => {
+  it('renders the ConnectionSelect', () => {
     const wrapper = mountWithFactories([new MockFactory()])
-    expect(wrapper.find('.backend-selector').exists()).toBe(true)
+    expect(wrapper.find('.connection-select').exists()).toBe(true)
   })
 })
 
@@ -234,6 +235,32 @@ describe('App.vue — connection flow', () => {
     await flushPromises()
     expect(usb.pickDeviceCalled).toBe(true)
     expect(ws.pickDeviceCalled).toBe(false)
+  })
+
+  it('lists paired devices in the dropdown and opens the chosen one directly', async () => {
+    // Stay disconnected on mount so we can drive the dropdown ourselves.
+    suppressAutoReconnect()
+    const factory = new AutoReconnectMockFactory() // listPaired → [autoBackend]
+    const pickSpy = vi.spyOn(factory, 'pickDevice')
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    expect(wrapper.find('[data-testid="connect-btn"]').exists()).toBe(true)
+
+    // Focusing the dropdown refreshes the paired list from both backends.
+    const select = wrapper.find('[data-testid="connection-select"]')
+    await select.trigger('focus')
+    await flushPromises()
+    const pairedOption = wrapper
+      .findAll('option')
+      .find((o) => (o.element as HTMLOptionElement).value === 'paired:web-serial#0')
+    expect(pairedOption?.text()).toBe('Mock Serial')
+
+    // Selecting it and connecting opens THAT backend — no picker.
+    await select.setValue('paired:web-serial#0')
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(factory.autoBackend.isOpen).toBe(true)
+    expect(pickSpy).not.toHaveBeenCalled()
   })
 })
 
