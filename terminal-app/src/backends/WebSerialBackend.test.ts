@@ -206,9 +206,9 @@ describe('WebSerialBackend', () => {
     expect(backend.isOpen).toBe(false)
   })
 
-  it('labels the device from getInfo() VID:PID', () => {
+  it('labels the device from getInfo() VID:PID, including VID:PID suffix', () => {
     const port = { getInfo: () => ({ usbVendorId: 0x0403, usbProductId: 0x6015 }) }
-    expect(new WebSerialBackend(port as unknown as SerialPort).label).toBe('FTDI FT-X')
+    expect(new WebSerialBackend(port as unknown as SerialPort).label).toBe('FTDI FT-X (0403:6015)')
   })
 
   it('falls back to a generic label when the port exposes no IDs', () => {

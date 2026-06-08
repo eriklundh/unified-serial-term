@@ -179,14 +179,14 @@ describe('WebUsbFtdiBackend label', () => {
   it('falls back to VID:PID table when device has no string descriptors', () => {
     const transport = new MockUsbTransport()
     const b = new WebUsbFtdiBackend(new FtdiUart(transport), { vendorId: FTDI_VID, productId: FTDI_PID })
-    expect(b.label).toBe('FTDI FT-X')
+    expect(b.label).toBe('FTDI FT-X (0403:6015)')
   })
 
   it('uses productName from USB descriptor when available', () => {
     const transport = new MockUsbTransport()
     const device = { vendorId: FTDI_VID, productId: FTDI_PID, productName: 'FT231X USB UART' }
     const b = new WebUsbFtdiBackend(new FtdiUart(transport), device)
-    expect(b.label).toBe('FT231X USB UART')
+    expect(b.label).toBe('FT231X USB UART (0403:6015)')
   })
 
   it('appends serialNumber to productName when both descriptors present', () => {
@@ -198,7 +198,7 @@ describe('WebUsbFtdiBackend label', () => {
       serialNumber: 'AB12CD34',
     }
     const b = new WebUsbFtdiBackend(new FtdiUart(transport), device)
-    expect(b.label).toBe('FT231X USB UART [AB12CD34]')
+    expect(b.label).toBe('FT231X USB UART [AB12CD34] (0403:6015)')
   })
 })
 

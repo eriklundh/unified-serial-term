@@ -717,7 +717,21 @@ async function connect() {
       b = found
     } else {
       if (!selectedFactory.value) return
-      b = await selectedFactory.value.pickDevice()
+      const factory = selectedFactory.value
+      b = await factory.pickDevice()
+      await b.open(settings.value)
+      // Refresh paired list so the newly granted device appears in the dropdown,
+      // then point connectionTarget at it so the (now disabled) dropdown shows
+      // the connected device name instead of the factory "new device" option.
+      try {
+        await refreshPaired()
+        const match = [...pairedBackends.entries()].find(([, v]) => v.label === b!.label)
+        if (match) connectionTarget.value = `paired:${match[0]}`
+      } catch { /* non-critical — connection is already established */ }
+      backend.value = b
+      isConnected.value = true
+      allowAutoReconnect()
+      return
     }
     await b.open(settings.value)
     backend.value = b
@@ -734,7 +748,7 @@ async function connect() {
       // cycle). Forget the grant so the entry disappears from the dropdown.
       await b?.forget?.()
       await refreshPaired()
-      statusMsg.value = 'Stale device removed. Select it again from the dropdown or use Request…'
+      statusMsg.value = 'Stale device removed. Select it again from the dropdown or connect a new device.'
     } else if (lower.includes('access denied') || lower.includes('access to the device')) {
       statusMsg.value = 'Access denied — device is claimed by the OS FTDI driver. Use Zadig (Windows) or unbind ftdi_sio (Linux). See Lab Setup guide.'
     } else {

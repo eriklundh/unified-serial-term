@@ -30,6 +30,10 @@ function hex(n: number): string {
   return '0x' + n.toString(16).padStart(4, '0')
 }
 
+function vidpid(vid: number, pid: number): string {
+  return `(${vid.toString(16).padStart(4, '0')}:${pid.toString(16).padStart(4, '0')})`
+}
+
 interface UsbDescriptors {
   productName?: string | null
   serialNumber?: string | null
@@ -41,16 +45,27 @@ interface UsbDescriptors {
  * Prefers USB string descriptors (productName, serialNumber) when available —
  * these come directly from the device and are more informative than table
  * lookups. Falls back to VID:PID table lookup, then to a generic label.
+ * VID:PID is always appended in parentheses when both are known.
  */
 export function deviceLabel(vendorId?: number, productId?: number, descriptors?: UsbDescriptors): string {
+  const suffix = vendorId !== undefined && productId !== undefined
+    ? ` ${vidpid(vendorId, productId)}`
+    : ''
+
   if (descriptors?.productName) {
-    const name = descriptors.productName
-    return descriptors.serialNumber ? `${name} [${descriptors.serialNumber}]` : name
+    const name = descriptors.serialNumber
+      ? `${descriptors.productName} [${descriptors.serialNumber}]`
+      : descriptors.productName
+    return `${name}${suffix}`
   }
+
   if (vendorId === undefined) return 'Serial device'
   const vendor = VENDORS[vendorId]
-  const vidStr = vendor?.alias ?? hex(vendorId)
-  if (productId === undefined) return vidStr
+  if (productId === undefined) return vendor?.alias ?? hex(vendorId)
+
   const dev = vendor?.devices?.[productId]
-  return dev ? `${vidStr} ${dev}` : `${vidStr} ${hex(productId)}`
+  if (dev) return `${vendor!.alias} ${dev}${suffix}`
+  if (vendor?.alias) return `${vendor.alias}${suffix}`
+  // Unknown vendor and device — VID:PID is the entire label.
+  return suffix.trim() || `${hex(vendorId)} ${hex(productId)}`
 }

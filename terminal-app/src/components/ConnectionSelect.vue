@@ -25,13 +25,13 @@
             {{ device.label }}
           </option>
         </optgroup>
-        <optgroup label="Request a device…">
+        <optgroup label="Connect a new device">
           <option
             v-for="factory in availableFactories"
             :key="factory.id"
             :value="factory.id"
           >
-            Request {{ factory.displayName }}…
+            {{ factory.displayName }}
           </option>
         </optgroup>
       </select>
