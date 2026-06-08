@@ -401,9 +401,13 @@ const selectedFactory = computed(() =>
 const pairedDevices = ref<PairedDevice[]>([])
 const pairedBackends = new Map<string, SerialBackend>()
 
+// Matches bare "(xxxx:xxxx)" labels produced when the USB vendor is unknown.
+const BARE_VIDPID = /^\([0-9a-f]{4}:[0-9a-f]{4}\)$/
+
 async function refreshPaired() {
   const next: PairedDevice[] = []
   pairedBackends.clear()
+  let serialCount = 0
   for (const factory of factories) {
     if (!factory.isAvailable()) continue
     let list: SerialBackend[]
@@ -415,7 +419,14 @@ async function refreshPaired() {
     list.forEach((b, i) => {
       const key = `${factory.id}#${i}`
       pairedBackends.set(key, b)
-      next.push({ key, label: b.label })
+      // Bare VID:PID Web Serial entries get a sequential "Serial N" prefix so
+      // users can tell them apart when multiple unrecognised devices are paired.
+      let label = b.label
+      if (BARE_VIDPID.test(label)) {
+        serialCount++
+        label = `Serial ${serialCount} ${label}`
+      }
+      next.push({ key, label })
     })
   }
   pairedDevices.value = next

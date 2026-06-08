@@ -98,7 +98,6 @@ select {
   border-radius: 2px;
   font-size: 0.875rem;
   cursor: pointer;
-  max-width: 16rem;
 }
 
 select:disabled {
