@@ -29,6 +29,22 @@ describe('deviceLabel — VID/PID table fallback', () => {
   it('names a Raspberry Pi Pico CDC UART (0x0009)', () => {
     expect(deviceLabel(0x2e8a, 0x0009)).toBe('Raspberry Pi Pico CDC UART (2e8a:0009)')
   })
+
+  it('names a Prolific PL2303 (most common USB-serial cable chip)', () => {
+    expect(deviceLabel(0x067b, 0x2303)).toBe('Prolific PL2303 (067b:2303)')
+  })
+
+  it('names a Silicon Labs CP210x', () => {
+    expect(deviceLabel(0x10c4, 0xea60)).toBe('Silicon Labs CP210x (10c4:ea60)')
+  })
+
+  it('names a QinHeng CH340 (common on Arduino clones)', () => {
+    expect(deviceLabel(0x1a86, 0x7523)).toBe('QinHeng CH340 (1a86:7523)')
+  })
+
+  it('names a QinHeng CH341 (serial mode)', () => {
+    expect(deviceLabel(0x1a86, 0x5523)).toBe('QinHeng CH341 (1a86:5523)')
+  })
 })
 
 describe('deviceLabel — USB string descriptors', () => {
