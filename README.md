@@ -49,9 +49,6 @@ sudo ftdi-unbind 0403:6015
 
 Restore with `ftdi-bind` when done.
 
-## Source code
+---
 
-This repository: `git@gitlab.compelcon.se:unified-serial-terminal/unified-serial-term.git`
-
-It may be mirrored to GitHub. For developer and contributor documentation,
-see [DEVELOPER.md](DEVELOPER.md).
+Developers and contributors: see [DEVELOPER.md](DEVELOPER.md).
