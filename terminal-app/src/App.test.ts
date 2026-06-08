@@ -1050,6 +1050,60 @@ describe('App.vue — splash (Phase 11D)', () => {
     expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(false)
     expect(localStorage.getItem('splash-dismissed')).toBe('true')
   })
+
+  it('splash hides when a device connects', async () => {
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(true)
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(false)
+  })
+
+  it('"Show splash screen" checkbox is checked by default', () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    const checkbox = wrapper.find<HTMLInputElement>('[data-testid="show-splash"]')
+    expect(checkbox.exists()).toBe(true)
+    expect(checkbox.element.checked).toBe(true)
+  })
+
+  it('"Show splash screen" checkbox is unchecked when splash-dismissed is set', () => {
+    localStorage.setItem('splash-dismissed', 'true')
+    const wrapper = mountWithFactories([new MockFactory()])
+    const checkbox = wrapper.find<HTMLInputElement>('[data-testid="show-splash"]')
+    expect(checkbox.element.checked).toBe(false)
+  })
+
+  it('dontShowAgain unchecks the "Show splash screen" setting', async () => {
+    const wrapper = mountWithFactories([new MockFactory()])
+    wrapper.findComponent({ name: 'Splash' }).vm.$emit('dontShowAgain')
+    await nextTick()
+    const checkbox = wrapper.find<HTMLInputElement>('[data-testid="show-splash"]')
+    expect(checkbox.element.checked).toBe(false)
+  })
+
+  it('enabling "Show splash screen" in settings shows splash when not connected', async () => {
+    localStorage.setItem('splash-dismissed', 'true')
+    const wrapper = mountWithFactories([new MockFactory()])
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(false)
+    await wrapper.find('[data-testid="show-splash"]').setValue(true)
+    await nextTick()
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(true)
+    expect(localStorage.getItem('splash-dismissed')).toBeNull()
+  })
+
+  it('enabling "Show splash screen" does not show splash while connected', async () => {
+    localStorage.setItem('splash-dismissed', 'true')
+    const factory = new MockFactory()
+    const wrapper = mountWithFactories([factory])
+    await flushPromises()
+    await wrapper.find('[data-testid="connect-btn"]').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-testid="show-splash"]').setValue(true)
+    await nextTick()
+    expect(wrapper.find('[data-testid="splash-overlay"]').exists()).toBe(false)
+  })
 })
 
 // ---------------------------------------------------------------------------

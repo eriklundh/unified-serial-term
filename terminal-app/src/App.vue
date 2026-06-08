@@ -255,6 +255,14 @@
               </button>
             </div>
           </div>
+          <label class="field field--check">
+            <input
+              v-model="splashEnabled"
+              type="checkbox"
+              data-testid="show-splash"
+            >
+            <span class="field__label">Show splash screen</span>
+          </label>
         </section>
 
         <section class="group">
@@ -590,15 +598,32 @@ async function forgetAllPaired() {
 }
 
 // --- Splash ------------------------------------------------------------------
-const splashVisible = ref(!localStorage.getItem('splash-dismissed'))
+// splashEnabled = persisted user preference; splashVisible = active display state.
+// They are separate so "Show splash screen" in settings can restore the splash
+// without fighting the "already connected" rule.
+const splashEnabled = ref(!localStorage.getItem('splash-dismissed'))
+const splashVisible = ref(splashEnabled.value) // isConnected is always false at startup
+
+// Keep localStorage in sync with the preference and show/hide the overlay.
+// This fires when the settings checkbox toggles OR when onDontShowAgain() is called.
+// NOTE: references isConnected in the callback body (not as the watch source), so
+// declaring it before isConnected is fine — the callback only executes after setup.
+watch(splashEnabled, (enabled) => {
+  if (enabled) {
+    localStorage.removeItem('splash-dismissed')
+    if (!isConnected.value) splashVisible.value = true
+  } else {
+    localStorage.setItem('splash-dismissed', 'true')
+    splashVisible.value = false
+  }
+})
 
 function hideSplash() {
   splashVisible.value = false
 }
 
 function onDontShowAgain() {
-  localStorage.setItem('splash-dismissed', 'true')
-  splashVisible.value = false
+  splashEnabled.value = false // watcher handles localStorage and splashVisible
 }
 
 // --- Search ------------------------------------------------------------------
@@ -700,6 +725,12 @@ async function makePersistent() {
 const backend = ref<SerialBackend | null>(null)
 const isConnected = ref(false)
 const isConnecting = ref(false)
+
+// Hide the splash immediately when a connection is established.
+// Must be after isConnected declaration (watch source is evaluated at call time).
+watch(isConnected, (connected) => {
+  if (connected) splashVisible.value = false
+})
 const statusMsg = ref<string | null>(null)
 const canConnect = computed(() => {
   if (isConnected.value || isConnecting.value) return false
