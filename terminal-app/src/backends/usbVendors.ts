@@ -24,6 +24,21 @@ const VENDORS: Record<number, VendorEntry> = {
   0x1a86: { alias: 'CH34x' },
   0x2341: { alias: 'Arduino' },
   0x2a03: { alias: 'Arduino' },
+  // Raspberry Pi (VID assigned by USB-IF; PIDs from
+  // https://github.com/raspberrypi/usb-pid)
+  0x2e8a: {
+    alias: 'Raspberry Pi',
+    devices: {
+      0x0003: 'RP2040 Boot',
+      0x0004: 'PicoProbe',
+      0x0005: 'Pico MicroPython',
+      0x0009: 'Pico CDC UART',
+      0x000a: 'Pico CDC UART',
+      0x000b: 'Pico CircuitPython',
+      0x000c: 'Debug Probe',
+      0x000f: 'RP2350 Boot',
+    },
+  },
 }
 
 function hex(n: number): string {

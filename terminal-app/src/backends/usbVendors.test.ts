@@ -21,6 +21,14 @@ describe('deviceLabel — VID/PID table fallback', () => {
   it('returns a generic label when there is no VID', () => {
     expect(deviceLabel(undefined, undefined)).toBe('Serial device')
   })
+
+  it('names a Raspberry Pi Pico CDC UART (0x000a)', () => {
+    expect(deviceLabel(0x2e8a, 0x000a)).toBe('Raspberry Pi Pico CDC UART (2e8a:000a)')
+  })
+
+  it('names a Raspberry Pi Pico CDC UART (0x0009)', () => {
+    expect(deviceLabel(0x2e8a, 0x0009)).toBe('Raspberry Pi Pico CDC UART (2e8a:0009)')
+  })
 })
 
 describe('deviceLabel — USB string descriptors', () => {

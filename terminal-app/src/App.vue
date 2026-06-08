@@ -405,9 +405,10 @@ const pairedBackends = new Map<string, SerialBackend>()
 const BARE_VIDPID = /^\([0-9a-f]{4}:[0-9a-f]{4}\)$/
 
 async function refreshPaired() {
-  const next: PairedDevice[] = []
   pairedBackends.clear()
-  let serialCount = 0
+
+  // First pass: collect raw labels so we can detect duplicates.
+  const raw: Array<{ key: string; rawLabel: string }> = []
   for (const factory of factories) {
     if (!factory.isAvailable()) continue
     let list: SerialBackend[]
@@ -419,16 +420,28 @@ async function refreshPaired() {
     list.forEach((b, i) => {
       const key = `${factory.id}#${i}`
       pairedBackends.set(key, b)
-      // Bare VID:PID Web Serial entries get a sequential "Serial N" prefix so
-      // users can tell them apart when multiple unrecognised devices are paired.
-      let label = b.label
-      if (BARE_VIDPID.test(label)) {
-        serialCount++
-        label = `Serial ${serialCount} ${label}`
-      }
-      next.push({ key, label })
+      raw.push({ key, rawLabel: b.label })
     })
   }
+
+  // Count occurrences of each raw label.
+  const counts = new Map<string, number>()
+  for (const { rawLabel } of raw) counts.set(rawLabel, (counts.get(rawLabel) ?? 0) + 1)
+
+  // Second pass: build display labels.
+  // Bare "(xxxx:xxxx)" → prefix "Serial"; any label with duplicates → append " #N".
+  const indices = new Map<string, number>()
+  const next: PairedDevice[] = []
+  for (const { key, rawLabel } of raw) {
+    let label = BARE_VIDPID.test(rawLabel) ? `Serial ${rawLabel}` : rawLabel
+    if ((counts.get(rawLabel) ?? 0) > 1) {
+      const n = (indices.get(rawLabel) ?? 0) + 1
+      indices.set(rawLabel, n)
+      label += ` #${n}`
+    }
+    next.push({ key, label })
+  }
+
   pairedDevices.value = next
 }
 
