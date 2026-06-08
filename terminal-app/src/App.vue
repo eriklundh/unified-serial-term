@@ -537,19 +537,6 @@ function hotkeyOff() {
 }
 
 // --- Forget paired devices ---------------------------------------------------
-// w3c-web-usb types are incomplete (forgetDevice missing); Web Serial types
-// are not in the installed type defs at all. Use a local structural cast.
-interface _PortWithForget { forget(): Promise<void> }
-interface _SerialWithPorts { getPorts(): Promise<_PortWithForget[]> }
-interface _UsbWithForget<D> {
-  getDevices(): Promise<D[]>
-  forgetDevice(device: D): Promise<void>
-}
-type _NavForget = {
-  serial?: _SerialWithPorts
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  usb?: _UsbWithForget<any>
-}
 
 const forgetting = ref(false)
 
@@ -557,16 +544,22 @@ async function forgetAllPaired() {
   if (forgetting.value) return
   forgetting.value = true
   try {
-    const nav = navigator as unknown as _NavForget
-    if (nav.serial) {
-      const ports = await nav.serial.getPorts()
-      await Promise.all(ports.map((p) => p.forget()))
-    }
-    if (nav.usb) {
-      const devices = await nav.usb.getDevices()
-      await Promise.all(devices.map((d) => nav.usb!.forgetDevice(d)))
+    // Use each factory's listPaired() to get backend wrappers, then call
+    // forget() on each. This goes through the same abstraction as the rest of
+    // the app and lets each backend handle its own revocation correctly
+    // (WebSerial: port.forget(), WebUSB: usb.forgetDevice(device)).
+    for (const factory of factories) {
+      if (!factory.isAvailable()) continue
+      try {
+        const backends = await factory.listPaired()
+        await Promise.all(backends.map((b) => b.forget?.()))
+      } catch {
+        // A factory that can't enumerate contributes nothing; keep going.
+      }
     }
     await refreshPaired()
+  } catch (err) {
+    statusMsg.value = `Forget failed: ${err instanceof Error ? err.message : String(err)}`
   } finally {
     forgetting.value = false
   }

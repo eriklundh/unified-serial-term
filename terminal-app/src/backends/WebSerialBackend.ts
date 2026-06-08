@@ -177,6 +177,22 @@ export class WebSerialFactory implements SerialBackendFactory {
   async listPaired(): Promise<SerialBackend[]> {
     const serial = (navigator as Navigator & { serial: WsSerial }).serial
     const ports = await serial.getPorts()
-    return ports.map((port) => new WebSerialBackend(port))
+    const live: WsSerialPort[] = []
+    for (const port of ports) {
+      try {
+        await port.open({ baudRate: 9600 })
+        await port.close()
+        live.push(port)
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'InvalidStateError') {
+          // Port is already open by us — device is present, include it.
+          live.push(port)
+        } else {
+          // NetworkError or similar: device is no longer attached; revoke grant.
+          await port.forget?.()
+        }
+      }
+    }
+    return live.map((port) => new WebSerialBackend(port))
   }
 }

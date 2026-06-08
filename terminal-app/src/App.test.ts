@@ -1070,40 +1070,50 @@ describe('App.vue — forget paired devices (Phase 11E)', () => {
     expect(wrapper.find('[data-testid="forget-btn"]').exists()).toBe(true)
   })
 
-  it('clicking Forget calls forget() on each paired Web Serial port', async () => {
-    const mockForget = vi.fn().mockResolvedValue(undefined)
-    vi.stubGlobal('navigator', {
-      ...navigator,
-      serial: { getPorts: vi.fn().mockResolvedValue([{ forget: mockForget }]) },
-      usb: { getDevices: vi.fn().mockResolvedValue([]), forgetDevice: vi.fn() },
-    })
+  it('clicking Forget calls forget() on each backend returned by listPaired', async () => {
+    const backend = new MockSerialBackend()
+    const forgotSpy = vi.spyOn(backend, 'forget')
+    const factory: SerialBackendFactory = {
+      id: 'web-serial' as BackendId,
+      displayName: 'Mock',
+      isAvailable: () => true,
+      pickDevice: async () => backend,
+      listPaired: vi.fn().mockResolvedValue([backend]),
+    }
 
-    const wrapper = mountWithFactories([new MockFactory()])
+    const wrapper = mountWithFactories([factory])
     await wrapper.find('[data-testid="settings-btn"]').trigger('click')
     await nextTick()
     await wrapper.find('[data-testid="forget-btn"]').trigger('click')
     await flushPromises()
 
-    expect(mockForget).toHaveBeenCalledOnce()
+    expect(forgotSpy).toHaveBeenCalledOnce()
   })
 
-  it('clicking Forget calls forgetDevice() on each paired WebUSB device', async () => {
-    const fakeDevice = { vendorId: 0x0403 }
-    const mockForgetDevice = vi.fn().mockResolvedValue(undefined)
-    vi.stubGlobal('navigator', {
-      ...navigator,
-      serial: { getPorts: vi.fn().mockResolvedValue([]) },
-      usb: { getDevices: vi.fn().mockResolvedValue([fakeDevice]), forgetDevice: mockForgetDevice },
+  it('clicking Forget calls forget() on backends from all available factories', async () => {
+    const backend1 = new MockSerialBackend()
+    const backend2 = new MockSerialBackend()
+    const forgotSpy1 = vi.spyOn(backend1, 'forget')
+    const forgotSpy2 = vi.spyOn(backend2, 'forget')
+    const makeFactory = (id: BackendId, b: MockSerialBackend): SerialBackendFactory => ({
+      id,
+      displayName: id,
+      isAvailable: () => true,
+      pickDevice: async () => b,
+      listPaired: vi.fn().mockResolvedValue([b]),
     })
 
-    const wrapper = mountWithFactories([new MockFactory()])
+    const wrapper = mountWithFactories([
+      makeFactory('web-serial', backend1),
+      makeFactory('webusb-ftdi', backend2),
+    ])
     await wrapper.find('[data-testid="settings-btn"]').trigger('click')
     await nextTick()
     await wrapper.find('[data-testid="forget-btn"]').trigger('click')
     await flushPromises()
 
-    expect(mockForgetDevice).toHaveBeenCalledOnce()
-    expect(mockForgetDevice).toHaveBeenCalledWith(fakeDevice)
+    expect(forgotSpy1).toHaveBeenCalledOnce()
+    expect(forgotSpy2).toHaveBeenCalledOnce()
   })
 
   it('clicking Forget refreshes the paired dropdown', async () => {

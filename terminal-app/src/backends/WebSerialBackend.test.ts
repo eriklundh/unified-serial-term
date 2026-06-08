@@ -118,6 +118,69 @@ describe('WebSerialFactory', () => {
     expect(backends[0]).toBeInstanceOf(WebSerialBackend)
     expect(backends[1]).toBeInstanceOf(WebSerialBackend)
   })
+
+  describe('listPaired() dead-port pruning', () => {
+    it('probes each port with a transient open/close and includes live ports', async () => {
+      const port = new FakeSerialPort()
+      vi.stubGlobal('navigator', {
+        ...navigator,
+        serial: { requestPort: vi.fn(), getPorts: vi.fn().mockResolvedValue([port]) },
+      })
+
+      const backends = await new WebSerialFactory().listPaired()
+
+      expect(backends).toHaveLength(1)
+      expect(port.openCalled).toBe(true)
+      expect(port.closeCalled).toBe(true)
+    })
+
+    it('includes a port that is already open (InvalidStateError) without forgetting it', async () => {
+      const port = new FakeSerialPort()
+      port.open = vi.fn().mockRejectedValue(new DOMException('already open', 'InvalidStateError'))
+      const forget = vi.fn()
+      port.forget = forget
+      vi.stubGlobal('navigator', {
+        ...navigator,
+        serial: { requestPort: vi.fn(), getPorts: vi.fn().mockResolvedValue([port]) },
+      })
+
+      const backends = await new WebSerialFactory().listPaired()
+
+      expect(backends).toHaveLength(1)
+      expect(forget).not.toHaveBeenCalled()
+    })
+
+    it('excludes and forgets a port that throws NetworkError (device unplugged)', async () => {
+      const port = new FakeSerialPort()
+      port.open = vi.fn().mockRejectedValue(new DOMException('device gone', 'NetworkError'))
+      const forget = vi.fn().mockResolvedValue(undefined)
+      port.forget = forget
+      vi.stubGlobal('navigator', {
+        ...navigator,
+        serial: { requestPort: vi.fn(), getPorts: vi.fn().mockResolvedValue([port]) },
+      })
+
+      const backends = await new WebSerialFactory().listPaired()
+
+      expect(backends).toHaveLength(0)
+      expect(forget).toHaveBeenCalledOnce()
+    })
+
+    it('returns live ports even when another port in the list is dead', async () => {
+      const live = new FakeSerialPort()
+      const dead = new FakeSerialPort()
+      dead.open = vi.fn().mockRejectedValue(new DOMException('gone', 'NetworkError'))
+      dead.forget = vi.fn().mockResolvedValue(undefined)
+      vi.stubGlobal('navigator', {
+        ...navigator,
+        serial: { requestPort: vi.fn(), getPorts: vi.fn().mockResolvedValue([live, dead]) },
+      })
+
+      const backends = await new WebSerialFactory().listPaired()
+
+      expect(backends).toHaveLength(1)
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------
