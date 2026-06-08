@@ -3,6 +3,88 @@
 This file is Claude Code's project memory for the terminal-app repo.
 Read it at the start of every session.
 
+---
+
+## Current state — last updated 2026-06-08
+
+### Branch / version
+- **Branch:** `main` (all phases merged, working directly on main for post-phase-11 polish)
+- **Version:** v1.3.0 (`package.json`)
+- **Tests:** 309 unit tests (Vitest), all green. Build clean (`npm run build`).
+
+### What shipped since Phase 11 merged
+All committed and pushed to `origin/main`:
+
+| Commit | Feature |
+|--------|---------|
+| `10487aa` | WebUSB reads USB string descriptors (`productName`, `serialNumber`) for richer device labels |
+| `2bd9ae0` | Dead Web Serial port pruning in `listPaired()`; `forgetAllPaired` fixed to use factory abstraction |
+| `758cb8e` | Five dropdown UX improvements: VID:PID in all labels, connected-device shown while connected, "Connect a new device" phrasing, immediate connect after Chrome picker |
+| `9dc8cd4` | Auto-width connection dropdown (removed `max-width` cap); bare VID:PID entries labelled "Serial (xxxx:xxxx)" |
+| `c4b778a` | Duplicate device numbering: any label appearing >1 time gets `#1`, `#2` suffix; Raspberry Pi VID/PIDs added |
+| `12c8c1f` | USB vendor table expanded: Prolific PL2303, Silicon Labs CP210x, QinHeng CH340/CH341 (source: usb-ids.gowdy.us) |
+| `130f547` | `docs/USB-IDS.md` — findings on three VID:PID data sources + automation plan for `generate:usb-vendors` build step |
+| `c220222` | Splash hides on connect (watch on `isConnected`); "Show splash screen" checkbox in Settings > Appearance |
+
+### Key files touched this session
+- `src/backends/usbVendors.ts` — vendor table, `deviceLabel()`
+- `src/backends/WebSerialBackend.ts` — `listPaired()` dead-port pruning
+- `src/backends/WebUsbFtdiBackend.ts` — USB string descriptor labels
+- `src/App.vue` — `refreshPaired()` duplicate numbering; `forgetAllPaired()`; splash state machine; "Show splash screen" setting
+- `src/components/ConnectionSelect.vue` — auto-width select; "Connect a new device" phrasing
+- `README.md` / `DEVELOPER.md` — split from single README
+
+---
+
+## Outstanding issues (as of 2026-06-08)
+
+### 1. Splash screen content — PENDING user input
+The user wants to revise the splash card copy and has not yet provided the
+text. Current content (`Splash.vue`) is the placeholder written during Phase 11:
+- Title: "Unified Serial Console"
+- Tagline: "Browser-based serial terminal · WebUSB + Web Serial"
+- Hint: "Type or connect a device to begin."
+- Source link: github.com/eriklundh/unified-serial-term
+
+**Action when user provides text:** update `src/components/Splash.vue` template,
+add/update unit tests in `src/components/Splash.test.ts`.
+
+### 2. USB vendor table — manual for now, automation planned
+`src/backends/usbVendors.ts` is hand-maintained. `docs/USB-IDS.md` documents
+a full plan for a `npm run generate:usb-vendors` build step with three parsers:
+- **usb.ids** (simple, highest priority for PIDs) — straightforward line parser
+- **Raspberry Pi usb-pid Readme.md** — Markdown table parser
+- **USB-IF PDF** (usb.org/developers) — requires Playwright headless download +
+  `pdf-parse`; the PDF itself returns HTTP 403 to direct curl/fetch
+
+When to update the table manually in the meantime: when a student reports
+a bare `(xxxx:xxxx)` label. Look up in usb-ids.gowdy.us first.
+
+### 3. E2E test coverage for post-phase-11 features
+The following features have unit tests but **no Playwright e2e tests**:
+- Dead port pruning in `listPaired()`
+- Duplicate device `#N` numbering in dropdown
+- "Show splash screen" setting checkbox
+- Splash hides on connect
+
+The Playwright fixtures already pre-dismiss the splash via `localStorage`
+(`splash-dismissed=true` injected in `addInitScript`). A test for
+"splash visible on first load" would need a separate fixture that omits this.
+
+### 4. Real-hardware verification pending
+User was going to test on real hardware (FTDI + Pico). Not confirmed yet:
+- WebUSB string descriptors (`productName`, `serialNumber`) from a real FT231XS
+- Dead port pruning behaviour when a Pico is unplugged
+- `forgetAllPaired()` now using factory abstraction
+
+### 5. Deployment
+Phase 8 lab-server deployment was not completed in prior sessions (nginx not
+fully configured, `/var/www/` path not set up). See `docs/DEPLOYMENT.md` and
+`docs/LAB-SERVER-SETUP.md`. The app is built and deployable; it just needs
+the server-side config applied.
+
+---
+
 ## What this repo is
 
 A small, single-page browser terminal that connects to a serial device
