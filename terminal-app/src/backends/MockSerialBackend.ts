@@ -43,6 +43,10 @@ export class MockSerialBackend implements SerialBackend {
     this.lastReconfigureOptions = options
   }
 
+  async forget(): Promise<void> {
+    // no-op stub; spy on this in tests that need to verify revocation
+  }
+
   simulateReceive(data: Uint8Array): void {
     this._readController?.enqueue(data)
   }

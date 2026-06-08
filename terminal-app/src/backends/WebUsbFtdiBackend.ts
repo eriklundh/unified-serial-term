@@ -42,10 +42,13 @@ export class WebUsbFtdiBackend implements SerialBackend {
     return this._ftdi.writable
   }
 
-  constructor(ftdi: FtdiUart, device: WsUsbDevice = { vendorId: FTDI_VID, productId: FTDI_PID }, productId: number = FTDI_PID) {
+  constructor(ftdi: FtdiUart, device: WsUsbDevice = { vendorId: FTDI_VID, productId: FTDI_PID }) {
     this._ftdi = ftdi
     this._device = device
-    this.label = deviceLabel(FTDI_VID, productId)
+    this.label = deviceLabel(device.vendorId, device.productId, {
+      productName: device.productName,
+      serialNumber: device.serialNumber,
+    })
   }
 
   get isOpen(): boolean {
@@ -84,6 +87,11 @@ interface WsUsbDeviceFilter {
 interface WsUsbDevice {
   readonly vendorId: number
   readonly productId: number
+  // USB string descriptors — available from USBDevice without any transfer.
+  // w3c-web-usb types these as string | null (absent = null, not undefined).
+  readonly manufacturerName?: string | null
+  readonly productName?: string | null
+  readonly serialNumber?: string | null
 }
 
 interface WsUsb {
@@ -110,7 +118,7 @@ export class WebUsbFtdiFactory implements SerialBackendFactory {
       filters: [{ vendorId: FTDI_VID, productId: FTDI_PID }],
     })
     const transport = new WebUsbTransport(device as unknown as USBDevice)
-    return new WebUsbFtdiBackend(new FtdiUart(transport), device, device.productId)
+    return new WebUsbFtdiBackend(new FtdiUart(transport), device)
   }
 
   async listPaired(): Promise<SerialBackend[]> {
@@ -120,7 +128,7 @@ export class WebUsbFtdiFactory implements SerialBackendFactory {
       .filter((d) => d.vendorId === FTDI_VID)
       .map((device) => {
         const transport = new WebUsbTransport(device as unknown as USBDevice)
-        return new WebUsbFtdiBackend(new FtdiUart(transport), device, device.productId)
+        return new WebUsbFtdiBackend(new FtdiUart(transport), device)
       })
   }
 }

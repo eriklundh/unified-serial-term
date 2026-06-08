@@ -30,11 +30,23 @@ function hex(n: number): string {
   return '0x' + n.toString(16).padStart(4, '0')
 }
 
+interface UsbDescriptors {
+  productName?: string | null
+  serialNumber?: string | null
+}
+
 /**
- * A human-readable label for a USB serial device from its VID/PID. Either may be
- * undefined (e.g. a non-USB CDC port exposes no IDs).
+ * A human-readable label for a USB serial device.
+ *
+ * Prefers USB string descriptors (productName, serialNumber) when available —
+ * these come directly from the device and are more informative than table
+ * lookups. Falls back to VID:PID table lookup, then to a generic label.
  */
-export function deviceLabel(vendorId?: number, productId?: number): string {
+export function deviceLabel(vendorId?: number, productId?: number, descriptors?: UsbDescriptors): string {
+  if (descriptors?.productName) {
+    const name = descriptors.productName
+    return descriptors.serialNumber ? `${name} [${descriptors.serialNumber}]` : name
+  }
   if (vendorId === undefined) return 'Serial device'
   const vendor = VENDORS[vendorId]
   const vidStr = vendor?.alias ?? hex(vendorId)
