@@ -11,6 +11,8 @@ Wiring this suite verifies (the test-rig solder connections):
     TX  <-> RX          data loopback
     RTS --> CTS + DCD   RTS fans out to two inputs
     DTR --> DSR + RI    DTR fans out to two inputs
+
+Author Erik Lundh, The Joy of Engineering, erik.lundh@ingenjorsgladje.se
 """
 from __future__ import annotations
 

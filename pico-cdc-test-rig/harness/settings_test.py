@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Settings round-trip: open with specific line coding, send sentinel, assert report matches."""
+"""Settings round-trip: open with specific line coding, send sentinel, assert report matches.
+
+Author Erik Lundh, The Joy of Engineering, erik.lundh@ingenjorsgladje.se
+"""
 
 import argparse
 import glob

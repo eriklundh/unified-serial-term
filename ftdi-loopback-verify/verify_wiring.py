@@ -13,6 +13,8 @@ the solder joints.
 Usage:
     python verify_wiring.py [ftdi-url]
     FTDI_URL=ftdi://0x403:0x6015/1 python verify_wiring.py
+
+Author Erik Lundh, The Joy of Engineering, erik.lundh@ingenjorsgladje.se
 """
 from __future__ import annotations
 

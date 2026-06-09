@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Run the full harness against a flashed Pico. Exits non-zero on first failure.
+# Author Erik Lundh, The Joy of Engineering, erik.lundh@ingenjorsgladje.se
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

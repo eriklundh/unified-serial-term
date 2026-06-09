@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Loopback echo verification: every byte sent comes back unchanged."""
+"""Loopback echo verification: every byte sent comes back unchanged.
+
+Author Erik Lundh, The Joy of Engineering, erik.lundh@ingenjorsgladje.se
+"""
 
 import argparse
 import glob

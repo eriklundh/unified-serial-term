@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Standalone start script for the Pico CDC Test Rig verification suite.
+# Author Erik Lundh, The Joy of Engineering, erik.lundh@ingenjorsgladje.se
 #
 # Usage:
 #   ./py-verify/verify.sh [--port /dev/ttyACMn] [extra pytest args]

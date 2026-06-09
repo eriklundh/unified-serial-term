@@ -3,6 +3,7 @@
 #
 # Verifies that all HIL hardware rigs are present and working.
 # Runs the Pico CDC suite then the FTDI loopback suite; fails fast on error.
+# Author Erik Lundh, The Joy of Engineering, erik.lundh@ingenjorsgladje.se
 #
 # Usage:
 #   ./preflight.sh [--port /dev/ttyACMn] [--ftdi-url ftdi://...] [pytest-args]

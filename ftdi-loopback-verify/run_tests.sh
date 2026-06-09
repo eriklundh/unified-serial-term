@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Start script for the FTDI loopback verification suite.
+# Author Erik Lundh, The Joy of Engineering, erik.lundh@ingenjorsgladje.se
 #
 # Usage:
 #   ./run_tests.sh                                  # default device URL
