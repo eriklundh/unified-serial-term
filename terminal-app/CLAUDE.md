@@ -38,16 +38,18 @@ All committed and pushed to `origin/main`:
 
 ## Outstanding issues (as of 2026-06-08)
 
-### 1. Splash screen content — PENDING user input
-The user wants to revise the splash card copy and has not yet provided the
-text. Current content (`Splash.vue`) is the placeholder written during Phase 11:
-- Title: "Unified Serial Console"
-- Tagline: "Browser-based serial terminal · WebUSB + Web Serial"
-- Hint: "Type or connect a device to begin."
-- Source link: github.com/eriklundh/unified-serial-term
+### 1. Splash screen content — draft shipped 2026-06-09, awaiting user sign-off
+The splash now carries The Joy of Engineering silhouette (Erik's brand mark,
+a hand-standing man) as a traced outer contour in brand blue `#0083BE` —
+asset at `src/assets/joy-of-engineering.svg`, stroked with `currentColor`,
+inlined into `Splash.vue` via `?raw` + `v-html`. The copy was expanded
+(fuller tagline, friendlier hint, "Erik Lundh · The Joy of Engineering"
+credit line) as a Claude draft; Erik has not yet confirmed the wording.
 
-**Action when user provides text:** update `src/components/Splash.vue` template,
-add/update unit tests in `src/components/Splash.test.ts`.
+**Action if user tweaks text:** update `src/components/Splash.vue` template
+and the assertions in `src/components/Splash.test.ts`. The contour was
+derived by unioning the seven filled paths of the original CorelDRAW
+business-card SVG and keeping only the outer boundary.
 
 ### 2. USB vendor table — manual for now, automation planned
 `src/backends/usbVendors.ts` is hand-maintained. `docs/USB-IDS.md` documents
