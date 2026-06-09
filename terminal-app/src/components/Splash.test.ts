@@ -23,4 +23,23 @@ describe('Splash.vue', () => {
     await wrapper.find('[data-testid="dont-show-again"]').setValue(true)
     expect(wrapper.emitted('dontShowAgain')).toBeTruthy()
   })
+
+  it('renders The Joy of Engineering silhouette as an inline SVG', () => {
+    const wrapper = mount(Splash)
+    const logo = wrapper.find('[data-testid="splash-logo"]')
+    expect(logo.exists()).toBe(true)
+    expect(logo.find('svg').exists()).toBe(true)
+  })
+
+  it('credits the author', () => {
+    const wrapper = mount(Splash)
+    expect(wrapper.text()).toContain('Erik Lundh')
+    expect(wrapper.text()).toContain('The Joy of Engineering')
+  })
+
+  it('mentions both backends in the tagline', () => {
+    const wrapper = mount(Splash)
+    expect(wrapper.text()).toContain('WebUSB')
+    expect(wrapper.text()).toContain('Web Serial')
+  })
 })

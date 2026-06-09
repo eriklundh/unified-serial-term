@@ -6,14 +6,25 @@
     role="complementary"
   >
     <div class="splash__card">
+      <div
+        class="splash__logo"
+        data-testid="splash-logo"
+        aria-hidden="true"
+        v-html="logoSvg"
+      />
       <h1 class="splash__title">
         Unified Serial Console
       </h1>
       <p class="splash__tagline">
-        Browser-based serial terminal · WebUSB + Web Serial
+        A serial terminal that lives in your browser. Talk to FTDI and CDC
+        devices over WebUSB or Web Serial — nothing to install, no driver
+        juggling.
       </p>
       <p class="splash__hint">
-        Type or connect a device to begin.
+        Pick a device from the connection dropdown above, or just start typing.
+      </p>
+      <p class="splash__credit">
+        Erik Lundh · The Joy of Engineering
       </p>
       <label class="splash__dismiss">
         <input
@@ -36,6 +47,8 @@
 </template>
 
 <script setup lang="ts">
+import logoSvg from '../assets/joy-of-engineering.svg?raw'
+
 const emit = defineEmits<{
   dontShowAgain: []
 }>()
@@ -67,6 +80,18 @@ const emit = defineEmits<{
   text-align: center;
 }
 
+.splash__logo {
+  /* brand blue from The Joy of Engineering artwork; the SVG strokes with currentColor */
+  color: #0083be;
+  align-self: center;
+}
+
+.splash__logo :deep(svg) {
+  display: block;
+  height: 7.5rem;
+  width: auto;
+}
+
 .splash__title {
   font-size: 1.4rem;
   font-weight: 700;
@@ -93,6 +118,11 @@ const emit = defineEmits<{
   font-size: 0.8rem;
   color: var(--muted, #9a9a9a);
   cursor: pointer;
+}
+
+.splash__credit {
+  font-size: 0.8rem;
+  color: var(--muted, #9a9a9a);
 }
 
 .splash__source {
