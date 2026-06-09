@@ -42,4 +42,13 @@ describe('Splash.vue', () => {
     expect(wrapper.text()).toContain('WebUSB')
     expect(wrapper.text()).toContain('Web Serial')
   })
+
+  it('links to the ftdi-unbind companion project and explains it', () => {
+    const wrapper = mount(Splash)
+    const link = wrapper.find('[data-testid="splash-ftdi-unbind-link"]')
+    expect(link.exists()).toBe(true)
+    expect(link.attributes('href')).toContain('ftdi-unbind')
+    expect(wrapper.text()).toContain('ftdi-unbind')
+    expect(wrapper.text()).toMatch(/serial driver/i)
+  })
 })

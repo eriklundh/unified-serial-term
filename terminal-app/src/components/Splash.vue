@@ -23,6 +23,16 @@
       <p class="splash__hint">
         Pick a device from the connection dropdown above, or just start typing.
       </p>
+      <p class="splash__companion">
+        WebUSB needs the FTDI chip free of the OS serial driver. The companion
+        <a
+          href="https://github.com/eriklundh/ftdi-unbind"
+          target="_blank"
+          rel="noopener noreferrer"
+          data-testid="splash-ftdi-unbind-link"
+        >ftdi-unbind</a>
+        toolkit releases the driver and restores it when you're done.
+      </p>
       <p class="splash__credit">
         Erik Lundh · The Joy of Engineering
       </p>
@@ -118,6 +128,20 @@ const emit = defineEmits<{
   font-size: 0.8rem;
   color: var(--muted, #9a9a9a);
   cursor: pointer;
+}
+
+.splash__companion {
+  font-size: 0.8rem;
+  color: var(--muted, #9a9a9a);
+}
+
+.splash__companion a {
+  color: var(--accent, #3b82f6);
+  text-decoration: none;
+}
+
+.splash__companion a:hover {
+  text-decoration: underline;
 }
 
 .splash__credit {
