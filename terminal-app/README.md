@@ -148,3 +148,9 @@ rsync deploy workflow.
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+**Exception — The Joy of Engineering logo.** The hand-standing-man
+silhouette (`src/assets/joy-of-engineering.svg`, shown on the splash
+screen) is the personal mark of Erik Lundh, The Joy of Engineering.
+All rights reserved; it is **not** covered by the MIT license and may
+not be reused as a logo or mark in other projects.
