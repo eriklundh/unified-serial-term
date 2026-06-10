@@ -240,7 +240,7 @@ preserving if you change it:
 - **Two targets, tag-gated production.** `fetch-build-deploy.sh [target] [ref]`:
   - `serial-lab` (default) — **staging**; deploys `origin/main` continuously
     to `/var/www/serial-terminal`.
-  - `production` — the **students' URL**; deploys only an explicit **release
+  - `production` — the **production server URL**; deploys only an explicit **release
     tag** (no default ref) to `/var/www/serial-terminal-production`. That is
     how a *verified* build is promoted — immutably and auditably.
 - **Safe dry run.** `DRY_RUN=1` does everything up to (but not including)
@@ -291,7 +291,7 @@ The auto-build is skipped entirely when `../ftdi-driver` isn't present
 - Targets / sites (hostnames come from the mirror's `deploy.env`:
   `DEPLOY_SITE_HOST`, `DEPLOY_PROD_SITE_HOST`):
   - `serial-lab` (staging) → `/var/www/serial-terminal`, `https://<deploy-host>/`
-  - `production` (students' URL) → `/var/www/serial-terminal-production`,
+  - `production` (the production server URL) → `/var/www/serial-terminal-production`,
     `https://<prod-host>/`
 
 Trigger a **staging** deploy after pushing to `main`:

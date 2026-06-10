@@ -50,7 +50,7 @@
 #
 # Usage:
 #   fetch-build-deploy.sh [target] [ref]
-#     target  serial-lab (staging, default) | production (students' URL)
+#     target  serial-lab (staging, default) | production (the production server URL)
 #     ref     git ref to deploy. Defaults to origin/main for serial-lab;
 #             REQUIRED for production — a verified release tag, e.g.:
 #               fetch-build-deploy.sh production v1.0.0
@@ -88,7 +88,7 @@ CI_MODE="${CI_MODE:-}"
 # Single source of truth for where each public site is served from, plus which
 # git ref each deploys by default:
 #   serial-lab  = staging; tracks origin/main continuously.
-#   production  = students' URL; verified RELEASE TAGS only (no default ref).
+#   production  = the production server URL; verified RELEASE TAGS only (no default ref).
 TARGET="${1:-serial-lab}"
 # Optional 2nd arg (or DEPLOY_REF): the git ref to deploy — a tag for releases,
 # or a branch/commit. Falls back to the target's default below.
@@ -100,7 +100,7 @@ case "$TARGET" in
     WEBROOT="${DEPLOY_WEBROOT:-/var/www/serial-terminal}"
     DEFAULT_REF="origin/main"
     ;;
-  production)                       # students' production URL — release tags only
+  production)                       # production server URL — release tags only
     SITE_HOST="${DEPLOY_PROD_SITE_HOST:-<prod-host>}"
     WEBROOT="${DEPLOY_PROD_WEBROOT:-/var/www/serial-terminal-production}"
     DEFAULT_REF=""                  # force an explicit release ref (a tag)

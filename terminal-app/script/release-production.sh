@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # release-production.sh — ███  THE BIG RED BUTTON  ███
-# Deploy a verified version of terminal-app to the students' production URL.
+# Deploy a verified version of terminal-app to the production server URL.
 # Author Erik Lundh, The Joy of Engineering, erik.lundh@ingenjorsgladje.se
 #
 # What it does:

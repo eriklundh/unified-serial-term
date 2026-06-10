@@ -148,7 +148,7 @@ terminal-app:deploy:staging:
 
 # ──────────────────────────────────────────────────────────────────────────
 # terminal-app:deploy:production — publish a verified release tag to the
-# students' URL.
+# production server URL.
 #
 # Triggered ONLY by pushing a `release-*` tag (created by
 # terminal-app/script/release-production.sh — the big red button). A tag
