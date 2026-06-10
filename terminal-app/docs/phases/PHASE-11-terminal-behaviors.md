@@ -2,8 +2,8 @@
 
 The terminal-side half of the zaxbux-informed UI/UX uplift (Phase 10 covers the
 toolbar/connection chrome). Same stack rule: replicate zaxbux features in plain
-CSS + Vue, no Vuetify/Pinia/router. Reference source:
-`/home/eriklundh/zaxbux/web-serial-console`.
+CSS + Vue, no Vuetify/Pinia/router. Reference source: a local clone of
+[zaxbux/web-serial-console](https://github.com/zaxbux/web-serial-console).
 
 Ships as a **minor** release once 11A–11D land.
 
@@ -42,8 +42,10 @@ Ships as a **minor** release once 11A–11D land.
     read-pump chunk (received).
 - `src/settings/useBell.ts` (new) — `bell`, `bellStyle` persisted via the
   established localStorage-composable pattern (cf. `useAppearance.ts`).
-- `src/utils/bell.ts` (new) — Web Audio square-wave `beep(vol, freq, dur)`
-  ported from zaxbux `utils/bell.ts`. Pure-ish; lazy `AudioContext`.
+- `src/utils/bell.ts` (new) — Web Audio square-wave `beep(vol, freq, dur)`;
+  same approach as zaxbux's `utils/bell.ts` (feature parity) but written
+  independently: per-call `AudioContext` with cleanup, exponential gain
+  ramp, and a throttled `createBellHandler`. Pure-ish; lazy `AudioContext`.
 - `src/components/SearchBar.vue` (new) — find overlay (next/prev/close), driven
   by `SearchAddon`.
 - `src/components/Splash.vue` (new) — the promo overlay; an optional persisted

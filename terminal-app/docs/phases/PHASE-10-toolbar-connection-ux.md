@@ -2,7 +2,7 @@
 
 A toolbar and connection-flow refresh, informed by the live
 [zaxbux/web-serial-console](https://github.com/zaxbux/web-serial-console)
-(source cloned at `/home/eriklundh/zaxbux/web-serial-console`). We replicate its
+(read from a local clone of the upstream repo). We replicate its
 *features*, not its stack: zaxbux is Vuetify + Pinia + vue-router; we stay on
 plain CSS + Vue `ref`/`computed`/`provide`-`inject` per the repo `CLAUDE.md`.
 

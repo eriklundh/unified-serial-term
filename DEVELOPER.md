@@ -86,6 +86,38 @@ This project uses **Claude Code** (Anthropic). See
 and the `CLAUDE.md` files in each subdirectory for conventions, phase plan,
 and session guidance.
 
+## Prior art and acknowledgements
+
+### zaxbux/web-serial-console
+
+[Zach Schneider](https://github.com/zaxbux) (github.com/zaxbux) built
+[web-serial-console](https://github.com/zaxbux/web-serial-console), an
+excellent browser serial terminal and the primary prior art for this
+project. We read it carefully — UI shape, connection state machine,
+terminal behaviours such as the bell — and we gladly recognise the work
+behind it.
+
+What we built is deliberately distinct: a **full bottom-up, test-first
+re-implementation** of a similar feature set — every line written fresh
+under TDD (300+ unit tests, Playwright e2e, and hardware-in-loop rigs in
+`hil-preflight/`, `pico-cdc-test-rig/`, and `ftdi-loopback-verify/`),
+MIT-licensed. No code was copied or ported; web-serial-console was treated
+as reference reading, never as a porting source. The focus also differs:
+where web-serial-console drives the Web Serial API (an OS serial driver in
+the loop), this project is about making an xterm.js-based web terminal
+work well over **WebUSB, talking to FTDI devices with no OS serial driver
+in between** — typically an FPGA board whose FTDI chip is bound to
+WinUSB/libusb for JTAG programming.
+
+### xterm.js
+
+Terminal rendering is [xterm.js](https://xtermjs.org/), the de-facto
+standard terminal for the web. Other well-known users include the
+**VS Code** integrated terminal, **JupyterLab**, **Eclipse Theia**,
+the **Hyper** terminal, **Azure Cloud Shell** and **Google Cloud Shell**,
+and the **ttyd** and **Wetty** web-TTY projects — good company, and a deep
+well of reference behaviour for terminal UX.
+
 ## History
 
 This repository consolidates several formerly standalone projects, with
