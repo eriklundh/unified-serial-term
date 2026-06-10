@@ -126,10 +126,13 @@ Claude-assisted (Playwright MCP) smoke tests: [docs/SEMIAUTO-SMOKE.md](docs/SEMI
 
 ## Attribution
 
-The connection state machine and xterm.js component structure were informed by
-reading [zaxbux/web-serial-console](https://github.com/zaxbux/web-serial-console).
-No code was copied; all lines in this repo were written from scratch under TDD
-discipline.
+The well-known [xterm.js](https://xtermjs.org/) is the terminal engine of
+this project. The well-designed
+[zaxbux/web-serial-console](https://github.com/zaxbux/web-serial-console)
+has been used as reference reading on component structure, serial stream
+states, and feature set. All code in this app and the
+[ftdi-webusb-driver](../ftdi-driver/README.md) library has been written
+from scratch under strict test-first TDD discipline.
 
 The FTDI USB backend uses the
 [ftdi-webusb-driver](../ftdi-driver/README.md) library developed
