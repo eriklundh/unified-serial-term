@@ -120,7 +120,7 @@ For this project:
 
 ```bash
 sudo git config --system \
-  lfs.https://gitlab.compelcon.se/unified-serial-terminal/unified-serial-term.git/info/lfs.locksverify \
+  lfs.https://<gitlab-instance>/<group>/unified-serial-term.git/info/lfs.locksverify \
   false
 ```
 

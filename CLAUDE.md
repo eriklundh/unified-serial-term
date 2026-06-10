@@ -30,10 +30,13 @@ consolidation.
 git@gitlab.compelcon.se:unified-serial-terminal/unified-serial-term.git
 ```
 
-This is the current canonical remote. The repo is host-agnostic and may be
-mirrored to GitHub or elsewhere; per-component docs refer to it abstractly
-as `<git origin>`, and to deployment infra as `<deploy-host>` /
-`<deploy-domain>` / `<deploy-user>`.
+This is the current canonical remote, push-mirrored to the public
+**github.com/eriklundh/unified-serial-term**. This is the **only** place the
+internal GitLab URL is written down: all public-facing links (clone
+instructions, Releases) point at GitHub, and internal-infra docs (runner
+setup, CI) refer to the instance abstractly as `<gitlab-instance>` /
+`<group>`. Per-component docs likewise use `<git origin>`, and deployment
+infra is `<deploy-host>` / `<deploy-domain>` / `<deploy-user>`.
 
 ## How to work here
 

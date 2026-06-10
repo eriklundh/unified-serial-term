@@ -35,7 +35,7 @@ alongside `unified-serial-term`.
 ```bash
 # From the parent directory that contains unified-serial-term/:
 cd "$(dirname "$(git -C . rev-parse --show-toplevel)")"   # up one level
-git clone git@gitlab.compelcon.se:unified-serial-terminal/ftdi-unbind.git
+git clone https://github.com/eriklundh/ftdi-unbind.git
 ```
 
 After cloning, the layout should be:
@@ -100,7 +100,7 @@ Suppress the GitLab CE locking-API warning:
 
 ```bash
 git config --global \
-  lfs.https://gitlab.compelcon.se/unified-serial-terminal/unified-serial-term.git/info/lfs.locksverify \
+  lfs.https://<gitlab-instance>/<group>/unified-serial-term.git/info/lfs.locksverify \
   false
 ```
 
@@ -173,7 +173,7 @@ Set the tags `hil-hardware`, `macos-hw` before saving, then copy the
 ```bash
 gitlab-runner register \
   --non-interactive \
-  --url "https://gitlab.compelcon.se" \
+  --url "https://<gitlab-instance>" \
   --token "glrt-XXXXXXXXXXXXXXXXXXXX" \
   --executor "shell" \
   --description "mac-mini-2014-hw"

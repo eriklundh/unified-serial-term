@@ -139,7 +139,7 @@ appears on every `git push` (affects all users on the host):
 
 ```bash
 sudo git config --system \
-  lfs.https://gitlab.compelcon.se/unified-serial-terminal/unified-serial-term.git/info/lfs.locksverify \
+  lfs.https://<gitlab-instance>/<group>/unified-serial-term.git/info/lfs.locksverify \
   false
 ```
 
@@ -153,7 +153,7 @@ token (`glrt-…`). Then:
 ```bash
 sudo gitlab-runner register \
   --non-interactive \
-  --url "https://gitlab.compelcon.se" \
+  --url "https://<gitlab-instance>" \
   --token "glrt-XXXXXXXXXXXXXXXXXXXX" \
   --executor "shell" \
   --description "Agentlab1 shell runner"

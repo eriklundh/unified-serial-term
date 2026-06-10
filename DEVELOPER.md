@@ -24,7 +24,7 @@ fresh checkout Just Works.
 ## Quick start
 
 ```sh
-git clone git@gitlab.compelcon.se:unified-serial-terminal/unified-serial-term.git
+git clone https://github.com/eriklundh/unified-serial-term.git
 cd unified-serial-term
 
 # Build the driver, then run the app dev server
@@ -62,10 +62,13 @@ relative paths (`../../ftdi-unbind/...`) resolve:
 ## Git origin
 
 ```
-git@gitlab.compelcon.se:unified-serial-terminal/unified-serial-term.git
+https://github.com/eriklundh/unified-serial-term.git
 ```
 
-The project is host-agnostic and may be mirrored to GitHub or elsewhere.
+The public repository lives on GitHub
+(**github.com/eriklundh/unified-serial-term**). The project is
+host-agnostic; the internal canonical remote is documented in the root
+`CLAUDE.md`.
 Throughout the per-component docs the remote is referred to as
 `<git origin>` and deployment infra as `<deploy-host>` / `<deploy-domain>`.
 

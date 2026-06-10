@@ -141,7 +141,7 @@ Suppress the GitLab CE locking-API warning:
 
 ```powershell
 git config --global `
-  lfs.https://gitlab.compelcon.se/unified-serial-terminal/unified-serial-term.git/info/lfs.locksverify `
+  lfs.https://<gitlab-instance>/<group>/unified-serial-term.git/info/lfs.locksverify `
   false
 ```
 
@@ -186,7 +186,7 @@ Set the tags `hil-hardware`, `windows-hw` before saving, then copy the
 Set-Location "C:\GitLab-Runner"
 .\gitlab-runner.exe register `
   --non-interactive `
-  --url "https://gitlab.compelcon.se" `
+  --url "https://<gitlab-instance>" `
   --token "glrt-XXXXXXXXXXXXXXXXXXXX" `
   --executor "shell" `
   --shell "powershell" `
