@@ -3,13 +3,13 @@
 # fetch-build-deploy.sh — update, build, and publish the terminal-app.
 #
 # This script runs ON the deploy host, in a DEDICATED publish-only mirror
-# checkout (~/deploy-unified-serial-term) — kept separate from any development
+# checkout (~/deploy-unified-serial-term/unified-serial-term) — kept separate from any development
 # checkout — because step 1 hard-resets it to origin. A developer on another
 # machine triggers it over SSH *after* a local test-and-fix cycle has been
 # committed and pushed:
 #
 #     ssh <deploy-user>@<deploy-host> \
-#         'bash ~/deploy-unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
+#         'bash ~/deploy-unified-serial-term/unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
 #
 # The SSH channel is only ever used to invoke this script — never to run ad-hoc
 # remote commands. Everything the deploy needs is captured here, committed, and
@@ -77,11 +77,11 @@ CI_MODE="${CI_MODE:-}"
 
 # Publish-only mirror guard. Step 1 hard-resets this checkout to origin, which
 # would wipe in-progress work in a development checkout. So the script runs ONLY
-# in the dedicated deploy-mirror checkout (~/deploy-unified-serial-term), whose
+# in the dedicated deploy-mirror checkout (~/deploy-unified-serial-term/unified-serial-term), whose
 # gitignored script/deploy.env sets DEPLOY_MIRROR=1.
 # CI_MODE=1 bypasses this — the runner's checkout IS the right state.
 [ "${DEPLOY_MIRROR:-}" = "1" ] || [ "$CI_MODE" = "1" ] || { \
-  printf '\n\033[1;31mERROR: not a deploy mirror.\033[0m Run this only in the deploy-mirror checkout\n  (~/deploy-unified-serial-term); its script/deploy.env must set DEPLOY_MIRROR=1.\n' >&2; \
+  printf '\n\033[1;31mERROR: not a deploy mirror.\033[0m Run this only in the deploy-mirror checkout\n  (~/deploy-unified-serial-term/unified-serial-term); its script/deploy.env must set DEPLOY_MIRROR=1.\n' >&2; \
   exit 1; }
 
 # --- Configuration: deploy targets -------------------------------------------

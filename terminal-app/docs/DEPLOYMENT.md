@@ -270,7 +270,7 @@ The manual build is still available as a fallback (e.g. to pre-warm the host
 or debug a driver build in isolation):
 
 ```bash
-cd ~/deploy-unified-serial-term/ftdi-driver && npm ci && npm run build
+cd ~/deploy-unified-serial-term/unified-serial-term/ftdi-driver && npm ci && npm run build
 ```
 
 The auto-build is skipped entirely when `../ftdi-driver` isn't present
@@ -284,7 +284,7 @@ The auto-build is skipped entirely when `../ftdi-driver` isn't present
 - Two checkouts on the host, kept separate:
   - **Development** — `~/unified-serial-terminal/` (where changes are made,
     committed, and pushed). The deploy script refuses to run here.
-  - **Deploy mirror** — `~/deploy-unified-serial-term/` (publish-only; the
+  - **Deploy mirror** — `~/deploy-unified-serial-term/unified-serial-term/` (publish-only; the
     script hard-resets it to `origin/main`). Its gitignored `script/deploy.env`
     sets `DEPLOY_MIRROR=1` and `DEPLOY_SITE_HOST`. The `ftdi-driver/` subdir
     only needs to be *present*; the build auto-builds it on demand (see above).
@@ -298,29 +298,45 @@ Trigger a **staging** deploy after pushing to `main`:
 
 ```bash
 ssh <deploy-user>@<deploy-host> \
-    'bash ~/deploy-unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
+    'bash ~/deploy-unified-serial-term/unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
 ```
 
 First-time or cautious run (builds, but writes nothing to the live site):
 
 ```bash
 ssh <deploy-user>@<deploy-host> \
-    'DRY_RUN=1 bash ~/deploy-unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
+    'DRY_RUN=1 bash ~/deploy-unified-serial-term/unified-serial-term/terminal-app/script/fetch-build-deploy.sh'
 ```
 
-### Promoting a verified release to production
+### Promoting a verified release to production — the big red button
 
-Once a `main` build is verified on staging, tag it and publish that **exact
-tag** to the students' URL. Production refuses to run without an explicit tag,
-so it can never drift to whatever `main` happens to be:
+Once a `main` build is verified on staging, run the committed release script
+from the dev checkout:
 
 ```bash
-# 1. In the dev checkout: tag the verified commit and push the tag.
+terminal-app/script/release-production.sh
+```
+
+It creates an annotated `release-YYYY-MM-DD` tag on origin/main (suffix `-2`,
+`-3`… for same-day re-releases), pushes it, and then watches the production
+`version.json` until the new release is serving. The tag push triggers the
+GitLab CI job `terminal-app:deploy:production` (see the root
+`.gitlab-ci.yml`), which re-runs the full check stage — lint, unit tests,
+e2e — and only then publishes that **exact tag**. Production refuses to run
+without an explicit tag, so it can never drift to whatever `main` happens
+to be. Protect the `release-*` tag pattern in GitLab (Settings → Repository
+→ Protected tags) so only maintainers can trigger it.
+
+To release an older verified commit: `release-production.sh <ref>`.
+
+The pre-CI manual fallback still works (run on the deploy host):
+
+```bash
+# 1. Tag the verified commit and push the tag.
 git tag -a release-2026-06-05 -m "Verified release" && git push origin release-2026-06-05
 
-# 2. Publish that tag to production.
-ssh <deploy-user>@<deploy-host> \
-    'bash ~/deploy-unified-serial-term/terminal-app/script/fetch-build-deploy.sh production release-2026-06-05'
+# 2. Publish that tag to production from the deploy mirror.
+bash ~/deploy-unified-serial-term/unified-serial-term/terminal-app/script/fetch-build-deploy.sh production release-2026-06-05
 ```
 
 **What's live right now?** Every deploy stamps the published bundle with a

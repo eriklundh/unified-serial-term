@@ -79,11 +79,17 @@ User was going to test on real hardware (FTDI + Pico). Not confirmed yet:
 - Dead port pruning behaviour when a Pico is unplugged
 - `forgetAllPaired()` now using factory abstraction
 
-### 5. Deployment
-Phase 8 lab-server deployment was not completed in prior sessions (nginx not
-fully configured, `/var/www/` path not set up). See `docs/DEPLOYMENT.md` and
-`docs/LAB-SERVER-SETUP.md`. The app is built and deployable; it just needs
-the server-side config applied.
+### 5. Deployment — DONE, fully automated (2026-06-10)
+Both sites are live and CI-deployed from the Agentlab1 GitLab runner (this
+box is the deploy host; the setup is movable — see the production job's
+comment in the root `.gitlab-ci.yml`):
+- **Staging** `serial-lab.test.delivery-academy.se` — auto-deploys every
+  push to `main` (job `terminal-app:deploy:staging`).
+- **Production** `unified-serial.delivery-academy.se` — deploys only
+  `release-*` tags (job `terminal-app:deploy:production`). Create them with
+  the big red button: `terminal-app/script/release-production.sh`, which
+  tags origin/main, pushes, and watches `version.json` until live.
+See `docs/DEPLOYMENT.md` §6.
 
 ---
 

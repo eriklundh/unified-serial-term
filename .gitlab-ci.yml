@@ -147,6 +147,38 @@ terminal-app:deploy:staging:
     url: https://serial-lab.test.delivery-academy.se/
 
 # ──────────────────────────────────────────────────────────────────────────
+# terminal-app:deploy:production — publish a verified release tag to the
+# students' URL.
+#
+# Triggered ONLY by pushing a `release-*` tag (created by
+# terminal-app/script/release-production.sh — the big red button). A tag
+# pipeline re-runs the full check stage first (the `rules: changes` jobs all
+# evaluate true on tags), so the deploy never runs on a build that fails
+# lint/tests/e2e. Protect the `release-*` pattern in GitLab (Settings →
+# Repository → Protected tags) so only maintainers can trigger this.
+#
+# Movability: nothing here is host-specific. To serve from another machine,
+# install nginx + the webroot there (LAB-SERVER-SETUP.md), register a GitLab
+# runner on it, add the gitlab-runner sudoers entry for rsync/chown, and (if
+# more than one runner serves this project) pin the deploy jobs to it with a
+# runner tag.
+# ──────────────────────────────────────────────────────────────────────────
+terminal-app:deploy:production:
+  stage: deploy
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^release-/
+  variables:
+    CI_MODE: "1"
+    DEPLOY_PROD_WEBROOT: /var/www/serial-terminal-production
+    DEPLOY_PROD_SITE_HOST: unified-serial.delivery-academy.se
+  script:
+    - cd terminal-app
+    - bash script/fetch-build-deploy.sh production "$CI_COMMIT_TAG"
+  environment:
+    name: production
+    url: https://unified-serial.delivery-academy.se/
+
+# ──────────────────────────────────────────────────────────────────────────
 # Hardware-in-loop — runs ONLY on a runner tagged `hil-hardware` (a self-managed
 # runner on the machine with the Pico + FTDI rigs physically attached), and only
 # when triggered by hand. The runner needs node, python3, and udev access to the
