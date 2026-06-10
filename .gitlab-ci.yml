@@ -21,10 +21,13 @@
 #   - Hardware-in-loop jobs are gated to a runner tagged `hil-hardware` (the
 #     machine with the Pico + FTDI rigs attached) and are manual-only.
 
+# Stage order makes `hw` a GATE for `deploy`: on a release-hw-* tag the HIL
+# jobs run automatically and a deploy only starts when they pass. On every
+# other pipeline the hw jobs stay manual + allow_failure, so they never block.
 stages:
   - check
-  - deploy
   - hw
+  - deploy
 
 # ──────────────────────────────────────────────────────────────────────────
 # ftdi-driver — TypeScript WebUSB driver library (npm package ftdi-webusb-driver)
@@ -184,10 +187,25 @@ terminal-app:deploy:production:
 # when triggered by hand. The runner needs node, python3, and udev access to the
 # USB devices. `npm run test:hw` runs ../hil-preflight/preflight.sh first.
 # ──────────────────────────────────────────────────────────────────────────
+# Two release-tag families (created by terminal-app/script/release-production.sh):
+#   release-YYYY-MM-DD      software gate only - checks pass, deploy runs.
+#                           For changes verifiable in CI alone (UI logic etc.).
+#   release-hw-YYYY-MM-DD   hardware gate - the HIL jobs below run
+#                           AUTOMATICALLY and must pass before the deploy
+#                           stage starts. For changes touching the serial/USB
+#                           data path.
+# When more HIL platforms get runners (windows / macos), add jobs here with
+# those runner tags under the same release-hw rule - the deploy stage waits
+# for all of them; no extra "tested OK" bookkeeping is needed.
 .hw:
   stage: hw
   tags: [hil-hardware]
-  when: manual
+  rules:
+    # release-hw-* tag: run automatically and BLOCK the deploy stage on failure.
+    - if: $CI_COMMIT_TAG =~ /^release-hw-/
+    # everywhere else: manual trigger, never blocks later stages.
+    - when: manual
+      allow_failure: true
   # shell executor / native environment (same as the check jobs)
 
 terminal-app:test:hw:

@@ -14,8 +14,16 @@
 #
 # Usage (from anywhere inside the repo):
 #   terminal-app/script/release-production.sh                # release origin/main
+#   terminal-app/script/release-production.sh --hw           # require HIL tests first
 #   terminal-app/script/release-production.sh -m "message"   # custom tag message
 #   terminal-app/script/release-production.sh <ref>          # an older verified commit
+#
+# Two tag families: a plain release-YYYY-MM-DD deploys as soon as the
+# software checks pass (lint/unit/e2e on the CI runner). --hw creates
+# release-hw-YYYY-MM-DD instead, which additionally runs the
+# hardware-in-loop jobs on the rig-attached runner(s) and only deploys
+# when they pass. Use --hw for changes that touch the serial/USB data
+# path; plain for UI-only changes (splash screen, styling, copy).
 #
 # Env overrides:
 #   PROD_SITE_HOST   production hostname (default: unified-serial.delivery-academy.se)
@@ -27,10 +35,15 @@ PROD_SITE_HOST="${PROD_SITE_HOST:-unified-serial.delivery-academy.se}"
 WAIT_TIMEOUT="${WAIT_TIMEOUT:-900}"
 
 MSG="Verified production release"
-if [ "${1:-}" = "-m" ]; then
-    [ $# -ge 2 ] || { echo "ERROR: -m requires a message." >&2; exit 2; }
-    MSG="$2"; shift 2
-fi
+HW=""
+while :; do
+    case "${1:-}" in
+        --hw) HW="hw-"; shift ;;
+        -m)   [ $# -ge 2 ] || { echo "ERROR: -m requires a message." >&2; exit 2; }
+              MSG="$2"; shift 2 ;;
+        *)    break ;;
+    esac
+done
 REF="${1:-HEAD}"
 
 # Run from the repo root regardless of the caller's cwd.
@@ -48,7 +61,7 @@ fi
 COMMIT="$(git rev-parse --short "$REF^{commit}")"
 
 # Tag name: release-YYYY-MM-DD (UTC), -2/-3… for same-day re-releases.
-BASE="release-$(date -u +%F)"
+BASE="release-${HW}$(date -u +%F)"
 TAG="$BASE"; n=2
 while git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; do
     TAG="$BASE-$n"; n=$((n+1))

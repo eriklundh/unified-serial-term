@@ -322,7 +322,18 @@ It creates an annotated `release-YYYY-MM-DD` tag on origin/main (suffix `-2`,
 `version.json` until the new release is serving. The tag push triggers the
 GitLab CI job `terminal-app:deploy:production` (see the root
 `.gitlab-ci.yml`), which re-runs the full check stage — lint, unit tests,
-e2e — and only then publishes that **exact tag**. Production refuses to run
+e2e — and only then publishes that **exact tag**.
+
+**Hardware gate — `--hw`.** `release-production.sh --hw` creates a
+`release-hw-YYYY-MM-DD` tag instead. That pipeline additionally runs the
+hardware-in-loop jobs (`hw` stage, rig-attached runners — currently the
+Pi 5) **before** the deploy stage, and the release proceeds only when they
+all pass. Pick the family by what changed: UI-only work (splash, styling,
+copy) ships with a plain `release-*` tag verified entirely on the CI
+runner on this host; anything touching the serial/USB data path should go
+out as `release-hw-*`. Future platform rigs (Windows, macOS) plug in as
+additional `hw`-stage jobs with their own runner tags — the deploy stage
+waits for all of them natively, no cross-tag bookkeeping required. Production refuses to run
 without an explicit tag, so it can never drift to whatever `main` happens
 to be. Protect the `release-*` tag pattern in GitLab (Settings → Repository
 → Protected tags) so only maintainers can trigger it.
