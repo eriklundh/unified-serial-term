@@ -161,9 +161,20 @@ Obtain a runner authentication token from GitLab:
 - **Group-scoped** (recommended): group → Settings → CI/CD → Runners → New group runner
 - **Project-scoped**: project → Settings → CI/CD → Runners → New project runner
 
-Set the desired tags (e.g. `rpi5`, `hardware`, `arm64`) on the GitLab side
-before registering.  With the new `glrt-` token format, tags cannot be set
-via the CLI.
+Set the tags on the GitLab side before registering.  With the new `glrt-`
+token format, tags cannot be set via the CLI.  Two tags are **required**,
+not suggestions — each gates a different pipeline:
+
+- **`hil-hardware`** — the `.hw` jobs in this repo's root `.gitlab-ci.yml`
+  (and the hw gate on `release-hw-*` tags) select on this tag.  Without it
+  a `release-hw-*` pipeline stalls `pending` forever with no eligible
+  runner.  (Found the hard way 2026-06-11: the runner had been registered
+  with `rpi5` only, and the first hw-gated run would have hung.)
+- **`rpi5`** — the ftdi-unbind repo's diagnose/bind-cycle jobs select on
+  this tag.
+
+Tags can be fixed after registration in the GitLab UI (Runners → edit) or
+via the API: `PUT /runners/<id>` with `tag_list=rpi5,hil-hardware`.
 
 ```bash
 sudo gitlab-runner register \
@@ -246,6 +257,44 @@ with stdin=/dev/null.
 
 The correct configuration: root daemon + `--user gitlab-runner` in
 `ExecStart` + no `User=` directive in the service unit.
+
+### Rig devices vanish or fail to enumerate — check WHICH USB port first
+
+Field notes from the first hw-stage runs (2026-06-11): the Pi 5's
+**rightmost USB ports proved unreliable** for the rigs.  Symptoms observed
+with the Pico CDC rig on a rightmost port, in escalating order:
+
+1. Device enumerates (visible in `lsusb` / preflight's presence check) but
+   a plain `serial.Serial()` open fails with `termios error 5 (I/O error)`.
+2. The device then **drops off the USB bus entirely** — `/dev/ttyACM0`
+   disappears mid-test-suite and `lsusb` no longer lists it.
+3. After a physical replug into the same port: no enumeration at all.
+
+Moving the device to a **mid-connector port** restored normal operation.
+Before suspecting firmware or test code, `lsusb | grep -i 2e8a` (Pico) /
+`grep -i 0403` (FTDI) and try a different physical port.
+
+### Pico CDC rig recovery
+
+The rig firmware has **no watchdog**: if it crashes or the bus drops it,
+it stays dead until someone physically intervenes.  Recovery checklist:
+
+- Replug the Pico *without* touching BOOTSEL (the button is easy to press
+  accidentally while gripping the board; in BOOTSEL it enumerates as
+  `2e8a:0003` mass storage, not the `2e8a:000a` CDC rig).
+- If the flash is blank/corrupt it boots to BOOTSEL regardless — reflash
+  with `picotool load -x pico-cdc-test-rig/release/pico-cdc-test-rig.uf2`
+  or copy the UF2 onto the `RPI-RP2` drive.
+- Hardening backlog (not yet implemented): a hardware watchdog in the
+  firmware so crashes self-recover, and `uhubctl` on the Pi 5 for remote
+  VBUS power-cycling so a wedged rig can be revived from CI without a
+  human at the bench.
+
+### Pipeline stuck `pending` although the runner is online
+
+A pipeline created while no eligible runner existed (offline, or missing
+the required tag) can stay `pending` even after the runner becomes
+eligible.  Cancel + retry the job.
 
 ---
 

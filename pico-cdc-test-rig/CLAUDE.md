@@ -157,6 +157,18 @@ onto a Pico, and a host harness that proves the Pico behaves. The
 terminal-app consumes it only at test time: a flashed Pico plugged into
 the test machine is the Web Serial backend's hardware target.
 
+## Hardening backlog (post-v0.1, from field experience)
+
+- **Hardware watchdog** (2026-06-11): during the first CI hw-stage runs
+  the firmware fell off the USB bus (root cause was a flaky Pi 5 USB
+  port, but the lesson stands) and stayed dead until a human replugged
+  it. As an *unattended* CI rig, the firmware should enable the RP2040
+  hardware watchdog (`watchdog_enable` + `watchdog_update` in the main
+  loop) so any crash/hang self-recovers by reboot and re-enumeration.
+  Companion host-side idea: `uhubctl` on the Pi 5 runner for remote VBUS
+  power-cycling — see `hil-preflight/rpi5-gitlab-runner-setup.md`
+  §Troubleshooting for the full field notes.
+
 ## Out of scope (for v0.1)
 
 - Acting as a real USB-to-UART bridge (it's a loopback rig, not a
