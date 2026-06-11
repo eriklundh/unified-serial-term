@@ -9,6 +9,9 @@ Device selection (in order of precedence):
 
 Tests are skipped automatically if a device cannot be opened, so the suite
 is safe to include in a CI run or a larger suite with no hardware attached.
+Set FTDI_REQUIRE=1 to turn that skip into a hard failure — callers whose
+whole purpose is to prove the rig is present (hil-preflight) must not get
+a green run from silent skips.
 """
 from __future__ import annotations
 
@@ -62,11 +65,14 @@ def ftdi(request: pytest.FixtureRequest):
     try:
         device = open_rig(url)
     except Exception as exc:  # noqa: BLE001
-        pytest.skip(
+        message = (
             f"No FTDI device at {url} ({exc}). "
             "Use --ftdi-url or set FTDI_URL. "
             "On Linux, unbind ftdi_sio first (see README)."
         )
+        if os.environ.get("FTDI_REQUIRE"):
+            pytest.fail(f"FTDI_REQUIRE is set: {message}", pytrace=False)
+        pytest.skip(message)
     yield device
     try:
         drive(device, False, False)

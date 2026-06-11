@@ -78,7 +78,10 @@ if [[ "$(uname -s)" == "Linux" ]]; then
     done
 fi
 
-"$VENV/bin/pytest" "$ROOT/ftdi-loopback-verify" \
+# FTDI_REQUIRE turns the suite's device-unavailable skip into a failure:
+# preflight exists to prove the rig is present, so a silently-skipped
+# loopback must not count as a pass.
+FTDI_REQUIRE=1 "$VENV/bin/pytest" "$ROOT/ftdi-loopback-verify" \
     -v --tb=short "${FTDI_ARGS[@]+"${FTDI_ARGS[@]}"}" "${COMMON_ARGS[@]+"${COMMON_ARGS[@]}"}" \
     || { echo ""; echo "PREFLIGHT FAILED: FTDI Loopback Plug."; exit 1; }
 
