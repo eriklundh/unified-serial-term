@@ -213,6 +213,12 @@ terminal-app:test:hw:
   script:
     - cd terminal-app
     - npm ci --no-audit --no-fund
+    # Same pattern as terminal-app:e2e — fetch the browser build matching the
+    # project's @playwright/test (idempotent, cached in ~/.cache/ms-playwright).
+    # The chromium OS libraries are a one-time host step on the hw runner:
+    # see hil-preflight/rpi5-gitlab-runner-setup.md §"Provision for hw jobs".
+    - npx playwright install chromium
+    - fuser -k 5173/tcp 2>/dev/null || true
     - npm run test:hw
 
 ftdi-driver:test:hw:

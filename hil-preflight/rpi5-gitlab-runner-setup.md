@@ -193,6 +193,35 @@ sudo gitlab-runner verify
 
 ---
 
+## 8  Provision for the unified-serial-term hw jobs
+
+The `.hw` jobs need more than a bare runner (gaps found on the first real
+runs, 2026-06-11; without these the FTDI tests skip/fail with "device not
+found" even though `lsusb` sees the plug, and Playwright aborts with
+"Executable doesn't exist"):
+
+**Raw-USB (libusb) access to the FTDI plug.** The tty layer works via
+`dialout`, but pyftdi and node-usb open the raw device node under
+`/dev/bus/usb`, which stays root-owned without a udev rule:
+
+```bash
+echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6015", MODE="0660", GROUP="plugdev"' \
+  | sudo tee /etc/udev/rules.d/99-ftdi-test.rules
+sudo usermod -aG plugdev gitlab-runner
+sudo udevadm control --reload-rules && sudo udevadm trigger
+sudo systemctl restart gitlab-runner   # jobs must see the new group
+```
+
+**Playwright chromium OS libraries** (the browser binary itself is fetched
+per-job by `npx playwright install chromium`, no sudo needed; only the
+shared libraries are a host step):
+
+```bash
+cd /home/gitlab-runner && sudo npx playwright install-deps chromium
+```
+
+---
+
 ## What was installed / changed
 
 | Path | Purpose |
