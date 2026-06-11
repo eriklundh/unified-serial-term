@@ -54,6 +54,30 @@ echo "--- 1/2  Pico CDC Test Rig ---"
 
 echo ""
 echo "--- 2/2  FTDI Loopback Plug ---"
+
+# pyftdi (libusb) cannot claim the plug while the kernel's ftdi_sio driver
+# holds it, and other users of the shared rig — notably the ftdi-unbind
+# repo's bind/unbind-cycle CI job — deliberately leave it bound. Detach the
+# test plug (VID:PID 0403:6015 only; other FTDI devices are left alone)
+# when passwordless sudo allows; otherwise keep hands off and let the
+# suite's own failure message explain the manual unbind.
+FTDI_RIG_VIDPID="0403:6015"
+if [[ "$(uname -s)" == "Linux" ]]; then
+    for intf in /sys/bus/usb/drivers/ftdi_sio/*:*; do
+        [[ -e "$intf" ]] || continue
+        vidpid="$(cat "$intf/../idVendor" 2>/dev/null):$(cat "$intf/../idProduct" 2>/dev/null)"
+        [[ "$vidpid" == "$FTDI_RIG_VIDPID" ]] || continue
+        if sudo -n true 2>/dev/null; then
+            echo "Detaching $(basename "$intf") from ftdi_sio (pyftdi needs the raw USB device)..."
+            basename "$intf" | sudo -n tee /sys/bus/usb/drivers/ftdi_sio/unbind >/dev/null
+        else
+            echo "WARNING: $FTDI_RIG_VIDPID is bound to ftdi_sio and sudo needs a password;"
+            echo "         the FTDI suite will fail. Unbind manually first, e.g.:"
+            echo "         sudo ftdi-unbind $FTDI_RIG_VIDPID   (companion repo ../../ftdi-unbind)"
+        fi
+    done
+fi
+
 "$VENV/bin/pytest" "$ROOT/ftdi-loopback-verify" \
     -v --tb=short "${FTDI_ARGS[@]+"${FTDI_ARGS[@]}"}" "${COMMON_ARGS[@]+"${COMMON_ARGS[@]}"}" \
     || { echo ""; echo "PREFLIGHT FAILED: FTDI Loopback Plug."; exit 1; }
