@@ -293,6 +293,12 @@
           <p class="group__hint">
             Unified Serial Console — browser-based terminal over WebUSB and Web Serial.
           </p>
+          <p
+            class="group__hint"
+            data-testid="about-version"
+          >
+            v{{ appVersion }} · released {{ appReleaseDate }}
+          </p>
           <p class="group__hint">
             <a
               href="https://github.com/eriklundh/unified-serial-term"
@@ -371,6 +377,10 @@ import { THEMES, getTheme, applyThemeTokens } from './themes'
 import type { BackendId, SerialBackend } from './backends/SerialBackend'
 
 const BAUD_RATES = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 460800, 921600]
+
+// Injected at build time from package.json / CHANGELOG.md (script/version-info.ts).
+const appVersion = __APP_VERSION__
+const appReleaseDate = __APP_RELEASE_DATE__
 
 const FONT_CHOICES = [
   { label: 'System monospace', value: SYSTEM_MONO },

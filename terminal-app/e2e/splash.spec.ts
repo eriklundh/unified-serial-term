@@ -57,6 +57,12 @@ test('splash does not appear when "Don\'t show again" was previously checked', a
   await expect(page.getByTestId('splash-overlay')).not.toBeVisible()
 })
 
+test('splash shows the release version and date', async ({ page }) => {
+  await page.goto('/')
+  // Injected by Vite define from package.json + CHANGELOG.md.
+  await expect(page.getByTestId('splash-version')).toHaveText(/^v\d+\.\d+\.\d+ · \d{4}-\d{2}-\d{2}$/)
+})
+
 test('splash hides when a connection is established (no data needed)', async ({ page }) => {
   await installMockSerial(page)
   await installMockUsb(page)

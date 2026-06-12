@@ -37,6 +37,16 @@ describe('Splash.vue', () => {
     expect(wrapper.text()).toContain('The Joy of Engineering')
   })
 
+  it('shows the release version and date from the build-time define', () => {
+    const wrapper = mount(Splash)
+    const version = wrapper.find('[data-testid="splash-version"]')
+    expect(version.exists()).toBe(true)
+    expect(version.text()).toBe(`v${__APP_VERSION__} · ${__APP_RELEASE_DATE__}`)
+    // The injected values come from package.json / CHANGELOG.md, not literals.
+    expect(__APP_VERSION__).toMatch(/^\d+\.\d+\.\d+$/)
+    expect(__APP_RELEASE_DATE__).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
   it('mentions both backends in the tagline', () => {
     const wrapper = mount(Splash)
     expect(wrapper.text()).toContain('WebUSB')

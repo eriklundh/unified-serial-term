@@ -36,6 +36,12 @@
       <p class="splash__credit">
         Erik Lundh · The Joy of Engineering
       </p>
+      <p
+        class="splash__version"
+        data-testid="splash-version"
+      >
+        v{{ appVersion }} · {{ releaseDate }}
+      </p>
       <label class="splash__dismiss">
         <input
           type="checkbox"
@@ -58,6 +64,10 @@
 
 <script setup lang="ts">
 import logoSvg from '../assets/joy-of-engineering.svg?raw'
+
+// Injected at build time from package.json / CHANGELOG.md (script/version-info.ts).
+const appVersion = __APP_VERSION__
+const releaseDate = __APP_RELEASE_DATE__
 
 const emit = defineEmits<{
   dontShowAgain: []
@@ -146,6 +156,11 @@ const emit = defineEmits<{
 
 .splash__credit {
   font-size: 0.8rem;
+  color: var(--muted, #9a9a9a);
+}
+
+.splash__version {
+  font-size: 0.75rem;
   color: var(--muted, #9a9a9a);
 }
 

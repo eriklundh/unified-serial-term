@@ -9,6 +9,13 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Version & release date in the UI.** The splash and Settings → About
+  show `vX.Y.Z · <date>`, injected at build time from `package.json` and
+  the matching `CHANGELOG.md` heading (`script/version-info.ts`) — no
+  separately maintained version constant.
+
 ---
 
 ## [1.4.0] — 2026-06-12

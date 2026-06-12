@@ -131,6 +131,13 @@ describe('App.vue', () => {
     expect(wrapper.find('[data-testid="settings-panel"]').exists()).toBe(true)
   })
 
+  it('shows the release version and date in the About section', () => {
+    const wrapper = mount(App, { attachTo: document.body })
+    const about = wrapper.find('[data-testid="about-version"]')
+    expect(about.exists()).toBe(true)
+    expect(about.text()).toBe(`v${__APP_VERSION__} · released ${__APP_RELEASE_DATE__}`)
+  })
+
   it('publishes the toolbar height as --toolbar-h so the drawer clears it', () => {
     mount(App, { attachTo: document.body })
     // The drawer is offset below the toolbar via `inset: var(--toolbar-h) …`;
