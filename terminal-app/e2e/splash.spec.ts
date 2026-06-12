@@ -56,3 +56,30 @@ test('splash does not appear when "Don\'t show again" was previously checked', a
   await page.goto('/')
   await expect(page.getByTestId('splash-overlay')).not.toBeVisible()
 })
+
+test('splash hides when a connection is established (no data needed)', async ({ page }) => {
+  await installMockSerial(page)
+  await installMockUsb(page)
+  await page.goto('/')
+  await expect(page.getByTestId('splash-overlay')).toBeVisible()
+
+  // Connect only — no byte is pushed; hiding is driven by the isConnected watcher.
+  await page.getByTestId('connect-btn').click()
+
+  await expect(page.getByTestId('splash-overlay')).not.toBeVisible()
+})
+
+test('"Show splash screen" setting restores a dismissed splash', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('splash-dismissed', 'true')
+  })
+  await page.goto('/')
+  await expect(page.getByTestId('splash-overlay')).not.toBeVisible()
+
+  await page.getByTestId('settings-btn').click()
+  await page.getByTestId('show-splash').check()
+
+  await expect(page.getByTestId('splash-overlay')).toBeVisible()
+  // The persisted dismissal flag is cleared, so it also shows on next load.
+  expect(await page.evaluate(() => localStorage.getItem('splash-dismissed'))).toBeNull()
+})
