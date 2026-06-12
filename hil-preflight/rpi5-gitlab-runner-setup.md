@@ -142,18 +142,30 @@ sudo gitlab-runner status
 > and do NOT remove the `--user gitlab-runner` flag — both of those break the
 > su handoff (see Troubleshooting below).
 
-## 6  Grant passwordless sudo
+## 6  Install the FTDI tools and grant scoped passwordless sudo
 
-This Pi is a dedicated hardware test device.  Giving the runner full
-passwordless sudo is the simplest way to let it run `ftdi-unbind` and
-`ftdi-bind` (which write to sysfs and require root).
+The `bind-unbind-cycle` CI job needs root to write to sysfs.  Install the
+tools to a fixed system path so the sudoers rule can be scoped exactly to
+those two binaries — the CI job then uses absolute paths and cannot be
+tricked into running arbitrary code from the (variable) build workspace.
 
 ```bash
-echo 'gitlab-runner ALL=(ALL) NOPASSWD: ALL' | \
-  sudo tee /etc/sudoers.d/gitlab-runner
+# Install from the current repo checkout (run once, re-run on each release)
+sudo install -m 755 macos-linux/ftdi-unbind /usr/local/bin/ftdi-unbind
+sudo install -m 755 macos-linux/ftdi-bind   /usr/local/bin/ftdi-bind
+
+# Grant NOPASSWD only to those two fixed paths
+printf '%s\n' \
+  '# gitlab-runner — HIL runner on picotester-rpi5.' \
+  '# Scoped to the FTDI driver-binding tools at fixed install paths.' \
+  'gitlab-runner ALL=(root) NOPASSWD: /usr/local/bin/ftdi-unbind, /usr/local/bin/ftdi-bind' \
+  | sudo tee /etc/sudoers.d/gitlab-runner > /dev/null
 sudo chmod 440 /etc/sudoers.d/gitlab-runner
-sudo visudo -c    # syntax check
+sudo visudo -c    # syntax check — must say "parsed OK"
 ```
+
+> **On each ftdi-unbind release:** re-run the two `sudo install` lines
+> to update the system copy.  The sudoers rule stays unchanged.
 
 ## 7  Register with GitLab
 
@@ -229,7 +241,8 @@ cd /home/gitlab-runner && sudo npx playwright install-deps chromium
 | `/usr/bin/gitlab-runner` | Runner binary, managed by apt |
 | `/etc/systemd/system/gitlab-runner.service` | Systemd unit (root daemon, `--user gitlab-runner`) |
 | `/etc/gitlab-runner/config.toml` | Runner config (owned by `gitlab-runner`) |
-| `/etc/sudoers.d/gitlab-runner` | Passwordless sudo for HIL scripts |
+| `/etc/sudoers.d/gitlab-runner` | NOPASSWD scoped to `/usr/local/bin/ftdi-unbind` + `ftdi-bind` |
+| `/usr/local/bin/ftdi-unbind`, `/usr/local/bin/ftdi-bind` | Fixed-path install of FTDI tools (root-owned, 755) |
 | `/home/gitlab-runner/.bash_logout` | No-op (suppresses `clear_console` tty error) |
 | `/home/gitlab-runner/.gitconfig` | LFS filter written by `git lfs install` (per-user) |
 | `/etc/gitconfig` | LFS filter (system-wide) + `locksverify = false` |
@@ -347,14 +360,14 @@ diagnose:
 bind-unbind-cycle:
   stage: cycle
   script:
-    - sudo macos-linux/ftdi-unbind "$FTDI_VID_PID"
+    - sudo /usr/local/bin/ftdi-unbind "$FTDI_VID_PID"
     - sleep 1
     - 'test -z "$(ls /dev/ttyUSB* 2>/dev/null)" && echo "PASS: no ttyUSB* after unbind" || { echo "FAIL: ttyUSB* still present after unbind"; exit 1; }'
-    - sudo macos-linux/ftdi-bind "$FTDI_VID_PID"
+    - sudo /usr/local/bin/ftdi-bind "$FTDI_VID_PID"
     - sleep 1
     - 'ls /dev/ttyUSB* 2>/dev/null && echo "PASS: ttyUSB* present after rebind" || { echo "FAIL: no ttyUSB* after rebind"; exit 1; }'
   after_script:
-    - sudo macos-linux/ftdi-bind "$FTDI_VID_PID" 2>/dev/null || true
+    - sudo /usr/local/bin/ftdi-bind "$FTDI_VID_PID" 2>/dev/null || true
 ```
 
 The `bind-unbind-cycle` job fails hard if no `0403:6015` device is connected

@@ -276,7 +276,9 @@ auto-approves actions it judges safe (the npm installs, file writes,
 and commits a scaffold phase needs) and prompts only on genuinely risky
 ones. Better than the blunt `acceptEdits` (too conservative — stalls on
 every Bash call) or `bypassPermissions` (approves everything including
-sudo, which with your `NOPASSWD: ALL` is a wide blast radius).
+sudo; `eriklundh`'s sudoers require a password for shell interpreters and
+`visudo`, but `NOPASSWD: ALL` still covers most admin commands — treat the
+scoping as a meaningful guard, not a complete one).
 
 Caveat: because `auto` *can* still prompt on actions it deems risky, a
 fully-unattended run could in principle stall on such a prompt — the
