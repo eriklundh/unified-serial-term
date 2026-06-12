@@ -223,6 +223,11 @@ terminal-app:test:hw:
 
 ftdi-driver:test:hw:
   extends: .hw
+  variables:
+    # The rig's loopback plug is modem-wired (RTS→CTS, DTR→DSR) — proven by
+    # preflight's test_modem_loopback.py on the same plug — so include the
+    # FTDI_HW_MODEM-gated truth-table tests instead of skipping them.
+    FTDI_HW_MODEM: "1"
   script:
     - cd ftdi-driver
     - npm ci --no-audit --no-fund
