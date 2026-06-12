@@ -5,11 +5,12 @@ Read it at the start of every session.
 
 ---
 
-## Current state — last updated 2026-06-08
+## Current state — last updated 2026-06-12
 
 ### Branch / version
 - **Branch:** `main` (all phases merged, working directly on main for post-phase-11 polish)
-- **Version:** v1.3.0 (`package.json`)
+- **Version:** v1.4.0 (`package.json`; CHANGELOG entry 2026-06-12 — first
+  release through the hw-gated `release-hw-*` path)
 - **Tests:** 309 unit tests (Vitest), all green. Build clean (`npm run build`).
 
 ### What shipped since Phase 11 merged
@@ -38,7 +39,7 @@ All committed and pushed to `origin/main`:
 
 ## Outstanding issues (as of 2026-06-08)
 
-### 1. Splash screen content — draft shipped 2026-06-09, awaiting user sign-off
+### 1. Splash screen content — SIGNED OFF 2026-06-12 (wording approved as-is)
 The splash now carries The Joy of Engineering silhouette (Erik's brand mark,
 a hand-standing man) as a traced outer contour in brand blue `#0083BE` —
 asset at `src/assets/joy-of-engineering.svg`, stroked with `currentColor`,

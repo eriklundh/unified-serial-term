@@ -11,6 +11,51 @@ This project uses [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.4.0] — 2026-06-12
+
+### Added
+
+- **Splash screen branding & copy.** The Joy of Engineering silhouette
+  (traced outer contour in brand blue, stroked with `currentColor`),
+  expanded tagline/hint, credit line, and a link to the companion
+  [ftdi-unbind](https://github.com/eriklundh/ftdi-unbind) toolkit with a
+  one-line explanation of why WebUSB needs the driver released. Wording
+  signed off 2026-06-12.
+- **Splash lifecycle controls.** The splash hides automatically on
+  connect, and a "Show splash screen" checkbox in Settings → Appearance
+  brings it back.
+- **Richer device labels.** WebUSB reads the USB string descriptors
+  (`productName`, `serialNumber`); every dropdown entry shows its VID:PID;
+  duplicate labels get `#1`, `#2` suffixes; bare entries are shown as
+  "Serial (xxxx:xxxx)".
+- **Expanded USB vendor table.** Prolific PL2303, Silicon Labs CP210x,
+  QinHeng CH340/CH341, and Raspberry Pi VID/PIDs
+  (source: usb-ids.gowdy.us; automation plan in `docs/USB-IDS.md`).
+- **About section** in the Settings drawer and a GitHub source link on
+  the splash.
+
+### Changed
+
+- **Connection dropdown UX.** Auto-width (no more truncation), the
+  connected device stays visible while connected, "Connect a new device"
+  phrasing, and immediate connect after the Chrome picker.
+
+### Fixed
+
+- **Dead Web Serial ports** are pruned from `listPaired()` instead of
+  lingering in the dropdown after a device is unplugged.
+- **Forget all paired devices** now uses the backend factory abstraction
+  (it previously bypassed it).
+
+### Infrastructure
+
+- Tag-gated production deploys: `release-YYYY-MM-DD` (software checks)
+  and `release-hw-YYYY-MM-DD` (additionally gated on hardware-in-loop
+  tests on the rig-attached runner). This release is the first through
+  the hw-gated path.
+
+---
+
 ## [1.3.0] — 2026-06-07
 
 ### Added
